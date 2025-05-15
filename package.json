@@ -62,7 +62,7 @@
     "webapp:dev-verbose": "npm run webpack-dev-server -- --config webpack/webpack.dev.js --progress=profile --env stats=normal",
     "webapp:prod": "npm run clean-www && npm run webapp:build:prod --",
     "webapp:test": "npm run test --",
-    "webpack-dev-server": "webpack serve"
+    "webpack-dev-server": "npx webpack-cli serve"
   },
   "config": {
     "backend_port": 8080,
@@ -159,7 +159,7 @@
     "typescript-eslint": "8.32.0",
     "wait-on": "8.0.3",
     "webpack": "5.99.8",
-    "webpack-cli": "6.0.1",
+    "webpack-cli": "^6.0.1",
     "webpack-dev-server": "5.2.1",
     "webpack-merge": "6.0.1",
     "webpack-notifier": "1.15.0",
