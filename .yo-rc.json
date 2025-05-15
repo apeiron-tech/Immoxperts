@@ -1,0 +1,32 @@
+{
+  "generator-jhipster": {
+    "applicationType": "monolith",
+    "authenticationType": "jwt",
+    "baseName": "immoxperts",
+    "buildTool": "maven",
+    "cacheProvider": "caffeine",
+    "clientFramework": "react",
+    "clientTestFrameworks": [],
+    "clientTheme": "none",
+    "creationTimestamp": 1747304273335,
+    "databaseType": "sql",
+    "devDatabaseType": "postgresql",
+    "enableHibernateCache": true,
+    "enableTranslation": false,
+    "entities": [],
+    "feignClient": null,
+    "jhipsterVersion": "8.11.0",
+    "jwtSecretKey": "OGUwMmE0YzU2YmQxNTliZmJiNjViYjE3ODMyYjZmYjY2NzYwMjkzNWEyYTVjODY1MGMwM2ZkNjhlMzJhYTliMThiYzAwZGRjODg5Y2JhMTVlMzM1MTFhZWZhN2Y1NzY0OWQ4NjY4YWE3ZWVjMDFkZmE1YTVmNzY4MmYzOTRhZmI=",
+    "microfrontend": null,
+    "microfrontends": [],
+    "nativeLanguage": "fr",
+    "packageName": "com.apeiron.immoxperts",
+    "prodDatabaseType": "postgresql",
+    "reactive": false,
+    "serverPort": null,
+    "serviceDiscoveryType": null,
+    "syncUserWithIdp": null,
+    "testFrameworks": [],
+    "withAdminUi": true
+  }
+}
