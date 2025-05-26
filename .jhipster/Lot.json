@@ -1,0 +1,23 @@
+{
+  "annotations": {
+    "changelogDate": "20250526190657"
+  },
+  "applications": "*",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "iddispolot",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "scarrez",
+      "fieldType": "BigDecimal"
+    }
+  ],
+  "name": "Lot",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

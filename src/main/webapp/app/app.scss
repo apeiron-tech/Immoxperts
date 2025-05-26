@@ -1,315 +1,498 @@
-// Override Bootstrap variables
-@import 'bootstrap-variables';
-// Import Bootstrap source files from node_modules
-@import 'bootstrap/scss/bootstrap';
+//// Override Bootstrap variables
+//@import 'bootstrap-variables';
+//// Import Bootstrap source files from node_modules
+//@import 'bootstrap/scss/bootstrap';
+//body {
+//  background: #fafafa;
+//  margin: 0;
+//}
+//
+//a {
+//  color: #533f03;
+//  font-weight: bold;
+//}
+//
+//* {
+//  -moz-box-sizing: border-box;
+//  box-sizing: border-box;
+//  &:after,
+//  &::before {
+//    -moz-box-sizing: border-box;
+//    box-sizing: border-box;
+//  }
+//}
+//
+//.app-container {
+//  box-sizing: border-box;
+//  .view-container {
+//    width: 100%;
+//    height: calc(100% - 40px);
+//    overflow-y: auto;
+//    overflow-x: hidden;
+//    padding: 1rem;
+//    .card {
+//      padding: 1rem;
+//    }
+//    .view-routes {
+//      height: 100%;
+//      > div {
+//        height: 100%;
+//      }
+//    }
+//  }
+//}
+//
+//.fullscreen {
+//  position: fixed;
+//  top: 100px;
+//  left: 0;
+//  width: 99% !important;
+//  height: calc(100vh - 110px) !important;
+//  margin: 5px;
+//  z-index: 1000;
+//  padding: 5px 25px 50px 25px !important;
+//}
+//
+///* ==========================================================================
+//Browser Upgrade Prompt
+//========================================================================== */
+//
+//.browserupgrade {
+//  margin: 0.2em 0;
+//  background: #ccc;
+//  color: #000;
+//  padding: 0.2em 0;
+//}
+//
+///* ==========================================================================
+//Custom button styles
+//========================================================================== */
+//
+//.icon-button > .btn {
+//  background-color: transparent;
+//  border-color: transparent;
+//  padding: 0.5rem;
+//  line-height: 1rem;
+//  &:hover {
+//    background-color: transparent;
+//    border-color: transparent;
+//  }
+//  &:focus {
+//    -webkit-box-shadow: none;
+//    box-shadow: none;
+//  }
+//}
+//
+///* ==========================================================================
+//Generic styles
+//========================================================================== */
+//
+///* Temporary workaround for availity-reactstrap-validation */
+//.invalid-feedback {
+//  display: inline;
+//}
+//
+///* other generic styles */
+//
+//.title {
+//  font-size: 1.25em;
+//  margin: 1px 10px 1px 10px;
+//}
+//
+//.description {
+//  font-size: 0.9em;
+//  margin: 1px 10px 1px 10px;
+//}
+//
+//.shadow {
+//  box-shadow:
+//    rgba(0, 0, 0, 0.12) 0 1px 6px,
+//    rgba(0, 0, 0, 0.12) 0 1px 4px;
+//  border-radius: 2px;
+//}
+//
+//.error {
+//  color: white;
+//  background-color: red;
+//}
+//
+//.break {
+//  white-space: normal;
+//  word-break: break-all;
+//}
+//
+//.break-word {
+//  white-space: normal;
+//  word-break: keep-all;
+//}
+//
+//.preserve-space {
+//  white-space: pre-wrap;
+//}
+//
+///* padding helpers */
+//
+//@mixin pad($size, $side) {
+//  @if $size== '' {
+//    @if $side== '' {
+//      .pad {
+//        padding: 10px !important;
+//      }
+//    } @else {
+//      .pad {
+//        padding-#{$side}: 10px !important;
+//      }
+//    }
+//  } @else {
+//    @if $side== '' {
+//      .pad-#{$size} {
+//        padding: #{$size}px !important;
+//      }
+//    } @else {
+//      .pad-#{$side}-#{$size} {
+//        padding-#{$side}: #{$size}px !important;
+//      }
+//    }
+//  }
+//}
+//
+//@include pad('', '');
+//@include pad('2', '');
+//@include pad('3', '');
+//@include pad('5', '');
+//@include pad('10', '');
+//@include pad('20', '');
+//@include pad('25', '');
+//@include pad('30', '');
+//@include pad('50', '');
+//@include pad('75', '');
+//@include pad('100', '');
+//@include pad('4', 'top');
+//@include pad('5', 'top');
+//@include pad('10', 'top');
+//@include pad('20', 'top');
+//@include pad('25', 'top');
+//@include pad('30', 'top');
+//@include pad('50', 'top');
+//@include pad('75', 'top');
+//@include pad('100', 'top');
+//@include pad('4', 'bottom');
+//@include pad('5', 'bottom');
+//@include pad('10', 'bottom');
+//@include pad('20', 'bottom');
+//@include pad('25', 'bottom');
+//@include pad('30', 'bottom');
+//@include pad('50', 'bottom');
+//@include pad('75', 'bottom');
+//@include pad('100', 'bottom');
+//@include pad('5', 'right');
+//@include pad('10', 'right');
+//@include pad('20', 'right');
+//@include pad('25', 'right');
+//@include pad('30', 'right');
+//@include pad('50', 'right');
+//@include pad('75', 'right');
+//@include pad('100', 'right');
+//@include pad('5', 'left');
+//@include pad('10', 'left');
+//@include pad('20', 'left');
+//@include pad('25', 'left');
+//@include pad('30', 'left');
+//@include pad('50', 'left');
+//@include pad('75', 'left');
+//@include pad('100', 'left');
+//
+//@mixin no-padding($side) {
+//  @if $side== 'all' {
+//    .no-padding {
+//      padding: 0 !important;
+//    }
+//  } @else {
+//    .no-padding-#{$side} {
+//      padding-#{$side}: 0 !important;
+//    }
+//  }
+//}
+//
+//@include no-padding('left');
+//@include no-padding('right');
+//@include no-padding('top');
+//@include no-padding('bottom');
+//@include no-padding('all');
+//
+///* end of padding helpers */
+//
+//.no-margin {
+//  margin: 0;
+//}
+//@mixin voffset($size) {
+//  @if $size== '' {
+//    .voffset {
+//      margin-top: 2px !important;
+//    }
+//  } @else {
+//    .voffset-#{$size} {
+//      margin-top: #{$size}px !important;
+//    }
+//  }
+//}
+//
+//@include voffset('');
+//@include voffset('5');
+//@include voffset('10');
+//@include voffset('15');
+//@include voffset('30');
+//@include voffset('40');
+//@include voffset('60');
+//@include voffset('80');
+//@include voffset('100');
+//@include voffset('150');
+//
+//.readonly {
+//  background-color: #eee;
+//  opacity: 1;
+//}
+//
+///* ==========================================================================
+//make sure browsers use the pointer cursor for anchors, even with no href
+//========================================================================== */
+//
+//a:hover {
+//  cursor: pointer;
+//}
+//
+//.hand {
+//  cursor: pointer;
+//}
+//
+//button.anchor-btn {
+//  background: none;
+//  border: none;
+//  padding: 0;
+//  align-items: initial;
+//  text-align: initial;
+//  width: 100%;
+//}
+//
+//a.anchor-btn:hover {
+//  text-decoration: none;
+//}
+//
+///* ==========================================================================
+//Metrics and Health styles
+//========================================================================== */
+//
+//#threadDump .popover,
+//#healthCheck .popover {
+//  top: inherit;
+//  display: block;
+//  font-size: 10px;
+//  max-width: 1024px;
+//}
+//
+//.thread-dump-modal-lock {
+//  max-width: 450px;
+//  overflow: hidden;
+//  text-overflow: ellipsis;
+//  white-space: nowrap;
+//}
+//
+//#healthCheck .popover {
+//  margin-left: -50px;
+//}
+//
+//.health-details {
+//  min-width: 400px;
+//}
+//
+///* bootstrap 3 input-group 100% width
+//http://stackoverflow.com/questions/23436430/bootstrap-3-input-group-100-width */
+//
+//.width-min {
+//  width: 1% !important;
+//}
+//
+///* jhipster-needle-scss-add-main JHipster will add new css style */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import 'leaflet/dist/leaflet.css';
+
+@import url('https://fonts.googleapis.com/css2?family=Maven+Pro:wght@300;400;500;600;700;800;900&display=swap');
+
 body {
-  background: #fafafa;
-  margin: 0;
+  font-family: 'Maven Pro', sans-serif;
 }
-
-a {
-  color: #533f03;
-  font-weight: bold;
+body {
+  font-family: 'Maven Pro', sans-serif;
 }
-
-* {
-  -moz-box-sizing: border-box;
-  box-sizing: border-box;
-  &:after,
-  &::before {
-    -moz-box-sizing: border-box;
-    box-sizing: border-box;
-  }
-}
-
-.app-container {
-  box-sizing: border-box;
-  .view-container {
-    width: 100%;
-    height: calc(100% - 40px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 1rem;
-    .card {
-      padding: 1rem;
-    }
-    .view-routes {
-      height: 100%;
-      > div {
-        height: 100%;
-      }
-    }
-  }
-}
-
-.fullscreen {
-  position: fixed;
-  top: 100px;
-  left: 0;
-  width: 99% !important;
-  height: calc(100vh - 110px) !important;
-  margin: 5px;
+/* Custom Mapbox Popup Styles */
+.mapboxgl-popup {
+  font-family: 'Courier New', Courier, monospace;
   z-index: 1000;
-  padding: 5px 25px 50px 25px !important;
 }
+/* Base Popup Styles */
 
-/* ==========================================================================
-Browser Upgrade Prompt
-========================================================================== */
-
-.browserupgrade {
-  margin: 0.2em 0;
-  background: #ccc;
-  color: #000;
-  padding: 0.2em 0;
+/* Style spécifique pour le popup au survol */
+.hover-popup .mapboxgl-popup-content {
+  overflow: visible; /* Permet le redimensionnement automatique */
+  width: 500px !important; /* or any value you prefer */
+  max-width: 100%;
+  max-width: none !important;
 }
-
-/* ==========================================================================
-Custom button styles
-========================================================================== */
-
-.icon-button > .btn {
-  background-color: transparent;
-  border-color: transparent;
-  padding: 0.5rem;
-  line-height: 1rem;
-  &:hover {
-    background-color: transparent;
-    border-color: transparent;
-  }
-  &:focus {
-    -webkit-box-shadow: none;
-    box-shadow: none;
-  }
-}
-
-/* ==========================================================================
-Generic styles
-========================================================================== */
-
-/* Temporary workaround for availity-reactstrap-validation */
-.invalid-feedback {
-  display: inline;
-}
-
-/* other generic styles */
-
-.title {
-  font-size: 1.25em;
-  margin: 1px 10px 1px 10px;
-}
-
-.description {
-  font-size: 0.9em;
-  margin: 1px 10px 1px 10px;
-}
-
-.shadow {
-  box-shadow:
-    rgba(0, 0, 0, 0.12) 0 1px 6px,
-    rgba(0, 0, 0, 0.12) 0 1px 4px;
-  border-radius: 2px;
-}
-
-.error {
-  color: white;
-  background-color: red;
-}
-
-.break {
-  white-space: normal;
-  word-break: break-all;
-}
-
-.break-word {
-  white-space: normal;
-  word-break: keep-all;
-}
-
-.preserve-space {
-  white-space: pre-wrap;
-}
-
-/* padding helpers */
-
-@mixin pad($size, $side) {
-  @if $size== '' {
-    @if $side== '' {
-      .pad {
-        padding: 10px !important;
-      }
-    } @else {
-      .pad {
-        padding-#{$side}: 10px !important;
-      }
-    }
-  } @else {
-    @if $side== '' {
-      .pad-#{$size} {
-        padding: #{$size}px !important;
-      }
-    } @else {
-      .pad-#{$side}-#{$size} {
-        padding-#{$side}: #{$size}px !important;
-      }
-    }
-  }
-}
-
-@include pad('', '');
-@include pad('2', '');
-@include pad('3', '');
-@include pad('5', '');
-@include pad('10', '');
-@include pad('20', '');
-@include pad('25', '');
-@include pad('30', '');
-@include pad('50', '');
-@include pad('75', '');
-@include pad('100', '');
-@include pad('4', 'top');
-@include pad('5', 'top');
-@include pad('10', 'top');
-@include pad('20', 'top');
-@include pad('25', 'top');
-@include pad('30', 'top');
-@include pad('50', 'top');
-@include pad('75', 'top');
-@include pad('100', 'top');
-@include pad('4', 'bottom');
-@include pad('5', 'bottom');
-@include pad('10', 'bottom');
-@include pad('20', 'bottom');
-@include pad('25', 'bottom');
-@include pad('30', 'bottom');
-@include pad('50', 'bottom');
-@include pad('75', 'bottom');
-@include pad('100', 'bottom');
-@include pad('5', 'right');
-@include pad('10', 'right');
-@include pad('20', 'right');
-@include pad('25', 'right');
-@include pad('30', 'right');
-@include pad('50', 'right');
-@include pad('75', 'right');
-@include pad('100', 'right');
-@include pad('5', 'left');
-@include pad('10', 'left');
-@include pad('20', 'left');
-@include pad('25', 'left');
-@include pad('30', 'left');
-@include pad('50', 'left');
-@include pad('75', 'left');
-@include pad('100', 'left');
-
-@mixin no-padding($side) {
-  @if $side== 'all' {
-    .no-padding {
-      padding: 0 !important;
-    }
-  } @else {
-    .no-padding-#{$side} {
-      padding-#{$side}: 0 !important;
-    }
-  }
-}
-
-@include no-padding('left');
-@include no-padding('right');
-@include no-padding('top');
-@include no-padding('bottom');
-@include no-padding('all');
-
-/* end of padding helpers */
-
-.no-margin {
-  margin: 0;
-}
-@mixin voffset($size) {
-  @if $size== '' {
-    .voffset {
-      margin-top: 2px !important;
-    }
-  } @else {
-    .voffset-#{$size} {
-      margin-top: #{$size}px !important;
-    }
-  }
-}
-
-@include voffset('');
-@include voffset('5');
-@include voffset('10');
-@include voffset('15');
-@include voffset('30');
-@include voffset('40');
-@include voffset('60');
-@include voffset('80');
-@include voffset('100');
-@include voffset('150');
-
-.readonly {
-  background-color: #eee;
-  opacity: 1;
-}
-
-/* ==========================================================================
-make sure browsers use the pointer cursor for anchors, even with no href
-========================================================================== */
-
-a:hover {
-  cursor: pointer;
-}
-
-.hand {
-  cursor: pointer;
-}
-
-button.anchor-btn {
-  background: none;
-  border: none;
+.multi-address-popup .mapboxgl-popup-content {
+  max-height: 60vh;
   padding: 0;
-  align-items: initial;
-  text-align: initial;
-  width: 100%;
-}
-
-a.anchor-btn:hover {
-  text-decoration: none;
-}
-
-/* ==========================================================================
-Metrics and Health styles
-========================================================================== */
-
-#threadDump .popover,
-#healthCheck .popover {
-  top: inherit;
-  display: block;
-  font-size: 10px;
-  max-width: 1024px;
-}
-
-.thread-dump-modal-lock {
-  max-width: 450px;
+  border-radius: 12px;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap; /* Allow wrap */
+  gap: 4px; /* Space between lines when wrapped */
+}
+
+.popup-header h3 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 16px;
+  color: #333;
+  flex: 1 1 auto;
+  word-break: break-word; /* Break long words if needed */
+  min-width: 0;
+}
+
+.popup-header .price {
+  font-weight: 700;
+  font-size: 16px;
+  color: #5252e8;
   white-space: nowrap;
+  margin-left: auto;
 }
 
-#healthCheck .popover {
-  margin-left: -50px;
+/* Type de propriété */
+.property-type {
+  padding: 0 16px;
+
+  font-size: 13px;
+  color: #666;
 }
 
-.health-details {
-  min-width: 400px;
+/* Grille d'informations */
+.property-details {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-/* bootstrap 3 input-group 100% width
-http://stackoverflow.com/questions/23436430/bootstrap-3-input-group-100-width */
-
-.width-min {
-  width: 1% !important;
+.property-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-/* jhipster-needle-scss-add-main JHipster will add new css style */
+.detail-label {
+  font-size: 12px;
+  color: #888;
+}
+
+.detail-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Prix au m² */
+.price-per-sqm {
+  padding: 6px 16px;
+  font-size: 13px;
+  color: #666;
+  text-align: right;
+}
+
+/* Bouton */
+.popup-button-container {
+  padding: 12px 16px;
+  text-align: center;
+}
+
+.popup-button {
+  width: 100%;
+  background: #5252e8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.popup-button:hover {
+  background: #4040cc;
+}
+
+.popup-button svg {
+  margin-right: 6px;
+}
+
+/* Animation pour l'indicateur de chargement */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Flèche du popup */
+.mapboxgl-popup-tip {
+  border-top-color: rgb(247, 247, 247) !important;
+  border-bottom-color: rgb(248, 248, 248) !important;
+}
+
+/* Masquer le bouton de fermeture par défaut */
+.hover-popup .mapboxgl-popup-close-button {
+  display: none;
+}
+/* Style pour l'échelle */
+.mapboxgl-ctrl.mapboxgl-ctrl-scale {
+  border: 2px solid #333;
+  border-radius: 4px;
+
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* In your CSS file */
+.suggestion-item {
+  transition: background-color 0.2s;
+}
+
+.suggestion-item:hover {
+  background-color: #f8f9fa;
+}
+
+.suggestion-address {
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.suggestion-context {
+  color: #666;
+  font-size: 0.875rem;
+}

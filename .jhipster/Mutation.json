@@ -1,0 +1,56 @@
+{
+  "annotations": {
+    "changelogDate": "20250526190654"
+  },
+  "applications": "*",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "idmutation",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "datemut",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "valeurfonc",
+      "fieldType": "BigDecimal"
+    },
+    {
+      "fieldName": "idnatmut",
+      "fieldType": "Integer"
+    },
+    {
+      "fieldName": "coddep",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "vefa",
+      "fieldType": "Boolean"
+    },
+    {
+      "fieldName": "sterr",
+      "fieldType": "BigDecimal"
+    }
+  ],
+  "name": "Mutation",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityName": "adresseLocal",
+      "relationshipName": "adresseLocals",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-many"
+    },
+    {
+      "otherEntityName": "adresseDispoparc",
+      "relationshipName": "adresseDispoparcs",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-many"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}
