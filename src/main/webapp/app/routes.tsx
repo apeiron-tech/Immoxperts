@@ -15,6 +15,8 @@ import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import PageNotFound from 'app/shared/error/page-not-found';
 import { AUTHORITIES } from 'app/config/constants';
 import Home from './pages/Home';
+import TrouveAgent from './pages/TrouveAgent';
+import VoirLagence from './pages/VoirLagence';
 
 const loading = <div>loading ...</div>;
 
@@ -35,6 +37,8 @@ const AppRoutes = () => {
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
         <Route path="logout" element={<Logout />} />
+        <Route path="/TrouverAgent" element={<TrouveAgent />} />
+        <Route path="/VoirLagence" element={<VoirLagence />} />
         <Route path="account">
           <Route
             path="*"
