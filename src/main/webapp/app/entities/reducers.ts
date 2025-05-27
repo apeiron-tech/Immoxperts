@@ -5,6 +5,7 @@ import lot from 'app/entities/lot/lot.reducer';
 import dispositionParcelle from 'app/entities/disposition-parcelle/disposition-parcelle.reducer';
 import adresseLocal from 'app/entities/adresse-local/adresse-local.reducer';
 import adresseDispoparc from 'app/entities/adresse-dispoparc/adresse-dispoparc.reducer';
+import 'leaflet/dist/leaflet.css';
 /* jhipster-needle-add-reducer-import - JHipster will add reducer here */
 
 const entitiesReducers = {

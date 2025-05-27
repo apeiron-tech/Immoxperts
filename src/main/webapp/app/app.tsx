@@ -93,7 +93,6 @@ export const App = () => {
     coordinates: [0, 0],
   });
   const [properties, setProperties] = useState([]);
-
   useEffect(() => {
     dispatch(getSession());
     dispatch(getProfile());
@@ -114,7 +113,7 @@ export const App = () => {
         </div>
 
         <div className="container-fluid view-container" id="app-view-container">
-          <Card className="jh-card">
+          <Card className={`flex-grow pt-20 ${hideFooter ? 'h-screen overflow-hidden' : 'mb-10'}`}>
             <ErrorBoundary>
               <AppRoutes />
             </ErrorBoundary>

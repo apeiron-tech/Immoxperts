@@ -1,7 +1,6 @@
 // @ts-check
 
 import globals from 'globals';
-import prettier from 'eslint-plugin-prettier/recommended';
 import tseslint from 'typescript-eslint';
 import eslint from '@eslint/js';
 import react from 'eslint-plugin-react/configs/recommended.js';
@@ -38,6 +37,9 @@ export default tseslint.config(
       },
       parserOptions: {
         project: ['./tsconfig.json', './tsconfig.test.json'],
+        ecmaFeatures: {
+          jsx: true,
+        },
       },
     },
     rules: {
@@ -85,6 +87,10 @@ export default tseslint.config(
       'no-invalid-this': 'off',
       'react/prop-types': 'off',
       'react/display-name': 'off',
+      'react/react-in-jsx-scope': 'off',
+      'react/no-unescaped-entities': 'off',
+      'react/jsx-uses-react': 'off',
+      'react/jsx-uses-vars': 'off',
     },
   },
   {
@@ -94,5 +100,4 @@ export default tseslint.config(
     },
   },
   // jhipster-needle-eslint-add-config - JHipster will add additional config here
-  prettier,
 );
