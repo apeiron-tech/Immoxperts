@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
-import FilterPopup from './FilterPopup';
+import FilterPopup from '../features/property/FilterPopup';
 
 mapboxgl.accessToken = 'pk.eyJ1Ijoic2FiZXI1MTgwIiwiYSI6ImNtOGhqcWs4cTAybnEycXNiaHl6eWgwcjAifQ.8C8bv3cwz9skLXv-y6U3FA';
 

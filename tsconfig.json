@@ -20,7 +20,12 @@
     },
     "importHelpers": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "plugins": [
+      {
+        "name": "typescript-plugin-css-modules"
+      }
+    ]
   },
   "include": ["src/main/webapp/app"],
   "exclude": ["node_modules", "**/*.spec.ts", "**/*.spec.tsx"]

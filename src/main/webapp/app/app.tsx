@@ -79,31 +79,16 @@ import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import ErrorBoundary from 'app/shared/error/error-boundary';
 import { AUTHORITIES } from 'app/config/constants';
 import AppRoutes from 'app/routes';
-import SearchBar from './layouts/SearchBar';
-import PropertyList from './layouts/PropertyList';
 
 const baseHref = document.querySelector('base').getAttribute('href').replace(/\/$/, '');
 
 export const App = () => {
   const dispatch = useAppDispatch();
   const [hideFooter, setHideFooter] = useState(false);
-  const [searchParams, setSearchParams] = useState<{ numero: number; nomVoie: string; coordinates: [number, number] }>({
-    numero: 0,
-    nomVoie: '',
-    coordinates: [0, 0],
-  });
-  const [properties, setProperties] = useState([]);
   useEffect(() => {
     dispatch(getSession());
     dispatch(getProfile());
   }, []);
-
-  const isAuthenticated = useAppSelector(state => state.authentication.isAuthenticated);
-  const isAdmin = useAppSelector(state => hasAnyAuthority(state.authentication.account.authorities, [AUTHORITIES.ADMIN]));
-  const ribbonEnv = useAppSelector(state => state.applicationProfile.ribbonEnv);
-  const isInProduction = useAppSelector(state => state.applicationProfile.inProduction);
-  const isOpenAPIEnabled = useAppSelector(state => state.applicationProfile.isOpenAPIEnabled);
-
   return (
     <BrowserRouter basename={baseHref}>
       <div className="flex flex-col min-h-screen" style={{ background: '#F9FAFB' }}>

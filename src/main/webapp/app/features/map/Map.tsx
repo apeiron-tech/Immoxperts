@@ -183,7 +183,7 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
 
   const parseAddress = (address: string): AddressParts | null => {
     try {
-      const regex = /(\d+)\s+([A-Za-z\.]{1,}\.?)\s+([A-Za-z\s\-]+)/i;
+      const regex = /(\d+)\s+([A-Za-z.]{1,}\.?)\s+([A-Za-z\s-]+)/i;
       const match = address.match(regex);
 
       if (match && match.length >= 4) {
@@ -221,7 +221,7 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
 
   const searchMutations = async (addressParts: AddressParts): Promise<any[]> => {
     try {
-      console.log('Searching for:', addressParts);
+      console.warn('Searching for:', addressParts);
       const response = await axios.get('http://localhost:8080/api/mutations/search', {
         params: { ...addressParts },
       });

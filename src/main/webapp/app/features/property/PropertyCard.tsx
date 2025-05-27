@@ -1,7 +1,7 @@
 import React from 'react';
-// import { FiHome, FiGrid } from 'react-icons/fi';
-// import { FaBuilding, FaLayerGroup } from 'react-icons/fa';
-// import logo from '../../content/assets/logo.png';
+import { FiHome, FiGrid } from 'react-icons/fi';
+import { FaBuilding, FaLayerGroup } from 'react-icons/fa';
+import logo from '../../content/assets/logo.png';
 
 interface Property {
   address: string;
@@ -10,7 +10,7 @@ interface Property {
   pricePerSqm: string;
   type: string;
   surface: string;
-  rooms: string;
+  rooms: string | number;
   soldDate: string;
 }
 

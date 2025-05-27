@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Route } from 'react-router';
 
 import Loadable from 'react-loadable';
@@ -17,6 +17,13 @@ import { AUTHORITIES } from 'app/config/constants';
 import Home from './pages/Home';
 import TrouveAgent from './pages/TrouveAgent';
 import VoirLagence from './pages/VoirLagence';
+import RecherchLouer from 'app/features/property/PropertySearch';
+import EstimationRechercher from './features/estimation/EstimationSearch';
+import Louer from 'app/pages/Louer';
+import Estimation from 'app/features/estimation/Estimation';
+import StreetStats from 'app/features/property/StreetStats';
+import PropertyList from 'app/pages/PropertyList';
+import SearchBar from 'app/layouts/SearchBar';
 
 const loading = <div>loading ...</div>;
 
@@ -31,14 +38,37 @@ const Admin = Loadable({
 });
 
 const AppRoutes = () => {
+  const [searchParams, setSearchParams] = useState({
+    numero: null,
+    nomVoie: null,
+    coordinates: null,
+  });
   return (
     <div className="view-routes">
       <ErrorBoundaryRoutes>
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
         <Route path="logout" element={<Logout />} />
+        <Route
+          path="/PrixImmobliers"
+          element={
+            <div className="flex flex-col h-full">
+              <SearchBar onSearch={setSearchParams} />
+              <div className="flex-1 container   pb-4 pt-2 ">
+                <div className="flex h-full shadow-lg border border-gray-200 rounded-lg overflow-hidden bg-white">
+                  <PropertyList searchParams={searchParams} />
+                </div>
+              </div>
+            </div>
+          }
+        />
         <Route path="/TrouverAgent" element={<TrouveAgent />} />
         <Route path="/VoirLagence" element={<VoirLagence />} />
+        <Route path="/louer" element={<Louer />} />
+        <Route path="/RecherchLouer" element={<RecherchLouer />} />
+        <Route path="/estimation" element={<Estimation />} />
+        <Route path="/streetStats" element={<StreetStats />} />
+        <Route path="/EstimationRechercher" element={<EstimationRechercher />} />
         <Route path="account">
           <Route
             path="*"

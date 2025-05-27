@@ -31,7 +31,7 @@ const Header: React.FC = () => {
     { name: 'Trouver un agent', path: '/TrouverAgent' },
   ];
 
-  const pageOptions: PageOption[] = [{ name: 'Prix&Contacte', path: '/Main5' }];
+  const pageOptions: PageOption[] = [{ name: 'Prix&Contacte', path: '/streetStats' }];
 
   const toggleMobileMenu = (): void => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
