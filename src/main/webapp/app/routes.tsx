@@ -69,7 +69,7 @@ const AppRoutes = () => {
         <Route path="/estimation" element={<Estimation />} />
         <Route path="/streetStats" element={<StreetStats />} />
         <Route path="/EstimationRechercher" element={<EstimationRechercher />} />
-        <Route path="account">
+        {/* <Route path="account">
           <Route
             path="*"
             element={
@@ -100,7 +100,7 @@ const AppRoutes = () => {
               <EntitiesRoutes />
             </PrivateRoute>
           }
-        />
+        /> */}
         <Route path="*" element={<PageNotFound />} />
       </ErrorBoundaryRoutes>
     </div>

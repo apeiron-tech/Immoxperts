@@ -478,6 +478,12 @@ body {
   color: #333;
 }
 
+.multi-address-popup .mapboxgl-popup-content {
+  max-height: 60vh;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
 /* In your CSS file */
 .suggestion-item {
   transition: background-color 0.2s;

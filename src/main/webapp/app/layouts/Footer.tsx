@@ -3,17 +3,17 @@ import { FiTwitter, FiInstagram, FiYoutube, FiLinkedin } from 'react-icons/fi';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-black text-white pt-12 pb-6">
+    <footer className="bg-black text-white pt-8 md:pt-12 pb-6">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 md:gap-8">
+          <div className="text-center sm:text-left">
             <h3 className="text-xl font-bold mb-4">ImmoXpert</h3>
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-400 text-sm max-w-xs mx-auto sm:mx-0">
               est votre plateforme de référence pour la location et l&apos;achat de maisons et d&apos;appartements en France
             </p>
           </div>
 
-          <div>
+          <div className="text-center sm:text-left">
             <h4 className="font-bold mb-4">L&apos;entreprise</h4>
             <ul className="space-y-2">
               <li>
@@ -39,7 +39,7 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          <div>
+          <div className="text-center sm:text-left">
             <h4 className="font-bold mb-4">À Découvrir</h4>
             <ul className="space-y-2">
               <li>
@@ -75,7 +75,7 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          <div>
+          <div className="text-center sm:text-left">
             <div className="mb-6">
               <h4 className="font-bold mb-2">Adresse</h4>
               <p className="text-gray-400">
@@ -91,9 +91,9 @@ const Footer: React.FC = () => {
             </div>
           </div>
 
-          <div>
+          <div className="text-center sm:text-left">
             <h4 className="font-bold mb-2">Retrouvez-nous sur ...</h4>
-            <div className="flex space-x-4">
+            <div className="flex justify-center sm:justify-start space-x-4">
               <a href="#" className="text-gray-400 hover:text-white transition">
                 <FiTwitter size={20} />
               </a>
@@ -110,7 +110,7 @@ const Footer: React.FC = () => {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-12 pt-6 text-sm text-gray-500">
+        <div className="border-t border-gray-800 mt-8 md:mt-12 pt-6 text-sm text-gray-500 text-center">
           <p>Copyright © 2025 Hestia Immo | Powered by Apeiron Technologies</p>
         </div>
       </div>

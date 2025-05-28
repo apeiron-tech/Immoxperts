@@ -149,6 +149,7 @@
     "json-loader": "0.5.7",
     "lint-staged": "15.5.2",
     "mini-css-extract-plugin": "2.9.2",
+    "postcss": "^8.4.35",
     "postcss-loader": "8.1.1",
     "prettier": "3.5.3",
     "prettier-plugin-java": "2.6.7",

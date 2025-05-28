@@ -65,7 +65,97 @@ const agencies: Agency[] = [
       },
     ],
   },
-  // ... existing code ...
+  {
+    id: 2,
+    name: 'UrbanHouse 360',
+    logo: 'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',
+    address: 'Rue des Amidonniers',
+    city: 'Toulouse',
+    postalCode: '31000',
+    localTransactions: 4,
+    totalTransactions: 7,
+    averagePrice: '190K EUR',
+    rating: 4,
+    agents: [
+      {
+        id: 4,
+        name: 'Pierre Dubois',
+        avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40&q=80',
+      },
+    ],
+  },
+  {
+    id: 3,
+    name: 'Safti Ouest Toulousain',
+    logo: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',
+    address: "Impasse La Prairie, 118 bis d'Espagne",
+    city: 'Toulouse',
+    postalCode: '31100',
+    localTransactions: 40,
+    totalTransactions: 91,
+    averagePrice: '141K EUR',
+    rating: 5,
+    agents: [
+      {
+        id: 5,
+        name: 'Lucie Moreau',
+        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40&q=80',
+      },
+      {
+        id: 6,
+        name: 'Thomas Petit',
+        avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40&q=80',
+      },
+    ],
+  },
+  {
+    id: 4,
+    name: 'Immo de France',
+    logo: 'https://images.unsplash.com/photo-1560520653-9e0e4c89eb11?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',
+    address: '12 Rue de Brienne',
+    city: 'Toulouse',
+    postalCode: '31000',
+    localTransactions: 12,
+    totalTransactions: 19,
+    averagePrice: '190K EUR',
+    rating: 5,
+    agents: [
+      {
+        id: 7,
+        name: 'Claire Rousseau',
+        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40&q=80',
+      },
+      {
+        id: 8,
+        name: 'Paul Leroy',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40&q=80',
+      },
+    ],
+  },
+  {
+    id: 5,
+    name: 'Nestenn',
+    logo: 'https://images.unsplash.com/photo-1580893246395-52aead8960dc?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',
+    address: '25 Avenue Jean Rieux',
+    city: 'Toulouse',
+    postalCode: '31500',
+    localTransactions: 8,
+    totalTransactions: 13,
+    averagePrice: '190K EUR',
+    rating: 5,
+    agents: [
+      {
+        id: 9,
+        name: 'Emma Blanc',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40&q=80',
+      },
+      {
+        id: 10,
+        name: 'Nicolas Mercier',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=40&h=40&q=80',
+      },
+    ],
+  },
 ];
 
 const allAgents: Agent[] = [
@@ -84,9 +174,67 @@ const allAgents: Agent[] = [
       logo: 'https://images.unsplash.com/photo-1560520653-9e0e4c89eb11?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',
     },
   },
-  // ... existing code ...
+  {
+    id: 2,
+    name: 'Julie Moreau',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150&q=80',
+    address: 'Boulevard Lazare Carnot 57',
+    city: 'Toulouse',
+    postalCode: '31000',
+    localTransactions: 30,
+    totalTransactions: 38,
+    averagePrice: '210K EUR',
+    agency: {
+      name: 'Immo de France',
+      logo: 'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',
+    },
+  },
+  {
+    id: 3,
+    name: 'Jean Martin',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150&q=80',
+    address: 'Boulevard Lazare Carnot 57',
+    city: 'Toulouse',
+    postalCode: '31000',
+    localTransactions: 25,
+    totalTransactions: 32,
+    averagePrice: '215K EUR',
+    agency: {
+      name: 'Century 21',
+      logo: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',
+    },
+  },
+  {
+    id: 4,
+    name: 'Nathalie Thomas',
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150&q=80',
+    address: 'Boulevard Lazare Carnot 57',
+    city: 'Toulouse',
+    postalCode: '31000',
+    localTransactions: 18,
+    totalTransactions: 24,
+    averagePrice: '190K EUR',
+    agency: {
+      name: 'SAFTI',
+      logo: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',
+    },
+  },
+  {
+    id: 5,
+    name: 'Bernard Garçon',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150&q=80',
+    address: 'Boulevard Lazare Carnot 57',
+    city: 'Toulouse',
+    postalCode: '31000',
+    localTransactions: 30,
+    totalTransactions: 38,
+    averagePrice: '210K EUR',
+    agency: {
+      name: 'Immo de France',
+      logo: 'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',
+    },
+  },
 ];
-
 const TrouveAgent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'agencies' | 'agents'>('agencies');
   const navigate = useNavigate();

@@ -44,7 +44,10 @@ interface PropertyMapProps {
   onAddressFound?: (addressInfo: AddressInfo) => void;
   searchParams: {
     address?: string;
-    [key: string]: string | undefined;
+    coordinates?: [number, number];
+    numero?: string;
+    nomVoie?: string;
+    [key: string]: string | [number, number] | undefined;
   };
 }
 
@@ -73,8 +76,8 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const hoveredId = useRef<string | null>(null);
-  const selectedId = useRef<string | null>(null);
+  const hoveredId = useRef<string | number | null>(null);
+  const selectedId = useRef<string | number | null>(null);
 
   const TILESET_ID = 'saber5180.0h0q6jw3';
   const SOURCE_LAYER = 'cadastre-2A2-Parcelles-2s9utu';
@@ -82,8 +85,8 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
   const typeNames: string[] = ['Appartement', 'Maison', 'Local', 'Terrain', 'Bien Multiple'];
 
-  const getShortTypeName = (typeBien: string): string => {
-    const names: Record<string, string> = {
+  const getShortTypeName = typeBien => {
+    const names = {
       Appartement: 'Appartement',
       Maison: 'Maison',
       'Local industriel. commercial ou assimilé': 'Local',
@@ -123,13 +126,15 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   };
 
   useEffect(() => {
-    if (coordinates && map.current && isValidCoordinates(coordinates)) {
+    const coords = searchParams.coordinates;
+    if (coords && map.current && isValidCoordinates(coords)) {
+      const [mapLng, mapLat] = coords;
       map.current.flyTo({
-        center: coordinates,
+        center: [mapLng, mapLat],
         zoom: 17,
       });
     }
-  }, [coordinates]);
+  }, [searchParams.coordinates]);
 
   useEffect(() => {
     if (numero && nomVoie) {
@@ -330,18 +335,18 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
     return `${dayFormatted}/${month}/${year}`;
   };
-
-  const createHoverPopupContent = async (properties: SearchParams): Promise<HTMLElement> => {
+  const createHoverPopupContent = async properties => {
     const container = document.createElement('div');
     container.className = 'popup-container';
 
     const loadingIndicator = document.createElement('div');
     loadingIndicator.className = 'flex items-center justify-center';
+    loadingIndicator.innerHTML = '';
     container.appendChild(loadingIndicator);
 
     const formattedProperties = await fetchAddressData(properties);
-    const getPropertyTypeColor = (type: string): string => {
-      const colorMap: Record<string, string> = {
+    const getPropertyTypeColor = type => {
+      const colorMap = {
         appartement: '#4F46E5',
         'local industriel commercial ou assimile': '#8B5CF6',
         terrain: '#60A5FA',
@@ -384,7 +389,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         <div style="font-size: 16px;width:70%; color: #333;">
           <span style="color: ${getPropertyTypeColor(propertyTypeLabel)}; font-weight: 900; margin-bottom: 10px;">
             ${propertyTypeLabel}
-          </span><br/>
+          </span>
           <span style="margin-top: 10px;">${property.rooms} pièces – ${property.surface}</span>
         </div>
 
@@ -433,6 +438,8 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         const [rawStreet, rawCity] = addressLine.split(' - ');
         street = rawStreet || '';
         cityName = rawCity?.split(' ')[1] || '';
+      } else {
+        console.warn('Unexpected address format:', addressLine);
       }
 
       container.innerHTML = `
@@ -459,8 +466,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
     return container;
   };
-
-  const createPopupContent = (features: mapboxgl.MapboxGeoJSONFeature[]): HTMLElement => {
+  const createPopupContent = features => {
     const container = document.createElement('div');
     container.className = 'popup-container';
 
@@ -471,19 +477,20 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     const content = document.createElement('div');
     content.className = 'popup-content';
 
-    features.forEach(feature => {
+    features.forEach((feature, index) => {
       const button = document.createElement('button');
       button.className = 'popup-item';
       button.innerHTML = `
-        <span class="address-number">${feature.properties?.numero || 'N/A'}</span>
-        <span class="address-street">${(feature.properties?.nomVoie || '').toUpperCase()}</span>
-      `;
+      <span class="address-number">${feature.properties.numero || 'N/A'}</span>
+      <span class="address-street">${(feature.properties.nomVoie || '').toUpperCase()}</span>
+
+    `;
 
       button.addEventListener('click', e => {
         e.stopPropagation();
         handleAddressClick({
-          numero: feature.properties?.numero,
-          nomVoie: feature.properties?.nomVoie,
+          numero: feature.properties.numero,
+          nomVoie: feature.properties.nomVoie,
         });
         popup.current?.remove();
       });
@@ -496,125 +503,377 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
     return container;
   };
-
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    try {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/saber5180/cmawpgdtd007301sc5ww48tds',
-        center: [8.73692, 41.9281],
-        zoom: 17,
-        attributionControl: false,
-      });
+    // Initialize map first
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/saber5180/cmawpgdtd007301sc5ww48tds',
+      center: [8.73692, 41.9281],
+      zoom: 17,
+      attributionControl: false,
+    });
 
-      map.current.on('error', e => {
-        setError('Une erreur est survenue avec la carte');
-      });
+    // Create scale elements first
+    const scaleContainer = document.createElement('div');
+    const scaleLine = document.createElement('div');
+    const scaleText = document.createElement('div');
 
-      map.current.on('moveend', () => {
-        const center = map.current?.getCenter();
-        if (center && typeof onMapMove === 'function') {
-          onMapMove([center.lng, center.lat]);
+    // Apply styles
+    Object.assign(scaleContainer.style, {
+      position: 'absolute',
+      zIndex: 10,
+      top: '10px',
+      right: '10px',
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      padding: '0 6px',
+      borderRadius: '4px',
+      display: 'flex',
+      alignItems: 'center',
+      pointerEvents: 'none',
+    });
+
+    Object.assign(scaleLine.style, {
+      border: '2px solid #7e8490',
+      borderTop: 'none',
+      height: '7px',
+      width: '100px',
+      boxShadow: '0 1px 4px rgba(0, 0, 0, 0.3)',
+    });
+
+    Object.assign(scaleText.style, {
+      marginLeft: '8px',
+      fontSize: '12px',
+      color: '#4a5568',
+    });
+
+    scaleContainer.appendChild(scaleLine);
+    scaleContainer.appendChild(scaleText);
+
+    const updateScale = () => {
+      if (!map.current) return;
+
+      const zoom = map.current.getZoom();
+      const center = map.current.getCenter();
+      const metersPerPixel = (156543.03392 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, zoom);
+      const widthMeters = metersPerPixel * 100;
+
+      let displayWidth = 100;
+      let displayText = '0 m';
+
+      if (!isNaN(widthMeters)) {
+        if (widthMeters > 1000) {
+          displayText = `${(widthMeters / 1000).toFixed(1)}km`;
+          displayWidth = (1000 / widthMeters) * 100;
+        } else {
+          displayText = `${Math.round(widthMeters)}m`;
         }
+      }
+
+      scaleLine.style.width = `${displayWidth}px`;
+      scaleText.textContent = displayText;
+    };
+
+    // Add control after defining updateScale
+    map.current.addControl(
+      {
+        onAdd() {
+          // Initial update
+          updateScale();
+          return scaleContainer;
+        },
+        onRemove() {
+          scaleContainer.remove();
+        },
+      },
+      'top-right',
+    );
+
+    // Set up event listeners
+    map.current.on('move', updateScale);
+    map.current.on('zoom', updateScale);
+
+    // Rest of your existing map setup...
+    map.current.on('load', () => {
+      // Your existing layer setup
+      updateScale(); // Additional initial update after load
+    });
+
+    // Rest of your existing map setup...
+    map.current.on('moveend', () => {
+      const center = map.current.getCenter();
+      if (typeof onMapMove === 'function') {
+        onMapMove([center.lng, center.lat]);
+      }
+    });
+    map.current.on('moveend', () => {
+      const center = map.current.getCenter();
+      if (typeof onMapMove === 'function') {
+        onMapMove([center.lng, center.lat]);
+      }
+    });
+
+    map.current.on('load', () => {
+      map.current.addSource('parcels-source', {
+        type: 'vector',
+        url: `mapbox://${TILESET_ID}`,
       });
 
-      map.current.on('load', () => {
-        try {
-          map.current?.addSource('parcels-source', {
-            type: 'vector',
-            url: `mapbox://${TILESET_ID}`,
-          });
+      map.current.addLayer({
+        id: LAYER_ID,
+        type: 'fill',
+        source: 'parcels-source',
+        'source-layer': SOURCE_LAYER,
+        paint: {
+          'fill-color': [
+            'case',
+            ['boolean', ['feature-state', 'selected'], false],
+            '#0000FF',
+            ['boolean', ['feature-state', 'hover'], false],
+            '#89CFF0',
+            '#89CFF0',
+          ],
+          'fill-opacity': [
+            'case',
+            ['boolean', ['feature-state', 'selected'], false],
+            0.2,
+            ['boolean', ['feature-state', 'hover'], false],
+            0.2,
+            0.1,
+          ],
+        },
+      });
 
-          map.current?.addLayer({
-            id: LAYER_ID,
-            type: 'fill',
-            source: 'parcels-source',
-            'source-layer': SOURCE_LAYER,
-            paint: {
-              'fill-color': [
-                'case',
-                ['boolean', ['feature-state', 'selected'], false],
-                '#0000FF',
-                ['boolean', ['feature-state', 'hover'], false],
-                '#89CFF0',
-                '#89CFF0',
-              ],
-              'fill-opacity': [
-                'case',
-                ['boolean', ['feature-state', 'selected'], false],
-                0.2,
-                ['boolean', ['feature-state', 'hover'], false],
-                0.2,
-                0.1,
-              ],
+      // Gestion du survol
+      map.current.on('mousemove', LAYER_ID, e => {
+        if (e.features.length > 0) {
+          const feature = e.features[0];
+          const featureId = feature.id;
+
+          if (hoveredId.current) {
+            map.current.setFeatureState(
+              {
+                source: 'parcels-source',
+                sourceLayer: SOURCE_LAYER,
+                id: hoveredId.current,
+              },
+              { hover: false },
+            );
+          }
+
+          hoveredId.current = featureId;
+          map.current.setFeatureState(
+            {
+              source: 'parcels-source',
+              sourceLayer: SOURCE_LAYER,
+              id: featureId,
             },
-          });
-
-          const layers = map.current?.getStyle().layers || [];
-          const visibleLayers = layers.filter(layer => layer.type === 'circle' && layer.layout?.visibility !== 'none');
-
-          setActiveLayers(visibleLayers.map(l => l.id));
-
-          visibleLayers.forEach(({ id: layerId }) => {
-            map.current?.on('click', layerId, e => {
-              hoverPopup.current?.remove();
-              popup.current?.remove();
-              popup.current = new mapboxgl.Popup({ offset: 25, closeOnClick: false })
-                .setLngLat(e.lngLat)
-                .setDOMContent(createPopupContent(e.features || []))
-                .addTo(map.current);
-            });
-
-            map.current?.on('mouseenter', layerId, e => {
-              if (!e.features || e.features.length === 0) return;
-              const canvas = map.current?.getCanvas();
-              if (canvas) {
-                canvas.style.cursor = 'pointer';
-              }
-            });
-
-            map.current?.on('mouseleave', layerId, () => {
-              const canvas = map.current?.getCanvas();
-              if (canvas) {
-                canvas.style.cursor = '';
-              }
-            });
-          });
-        } catch (mapError) {
-          setError('Erreur lors du chargement des couches de la carte');
+            { hover: true },
+          );
         }
       });
 
-      return () => {
-        if (map.current) {
-          map.current.remove();
-          map.current = null;
+      map.current.on('click', LAYER_ID, e => {
+        if (e.features.length > 0) {
+          const feature = e.features[0];
+          const featureId = feature.id;
+
+          if (selectedId.current) {
+            map.current.setFeatureState(
+              {
+                source: 'parcels-source',
+                sourceLayer: SOURCE_LAYER,
+                id: selectedId.current,
+              },
+              { selected: false },
+            );
+          }
+
+          selectedId.current = featureId;
+          map.current.setFeatureState(
+            {
+              source: 'parcels-source',
+              sourceLayer: SOURCE_LAYER,
+              id: featureId,
+            },
+            { selected: true },
+          );
         }
-        popup.current?.remove();
-      };
-    } catch (initError) {
-      setError("Erreur lors de l'initialisation de la carte");
-    }
+      });
+
+      map.current.on('mouseleave', LAYER_ID, () => {
+        if (hoveredId.current) {
+          map.current.setFeatureState(
+            {
+              source: 'parcels-source',
+              sourceLayer: SOURCE_LAYER,
+              id: hoveredId.current,
+            },
+            { hover: false },
+          );
+          hoveredId.current = null;
+        }
+      });
+    });
+    map.current.on('load', () => {
+      const layers = map.current.getStyle().layers;
+      const visibleLayers = layers.filter(layer => layer.type === 'circle' && layer.layout?.visibility !== 'none');
+
+      setActiveLayers(visibleLayers.map(l => l.id));
+
+      visibleLayers.forEach(({ id: layerId }) => {
+        map.current.on('click', layerId, e => {
+          popup.current?.remove();
+
+          if (e.features.length > 0) {
+            if (e.features.length === 1) {
+              // Un seul résultat - traitement direct
+              const feature = e.features[0];
+              handleAddressClick({
+                numero: feature.properties.numero,
+                nomVoie: feature.properties.nomVoie,
+              });
+            } else {
+              // Multiple résultats - afficher le popup
+              popup.current = new mapboxgl.Popup({
+                offset: 25,
+                closeOnClick: true,
+                className: 'multi-address-popup',
+              })
+                .setLngLat(e.lngLat)
+                .setDOMContent(createPopupContent(e.features))
+                .addTo(map.current);
+            }
+          }
+        });
+        map.current.on('mouseenter', layerId, e => {
+          if (!e.features || e.features.length === 0) return;
+
+          map.current.getCanvas().style.cursor = 'pointer';
+
+          popup.current?.remove();
+          popup.current = null;
+
+          hoverPopup.current?.remove();
+
+          hoverPopup.current = new mapboxgl.Popup({
+            offset: 12,
+            closeOnClick: false,
+            closeButton: false,
+            className: 'hover-popup',
+          })
+            .setLngLat(e.lngLat)
+            .addTo(map.current);
+
+          const feature = e.features[0];
+
+          if (feature.properties) {
+            createHoverPopupContent({
+              numero: feature.properties.numero,
+              nomVoie: feature.properties.nomVoie,
+            }).then(content => {
+              if (hoverPopup.current) {
+                hoverPopup.current.setDOMContent(content);
+              }
+            });
+          }
+        });
+
+        map.current.on('mouseleave', layerId, () => {
+          map.current.getCanvas().style.cursor = '';
+
+          if (hoverPopup.current && !popup.current) {
+            hoverPopup.current.remove();
+            hoverPopup.current = null;
+          }
+        });
+      });
+    });
+
+    return () => {
+      map.current?.remove();
+      popup.current?.remove();
+      hoverPopup.current?.remove();
+    };
   }, []);
 
-  const toggleStatsPanel = (): void => {
+  useEffect(() => {
+    if (coordinates && map.current) {
+      map.current.flyTo({
+        center: coordinates,
+        zoom: 17,
+      });
+    }
+  }, [coordinates]);
+
+  const propertyTypeIcons = [
+    <svg key="building" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+      <rect x="9" y="9" width="6" height="6"></rect>
+      <line x1="9" y1="1" x2="9" y2="4"></line>
+      <line x1="15" y1="1" x2="15" y2="4"></line>
+      <line x1="9" y1="20" x2="9" y2="23"></line>
+      <line x1="15" y1="20" x2="15" y2="23"></line>
+      <line x1="20" y1="9" x2="23" y2="9"></line>
+      <line x1="20" y1="14" x2="23" y2="14"></line>
+      <line x1="1" y1="9" x2="4" y2="9"></line>
+      <line x1="1" y1="14" x2="4" y2="14"></line>
+    </svg>,
+    <svg key="apartment" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+    </svg>,
+    <svg key="house" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+    </svg>,
+    <svg key="grid" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="7" height="7"></rect>
+      <rect x="14" y="3" width="7" height="7"></rect>
+      <rect x="14" y="14" width="7" height="7"></rect>
+      <rect x="3" y="14" width="7" height="7"></rect>
+    </svg>,
+  ];
+
+  // Toggle button for statistics panel
+  const toggleStatsPanel = () => {
     setShowStatsPanel(prev => !prev);
   };
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!currentCity) return;
+
+      try {
+        setIsLoading(true);
+        const response = await axios.get(`https://immoxperts.apeiron-tech.dev/api/mutations/statistics/${currentCity.toLowerCase()}`);
+        setPropertyStats(response.data);
+      } catch (err) {
+        console.error('Erreur:', err);
+        setError('Erreur de chargement');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [currentCity]);
 
   const getActiveStats = () => {
+    // Ajouter une gestion explicite de "Bien Multiple"
     const typeName = typeNames[activePropertyType]?.replace(/\./g, '').trim();
 
     return propertyStats.find(stat => stat.typeBien.replace(/\./g, '').trim() === typeName) || { nombre: 0, prixMoyen: 0, prixM2Moyen: 0 };
   };
   const activeStats = getActiveStats();
 
-  const formatNumber = (num: number): string => {
+  // Formatter les nombres pour l'affichage
+  const formatNumber = num => {
     return new Intl.NumberFormat('fr-FR').format(num);
   };
 
-  const statsByShortType: Record<string, PropertyStats> = {};
+  // 📌 Regrouper les stats par nom court
+  const statsByShortType = {};
   propertyStats.forEach(stat => {
     const shortName = getShortTypeName(stat.typeBien);
     statsByShortType[shortName] = stat;
@@ -637,7 +896,8 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   }, []);
 
   return (
-    <div className="relative h-screen w-full">
+    <div className="relative h-screen w-screen">
+      {/* Toggle Button */}
       <button
         onClick={() => {
           if (!showStatsPanel) {
@@ -645,7 +905,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
           }
           toggleStatsPanel();
         }}
-        className="absolute top-4 left-6 z-20 bg-white text-gray-600 px-2 py-1 rounded-lg flex items-center gap-1 text-xs hover:bg-gray-50"
+        className="absolute top-4 left-4 z-30 bg-white text-gray-600 px-2 py-1 rounded-lg flex items-center gap-1 text-xs hover:bg-gray-50 sm:text-sm"
       >
         {showStatsPanel ? (
           <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24">
@@ -658,9 +918,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         )}
       </button>
 
+      {/* Stats Panel */}
       {showStatsPanel && (
         <div
-          className="absolute top-4 left-16 z-10 bg-white rounded-xl shadow-lg p-4 w-[448px] border border-gray-100"
+          className="fixed sm:absolute top-0 left-0 sm:top-4 sm:left-16 z-20 bg-white rounded-none sm:rounded-xl shadow-lg p-4 w-full sm:w-[448px] h-full sm:h-auto overflow-y-auto sm:overflow-visible border-t sm:border border-gray-100"
           onClick={e => e.stopPropagation()}
         >
           <div className="flex justify-between items-center mb-2">
@@ -672,10 +933,9 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
           {(() => {
             const propertyTypeNames = ['Appartement', 'Maison', 'Local', 'Terrain', 'Bien Multiple'];
-
             const getIndigoShade = idx => ['bg-indigo-600', 'bg-violet-500', 'bg-blue-400', 'bg-blue-600', 'bg-blue-900'][idx];
 
-            const normalizedStats = propertyTypeNames.map(shortName => {
+            const normalizedStats = propertyTypeNames.map((shortName, index) => {
               const match = propertyStats.find(item => getShortTypeName(item.typeBien) === shortName);
               return {
                 typeBien: shortName,
@@ -687,7 +947,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
             return (
               <>
-                <div className="flex mb-3 gap-1">
+                <div className="flex flex-wrap sm:flex-nowrap mb-3 gap-2">
                   {normalizedStats.map((stat, index) => (
                     <button
                       key={stat.typeBien}
@@ -708,7 +968,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
                 ) : error ? (
                   <div className="text-red-500 text-center py-1 text-xs">⚠️ {error}</div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                       <p className="text-xs text-gray-600 mb-1">Ventes</p>
                       <p className="text-sm font-semibold text-gray-900">{formatNumber(normalizedStats[activePropertyType]?.nombre)}</p>
@@ -731,8 +991,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         </div>
       )}
 
-      {/* Controls */}
-
+      {/* Map Controls */}
       <div className="absolute top-20 right-5 flex flex-col gap-2 z-10">
         <div className="bg-white rounded-lg shadow-md flex flex-col">
           <button onClick={() => map.current?.zoomIn()} className="p-2 hover:bg-gray-100 rounded-t-lg flex items-center justify-center">
@@ -760,23 +1019,8 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         </button>
       </div>
 
-      <div ref={mapContainer} className="h-full w-full" />
-
-      {loading && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-4 rounded-lg flex items-center shadow-xl">
-            <svg className="animate-spin h-5 w-5 mr-3 text-blue-600" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            <span className="text-gray-700">Recherche des propriétés...</span>
-          </div>
-        </div>
-      )}
+      {/* Map Container */}
+      <div ref={mapContainer} className="h-full w-full pb-2" />
     </div>
   );
 };

@@ -114,6 +114,28 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
           'line-opacity': 0.8,
         },
       });
+      map.on('load', () => {
+        // Add your tileset source
+        map.addSource('your-tileset-name', {
+          type: 'vector',
+          url: 'mapbox://your-username.tileset-id',
+        });
+
+        // Add layer using this source
+        map.addLayer(
+          {
+            id: 'custom-layer',
+            type: 'fill', // or circle, line, etc.
+            source: 'your-tileset-name',
+            'source-layer': 'your-source-layer-name', // Check in Studio
+            paint: {
+              'fill-color': '#ff0000',
+              'fill-opacity': 0.5,
+            },
+          },
+          'road-label',
+        ); // Add before road labels
+      });
 
       // Property boundaries layer
       map.addLayer({
@@ -146,8 +168,7 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
       }
     };
   }, []);
-
-  const addLayerInteractivity = (map: mapboxgl.Map): void => {
+  const addLayerInteractivity = map => {
     // Click handler
     map.on('click', 'property-points', e => {
       new mapboxgl.Popup()
@@ -172,8 +193,8 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
       map.setPaintProperty('property-points', 'circle-color', '#ff0000');
     });
   };
-
-  const normalizeText = (text: string): string => {
+  // Normalize text by removing accents/diacritics
+  const normalizeText = text => {
     return text
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -181,82 +202,204 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
       .toUpperCase();
   };
 
-  const parseAddress = (address: string): AddressParts | null => {
-    try {
-      const regex = /(\d+)\s+([A-Za-z.]{1,}\.?)\s+([A-Za-z\s-]+)/i;
-      const match = address.match(regex);
-
-      if (match && match.length >= 4) {
-        let typvoie = match[2].trim().toUpperCase();
-
-        const typeMapping: Record<string, string> = {
-          COURS: 'CRS',
-          BOULEVARD: 'BD',
-          AVENUE: 'AV',
-          RUE: 'RUE',
-          PLACE: 'PL',
-          PASSAGE: 'PASS',
-          IMPASSE: 'IMP',
-          ALLEE: 'ALL',
-          CHEMIN: 'CHE',
-          ROUTE: 'RTE',
-          SQUARE: 'SQ',
-          QUAI: 'QUAI',
-        };
-
-        typvoie = typeMapping[typvoie] || typvoie;
-
-        return {
-          novoie: parseInt(match[1], 10),
-          typvoie,
-          voie: match[3].trim().toUpperCase(),
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error parsing address:', error);
-      return null;
-    }
-  };
-
-  const searchMutations = async (addressParts: AddressParts): Promise<any[]> => {
-    try {
-      console.warn('Searching for:', addressParts);
-      const response = await axios.get('http://localhost:8080/api/mutations/search', {
-        params: { ...addressParts },
+  useEffect(() => {
+    if (!mapRef.current) return;
+    mapRef.current.on('click', 'your-layer-name', e => {
+      const features = mapRef.current.queryRenderedFeatures(e.point, {
+        layers: ['your-layer-name'],
       });
 
-      if (!response.data || response.data.length === 0) {
-        console.warn('No addresses found for this location.');
+      if (features.length > 0) {
+        console.log('Clicked feature:', features[0].properties);
+        // Add your click handling logic here
+      }
+    });
+    // Add hover effect
+    mapRef.current.on('mouseenter', 'your-layer-name', () => {
+      mapRef.current.getCanvas().style.cursor = 'pointer';
+    });
+
+    mapRef.current.on('mouseleave', 'your-layer-name', () => {
+      mapRef.current.getCanvas().style.cursor = '';
+    });
+    mapRef.current.on('load', () => {
+      console.log('Available sources:', mapRef.current.getStyle().sources);
+      console.log('Available layers:', mapRef.current.getStyle().layers);
+    });
+  }, []);
+  // Handle 3D mode changes separately
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Update map view settings for 3D
+    mapRef.current.easeTo({
+      pitch: is3D ? 60 : 0,
+      bearing: is3D ? -30 : 0,
+      duration: 1000,
+    });
+
+    // Add or remove 3D buildings layer based on 3D mode
+    if (is3D && !mapRef.current.getLayer('3d-buildings')) {
+      // Make sure the map is fully loaded
+      if (mapRef.current.isStyleLoaded()) {
+        add3DBuildings();
+      } else {
+        mapRef.current.once('styledata', add3DBuildings);
+      }
+    } else if (!is3D && mapRef.current.getLayer('3d-buildings')) {
+      mapRef.current.removeLayer('3d-buildings');
+    }
+
+    // Update property boundaries style based on 3D mode
+    if (mapRef.current.getLayer('property-boundaries')) {
+      mapRef.current.setPaintProperty('property-boundaries', 'line-color', is3D ? '#ffffff' : '#4a4a4a');
+      mapRef.current.setPaintProperty('property-boundaries', 'line-width', is3D ? 2 : 1);
+    }
+
+    // Update existing markers to match the current style
+    updateMarkerStyles();
+
+    function add3DBuildings() {
+      if (!mapRef.current.getLayer('3d-buildings')) {
+        mapRef.current.addLayer({
+          id: '3d-buildings',
+          source: 'composite',
+          'source-layer': 'building',
+          filter: ['==', 'extrude', 'true'],
+          type: 'fill-extrusion',
+          paint: {
+            'fill-extrusion-color': '#ddd',
+            'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'height']],
+            'fill-extrusion-opacity': 0.6,
+          },
+        });
+      }
+    }
+  }, [is3D]);
+
+  // Load nearby addresses
+  const loadNearbyAddresses = async () => {
+    if (!mapRef.current) return;
+
+    setLoading(true);
+    clearMarkers();
+
+    try {
+      // Get current map bounds
+      const bounds = mapRef.current.getBounds();
+      const center = mapRef.current.getCenter();
+
+      // Use the Mapbox API to find nearby addresses
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/address.json?` +
+          new URLSearchParams({
+            access_token: mapboxgl.accessToken,
+            types: 'address',
+            proximity: `${center.lng},${center.lat}`,
+            limit: '40', // Convert to string
+            country: 'FR',
+          }),
+      );
+
+      const data = await response.json();
+
+      // Create markers for each address
+      if (data.features && data.features.length > 0) {
+        data.features.forEach((feature, index) => {
+          // Create marker element
+          const el = document.createElement('div');
+
+          // Extract house number from address
+          let houseNumber = index + 1;
+          const addressMatch = feature.place_name.match(/^(\d+)/);
+          if (addressMatch && addressMatch[1]) {
+            houseNumber = addressMatch[1];
+          }
+
+          // Style the marker
+          el.className = 'address-marker';
+          el.style.backgroundColor = is3D ? '#3b82f6' : '#4169E1';
+          el.style.color = 'white';
+          el.style.borderRadius = '4px';
+          el.style.width = '24px';
+          el.style.height = '24px';
+          el.style.display = 'flex';
+          el.style.justifyContent = 'center';
+          el.style.alignItems = 'center';
+          el.style.fontSize = '12px';
+          el.style.fontWeight = 'bold';
+          el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+          el.style.cursor = 'pointer';
+          el.style.userSelect = 'none';
+          el.innerText = houseNumber;
+
+          // Create marker
+          const marker = new mapboxgl.Marker({
+            element: el,
+          })
+            .setLngLat(feature.center)
+            .addTo(mapRef.current);
+          el.addEventListener('mouseenter', () => {
+            el.style.backgroundColor = is3D ? '#2563eb' : '#3047a3';
+            el.style.transform = 'translateY(-1px)';
+          });
+          el.addEventListener('mouseleave', () => {
+            el.style.backgroundColor = is3D ? '#3b82f6' : '#4169E1';
+            el.style.transform = 'translateY(0)';
+          });
+
+          el.addEventListener('mousedown', () => {
+            el.style.transform = 'translateY(1px)';
+          });
+
+          el.addEventListener('mouseup', () => {
+            el.style.transform = 'translateY(0)';
+          });
+          // Add click handler
+          el.addEventListener('click', () => {
+            handleAddressClick({
+              address: feature.place_name,
+              coordinates: {
+                lng: feature.center[0],
+                lat: feature.center[1],
+              },
+              properties: feature.properties,
+            });
+          });
+
+          // Store marker reference
+          markersRef.current.push(marker);
+        });
       }
 
-      return response.data;
+      setLoading(false);
     } catch (error) {
-      console.error('API Error:', error);
-      return [];
+      console.error('Error loading addresses:', error);
+      setLoading(false);
     }
   };
 
-  const transformMutationsToProperties = (mutations: any[]): Property[] => {
-    return mutations.map(mutation => ({
-      id: mutation.idmutation,
-      address: mutation.addresses[0].split(' ').slice(0, -2).join(' '),
-      city: mutation.addresses[0].split(' ').slice(-2).join(' '),
-      price: Math.round(mutation.valeurfonc),
-      pricePerSqm: Math.round(mutation.valeurfonc / (mutation.surface || 1)),
-      type: mutation.libtyplocList[0] || 'Bien immobilier',
-      surface: mutation.surface || 0,
-      rooms: mutation.nbpprincTotal || 0,
-      soldDate: new Date(mutation.datemut).toLocaleDateString('fr-FR'),
-      terrain: mutation.terrain || 0,
-    }));
+  // Clear all markers
+  const clearMarkers = () => {
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
   };
 
-  const handleAddressClick = async (addressData: LocationInfo): Promise<void> => {
+  // Update marker styles
+  const updateMarkerStyles = () => {
+    markersRef.current.forEach(marker => {
+      const el = marker.getElement();
+      el.style.backgroundColor = is3D ? '#3b82f6' : '#4169E1';
+    });
+  };
+
+  // Handle address marker click
+  const handleAddressClick = async addressData => {
     try {
       setLoading(true);
       setLocationInfo(addressData);
 
+      // Highlight the clicked address
       if (markerRef.current) markerRef.current.remove();
 
       markerRef.current = new mapboxgl.Marker({
@@ -266,12 +409,15 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
         .setLngLat([addressData.coordinates.lng, addressData.coordinates.lat])
         .addTo(mapRef.current);
 
+      // Parse address without accents
       const normalizedAddress = normalizeText(addressData.address);
       const addressParts = parseAddress(normalizedAddress);
 
       if (addressParts) {
+        // Call the API to search for mutations (without accents)
         const mutations = await searchMutations(addressParts);
         if (mutations && mutations.length > 0) {
+          // Transform mutations into property format and pass to parent component
           const properties = transformMutationsToProperties(mutations);
           onPropertiesFound(properties);
         } else {
@@ -289,120 +435,171 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
     }
   };
 
-  const loadNearbyAddresses = async (): Promise<void> => {
+  // Set up click handler for map
+  useEffect(() => {
     if (!mapRef.current) return;
 
-    setLoading(true);
-    clearMarkers();
+    // Remove existing click handler if exists
+    if (clickListenerRef.current) {
+      mapRef.current.off('click', clickListenerRef.current);
+    }
 
-    try {
-      const bounds = mapRef.current.getBounds();
-      const center = mapRef.current.getCenter();
+    // Create new click handler
+    const handleClick = async e => {
+      try {
+        setLoading(true);
+        if (markerRef.current) markerRef.current.remove();
 
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/address.json?` +
-          new URLSearchParams({
-            access_token: mapboxgl.accessToken,
-            types: 'address',
-            proximity: `${center.lng},${center.lat}`,
-            limit: '40',
-            country: 'FR',
-          }),
-      );
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${e.lngLat.lng},${e.lngLat.lat}.json?` +
+            new URLSearchParams({
+              access_token: mapboxgl.accessToken,
+              types: 'address', // Remove POIs
+              country: 'FR', // Restrict to France
+              language: 'fr',
+              limit: '1', // Convert to string
+            }),
+        );
 
-      const data = await response.json();
+        const data = await response.json();
+        const feature = data.features[0];
 
-      if (data.features && data.features.length > 0) {
-        data.features.forEach((feature: any, index: number) => {
-          const el = document.createElement('div');
+        if (feature) {
+          const address = feature.properties.address
+            ? `${feature.properties.address} ${feature.text}`.toUpperCase()
+            : feature.place_name.toUpperCase();
 
-          let houseNumber = index + 1;
-          const addressMatch = feature.place_name.match(/^(\d+)/);
-          if (addressMatch && addressMatch[1]) {
-            houseNumber = addressMatch[1];
-          }
+          // Normalize the address (remove accents)
+          const normalizedAddress = normalizeText(address);
 
-          el.className = 'address-marker';
-          el.style.backgroundColor = is3D ? '#3b82f6' : '#4169E1';
-          el.style.color = 'white';
-          el.style.borderRadius = '4px';
-          el.style.width = '24px';
-          el.style.height = '24px';
-          el.style.display = 'flex';
-          el.style.justifyContent = 'center';
-          el.style.alignItems = 'center';
-          el.style.fontSize = '12px';
-          el.style.fontWeight = 'bold';
-          el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-          el.style.cursor = 'pointer';
-          el.style.userSelect = 'none';
-          el.innerText = String(houseNumber);
+          setLocationInfo({
+            address: normalizedAddress,
+            coordinates: e.lngLat,
+          });
 
-          const marker = new mapboxgl.Marker({
-            element: el,
+          markerRef.current = new mapboxgl.Marker({
+            color: is3D ? '#3b82f6' : '#FF0000',
+            scale: 0.9,
           })
-            .setLngLat(feature.center)
+            .setLngLat(e.lngLat)
             .addTo(mapRef.current);
 
-          el.addEventListener('mouseenter', () => {
-            el.style.backgroundColor = is3D ? '#2563eb' : '#3047a3';
-            el.style.transform = 'translateY(-1px)';
-          });
-
-          el.addEventListener('mouseleave', () => {
-            el.style.backgroundColor = is3D ? '#3b82f6' : '#4169E1';
-            el.style.transform = 'translateY(0)';
-          });
-
-          el.addEventListener('mousedown', () => {
-            el.style.transform = 'translateY(1px)';
-          });
-
-          el.addEventListener('mouseup', () => {
-            el.style.transform = 'translateY(0)';
-          });
-
-          el.addEventListener('click', () => {
-            handleAddressClick({
-              address: feature.place_name,
-              coordinates: {
-                lng: feature.center[0],
-                lat: feature.center[1],
-              },
-              properties: feature.properties,
-            });
-          });
-
-          markersRef.current.push(marker);
-        });
+          // Parse address to get street number and name (with normalized text)
+          const addressParts = parseAddress(normalizedAddress);
+          if (addressParts) {
+            // Call the API to search for mutations
+            const mutations = await searchMutations(addressParts);
+            if (mutations && mutations.length > 0) {
+              // Transform mutations into property format and pass to parent component
+              const properties = transformMutationsToProperties(mutations);
+              onPropertiesFound(properties);
+            } else {
+              onPropertiesFound([]);
+            }
+          }
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Error:', error);
+        setLoading(false);
+        onPropertiesFound([]);
       }
+    };
 
-      setLoading(false);
+    // Save reference to handler and add to map
+    clickListenerRef.current = handleClick;
+    mapRef.current.on('click', handleClick);
+
+    return () => {
+      if (mapRef.current && clickListenerRef.current) {
+        mapRef.current.off('click', clickListenerRef.current);
+      }
+    };
+  }, [is3D, onPropertiesFound]);
+
+  // Parse address to extract street number, type, and name
+  const parseAddress = address => {
+    try {
+      // Enhanced regex to better capture French address formats
+      const regex = /(\d+)\s+([A-Za-z\.]{1,}\.?)\s+([A-Za-z\s\-]+)/i;
+      const match = address.match(regex);
+
+      if (match && match.length >= 4) {
+        let typvoie = match[2].trim().toUpperCase();
+
+        // Convert abbreviations to full names for API
+        const typeMapping = {
+          COURS: 'CRS',
+          BOULEVARD: 'BD',
+          AVENUE: 'AV',
+          RUE: 'RUE',
+          PLACE: 'PL',
+          PASSAGE: 'PASS',
+          IMPASSE: 'IMP',
+          ALLEE: 'ALL',
+          CHEMIN: 'CHE',
+          ROUTE: 'RTE',
+          SQUARE: 'SQ',
+          QUAI: 'QUAI',
+        };
+
+        // Use the mapping if available
+        typvoie = typeMapping[typvoie] || typvoie;
+
+        return {
+          novoie: parseInt(match[1], 10),
+          typvoie: typvoie,
+          voie: match[3].trim().toUpperCase(),
+        };
+      }
+      return null;
     } catch (error) {
-      console.error('Error loading addresses:', error);
-      setLoading(false);
+      console.error('Error parsing address:', error);
+      return null;
     }
   };
 
-  const clearMarkers = (): void => {
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
+  const searchMutations = async addressParts => {
+    try {
+      console.log('Searching for:', addressParts);
+      const response = await axios.get('https://immoxperts.apeiron-tech.dev/api/mutations/search', {
+        params: { ...addressParts }, // Parameters without accents
+      });
+
+      if (!response.data || response.data.length === 0) {
+        console.warn('No addresses found for this location.');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error);
+      return [];
+    }
   };
 
-  const updateMarkerStyles = (): void => {
-    markersRef.current.forEach(marker => {
-      const el = marker.getElement();
-      el.style.backgroundColor = is3D ? '#3b82f6' : '#4169E1';
-    });
+  // Transform mutations into property format for display
+  const transformMutationsToProperties = mutations => {
+    return mutations.map(mutation => ({
+      id: mutation.idmutation,
+      address: mutation.addresses[0].split(' ').slice(0, -2).join(' '),
+      city: mutation.addresses[0].split(' ').slice(-2).join(' '),
+      price: Math.round(mutation.valeurfonc),
+      pricePerSqm: Math.round(mutation.valeurfonc / (mutation.surface || 1)),
+      type: mutation.libtyplocList[0] || 'Bien immobilier',
+      surface: mutation.surface || 0,
+      rooms: mutation.nbpprincTotal || 0,
+      soldDate: new Date(mutation.datemut).toLocaleDateString('fr-FR'),
+      terrain: mutation.terrain || 0,
+    }));
   };
 
-  const toggle3D = (): void => {
+  const toggle3D = () => {
     setIs3D(!is3D);
   };
 
   return (
-    <div className="relative h-full w-full bg-gray-50">
-      <div ref={mapContainer} className="h-full w-full rounded-lg" />
+    <div className="relative h-screen w-screen bg-gray-50">
+      <div ref={mapContainer} className="h-full w-full" />
 
       <style>
         {`
