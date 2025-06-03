@@ -1,6 +1,7 @@
 package com.apeiron.immoxperts.service;
 
 import com.apeiron.immoxperts.service.dto.MutationDTO;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -47,12 +48,22 @@ public interface MutationService {
      * @param id the id of the entity.
      * @return the entity.
      */
-    Optional<MutationDTO> findOne(Long id);
+    Optional<MutationDTO> findOne(Integer id);
 
     /**
      * Delete the "id" mutation.
      *
      * @param id the id of the entity.
      */
-    void delete(Long id);
+    void delete(Integer id);
+
+    List<MutationDTO> getMutationsByAdresseId(Integer adresseId);
+
+    List<MutationDTO> getMutationsByAdresseId2(Integer adresseId);
+
+    List<MutationDTO> getMutationsByVoie(String voie);
+
+    List<MutationDTO> searchMutations(String novoie, String voie);
+
+    List<MutationDTO> searchMutationsByStreetAndCommune(String street, String commune);
 }

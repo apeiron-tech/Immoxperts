@@ -169,7 +169,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
       setCurrentCity(communeName && streetName ? `${communeName}, ${streetName}` : communeName || streetName);
 
       if (communeName && streetName) {
-        const apiResponse = await axios.get('https://immoxperts.apeiron-tech.dev/api/mutations/mutations/by-street-and-commune', {
+        const apiResponse = await axios.get('http://localhost:8080/api/mutations/mutations/by-street-and-commune', {
           params: {
             street: streetName,
             commune: communeName,

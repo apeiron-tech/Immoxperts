@@ -19,11 +19,6 @@ public class DispositionParcelle implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGenerator")
-    @SequenceGenerator(name = "sequenceGenerator")
-    @Column(name = "id")
-    private Long id;
-
     @NotNull
     @Column(name = "iddispopar", nullable = false)
     private Integer iddispopar;
@@ -35,19 +30,6 @@ public class DispositionParcelle implements Serializable {
     private BigDecimal dcntsol;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
-
-    public Long getId() {
-        return this.id;
-    }
-
-    public DispositionParcelle id(Long id) {
-        this.setId(id);
-        return this;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Integer getIddispopar() {
         return this.iddispopar;
@@ -98,7 +80,7 @@ public class DispositionParcelle implements Serializable {
         if (!(o instanceof DispositionParcelle)) {
             return false;
         }
-        return getId() != null && getId().equals(((DispositionParcelle) o).getId());
+        return getIddispopar() != null && getIddispopar().equals(((DispositionParcelle) o).getIddispopar());
     }
 
     @Override
@@ -111,8 +93,7 @@ public class DispositionParcelle implements Serializable {
     @Override
     public String toString() {
         return "DispositionParcelle{" +
-            "id=" + getId() +
-            ", iddispopar=" + getIddispopar() +
+            "iddispopar=" + getIddispopar() +
             ", dcntagri=" + getDcntagri() +
             ", dcntsol=" + getDcntsol() +
             "}";

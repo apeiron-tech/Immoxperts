@@ -29,8 +29,8 @@ export const getEntities = createAsyncThunk(
 
 export const getEntity = createAsyncThunk(
   'lot/fetch_entity',
-  async (id: string | number) => {
-    const requestUrl = `${apiUrl}/${id}`;
+  async (iddispolot: string | number) => {
+    const requestUrl = `${apiUrl}/${iddispolot}`;
     return axios.get<ILot>(requestUrl);
   },
   { serializeError: serializeAxiosError },
@@ -49,7 +49,7 @@ export const createEntity = createAsyncThunk(
 export const updateEntity = createAsyncThunk(
   'lot/update_entity',
   async (entity: ILot, thunkAPI) => {
-    const result = await axios.put<ILot>(`${apiUrl}/${entity.id}`, cleanEntity(entity));
+    const result = await axios.put<ILot>(`${apiUrl}/${entity.iddispolot}`, cleanEntity(entity));
     thunkAPI.dispatch(getEntities({}));
     return result;
   },
@@ -59,7 +59,7 @@ export const updateEntity = createAsyncThunk(
 export const partialUpdateEntity = createAsyncThunk(
   'lot/partial_update_entity',
   async (entity: ILot, thunkAPI) => {
-    const result = await axios.patch<ILot>(`${apiUrl}/${entity.id}`, cleanEntity(entity));
+    const result = await axios.patch<ILot>(`${apiUrl}/${entity.iddispolot}`, cleanEntity(entity));
     thunkAPI.dispatch(getEntities({}));
     return result;
   },
@@ -68,8 +68,8 @@ export const partialUpdateEntity = createAsyncThunk(
 
 export const deleteEntity = createAsyncThunk(
   'lot/delete_entity',
-  async (id: string | number, thunkAPI) => {
-    const requestUrl = `${apiUrl}/${id}`;
+  async (iddispolot: string | number, thunkAPI) => {
+    const requestUrl = `${apiUrl}/${iddispolot}`;
     const result = await axios.delete<ILot>(requestUrl);
     thunkAPI.dispatch(getEntities({}));
     return result;

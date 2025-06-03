@@ -15,7 +15,7 @@ const store = configureStore({
         // Ignore these field paths in all actions
         ignoredActionPaths: ['meta.arg', 'meta.baseQueryMeta', 'payload.config', 'payload.request', 'payload.headers', 'error'],
       },
-    }).concat(errorMiddleware, notificationMiddleware, loadingBarMiddleware(), loggerMiddleware),
+    }).concat(errorMiddleware, loadingBarMiddleware(), loggerMiddleware),
 });
 
 const getStore = () => store;

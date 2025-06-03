@@ -44,7 +44,7 @@ export const DispositionParcelleDetail = () => {
           <FontAwesomeIcon icon="arrow-left" /> <span className="d-none d-md-inline">Retour</span>
         </Button>
         &nbsp;
-        <Button tag={Link} to={`/disposition-parcelle/${dispositionParcelleEntity.id}/edit`} replace color="primary">
+        <Button tag={Link} to={`/disposition-parcelle/${dispositionParcelleEntity.iddispopar}/edit`} replace color="primary">
           <FontAwesomeIcon icon="pencil-alt" /> <span className="d-none d-md-inline">Editer</span>
         </Button>
       </Col>

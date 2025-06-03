@@ -22,32 +22,39 @@ public class AdresseLocal implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGenerator")
     @SequenceGenerator(name = "sequenceGenerator")
-    @Column(name = "id", nullable = false)
-    private Integer id;
+    @EmbeddedId
+    private AdresseLocalId id;
 
     @Column(name = "coddep")
     private String coddep;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idmutation", insertable = false, updatable = false)
     @JsonIgnoreProperties(value = { "adresseLocals", "adresseDispoparcs" }, allowSetters = true)
     private Mutation mutation;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idadresse", insertable = false, updatable = false)
     @JsonIgnoreProperties(value = { "adresseLocals", "adresseDispoparcs" }, allowSetters = true)
     private Adresse adresse;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "iddispoloc", insertable = false, updatable = false)
+    @JsonIgnoreProperties(value = { "adresseLocals" }, allowSetters = true)
+    private Local local;
+
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
-    public Integer getId() {
+    public AdresseLocalId getId() {
         return this.id;
     }
 
-    public AdresseLocal id(Integer id) {
+    public AdresseLocal id(AdresseLocalId id) {
         this.setId(id);
         return this;
     }
 
-    public void setId(Integer id) {
+    public void setId(AdresseLocalId id) {
         this.id = id;
     }
 
@@ -87,6 +94,19 @@ public class AdresseLocal implements Serializable {
 
     public AdresseLocal adresse(Adresse adresse) {
         this.setAdresse(adresse);
+        return this;
+    }
+
+    public Local getLocal() {
+        return this.local;
+    }
+
+    public void setLocal(Local local) {
+        this.local = local;
+    }
+
+    public AdresseLocal local(Local local) {
+        this.setLocal(local);
         return this;
     }
 

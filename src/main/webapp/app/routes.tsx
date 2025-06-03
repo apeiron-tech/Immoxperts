@@ -27,15 +27,15 @@ import SearchBar from 'app/layouts/SearchBar';
 
 const loading = <div>loading ...</div>;
 
-const Account = Loadable({
-  loader: () => import(/* webpackChunkName: "account" */ 'app/modules/account'),
-  loading: () => loading,
-});
-
-const Admin = Loadable({
-  loader: () => import(/* webpackChunkName: "administration" */ 'app/modules/administration'),
-  loading: () => loading,
-});
+// const Account = Loadable({
+//   loader: () => import(/* webpackChunkName: "account" */ 'app/modules/account'),
+//   loading: () => loading,
+// });
+//
+// const Admin = Loadable({
+//   loader: () => import(/* webpackChunkName: "administration" */ 'app/modules/administration'),
+//   loading: () => loading,
+// });
 
 const AppRoutes = () => {
   const [searchParams, setSearchParams] = useState({
@@ -47,8 +47,8 @@ const AppRoutes = () => {
     <div className="view-routes">
       <ErrorBoundaryRoutes>
         <Route index element={<Home />} />
-        <Route path="login" element={<Login />} />
-        <Route path="logout" element={<Logout />} />
+        {/*<Route path="login" element={<Login />} />*/}
+        {/*<Route path="logout" element={<Logout />} />*/}
         <Route
           path="/PrixImmobliers"
           element={

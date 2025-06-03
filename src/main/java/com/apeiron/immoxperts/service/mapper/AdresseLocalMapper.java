@@ -11,7 +11,7 @@ import org.mapstruct.*;
 /**
  * Mapper for the entity {@link AdresseLocal} and its DTO {@link AdresseLocalDTO}.
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = { MutationMapper.class, AdresseMapper.class })
 public interface AdresseLocalMapper extends EntityMapper<AdresseLocalDTO, AdresseLocal> {
     @Mapping(target = "mutation", source = "mutation", qualifiedByName = "mutationId")
     @Mapping(target = "adresse", source = "adresse", qualifiedByName = "adresseId")
@@ -19,11 +19,11 @@ public interface AdresseLocalMapper extends EntityMapper<AdresseLocalDTO, Adress
 
     @Named("mutationId")
     @BeanMapping(ignoreByDefault = true)
-    @Mapping(target = "id", source = "id")
+    @Mapping(target = "idmutation", source = "idmutation")
     MutationDTO toDtoMutationId(Mutation mutation);
 
     @Named("adresseId")
     @BeanMapping(ignoreByDefault = true)
-    @Mapping(target = "id", source = "id")
+    @Mapping(target = "idadresse", source = "idadresse")
     AdresseDTO toDtoAdresseId(Adresse adresse);
 }

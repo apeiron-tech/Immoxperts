@@ -10,18 +10,25 @@
     -->
     <changeSet id="20250526190659-2" author="jhipster">
 
-        <addForeignKeyConstraint baseColumnNames="mutation_id"
+        <addForeignKeyConstraint baseColumnNames="idmutation"
                                  baseTableName="adresse_local"
                                  constraintName="fk_adresse_local__mutation_id"
                                  referencedColumnNames="id"
                                  referencedTableName="mutation"
                                  />
 
-        <addForeignKeyConstraint baseColumnNames="adresse_id"
+        <addForeignKeyConstraint baseColumnNames="idadresse"
                                  baseTableName="adresse_local"
                                  constraintName="fk_adresse_local__adresse_id"
                                  referencedColumnNames="id"
                                  referencedTableName="adresse"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="iddispoloc"
+                                 baseTableName="adresse_local"
+                                 constraintName="fk_adresse_local__local_id"
+                                 referencedColumnNames="iddispoloc"
+                                 referencedTableName="local"
                                  />
     </changeSet>
 </databaseChangeLog>

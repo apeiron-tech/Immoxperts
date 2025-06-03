@@ -12,7 +12,7 @@ const LotRoutes = () => (
   <ErrorBoundaryRoutes>
     <Route index element={<Lot />} />
     <Route path="new" element={<LotUpdate />} />
-    <Route path=":id">
+    <Route path=":iddispolot">
       <Route index element={<LotDetail />} />
       <Route path="edit" element={<LotUpdate />} />
       <Route path="delete" element={<LotDeleteDialog />} />

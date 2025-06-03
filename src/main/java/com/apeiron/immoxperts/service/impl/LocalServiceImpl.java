@@ -52,7 +52,7 @@ public class LocalServiceImpl implements LocalService {
         LOG.debug("Request to partially update Local : {}", localDTO);
 
         return localRepository
-            .findById(localDTO.getId())
+            .findById(localDTO.getIddispoloc())
             .map(existingLocal -> {
                 localMapper.partialUpdate(existingLocal, localDTO);
 
@@ -71,13 +71,13 @@ public class LocalServiceImpl implements LocalService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<LocalDTO> findOne(Long id) {
+    public Optional<LocalDTO> findOne(Integer id) {
         LOG.debug("Request to get Local : {}", id);
         return localRepository.findById(id).map(localMapper::toDto);
     }
 
     @Override
-    public void delete(Long id) {
+    public void delete(Integer id) {
         LOG.debug("Request to delete Local : {}", id);
         localRepository.deleteById(id);
     }

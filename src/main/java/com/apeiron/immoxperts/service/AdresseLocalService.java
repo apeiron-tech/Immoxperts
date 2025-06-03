@@ -26,14 +26,6 @@ public interface AdresseLocalService {
     AdresseLocalDTO update(AdresseLocalDTO adresseLocalDTO);
 
     /**
-     * Partially updates a adresseLocal.
-     *
-     * @param adresseLocalDTO the entity to update partially.
-     * @return the persisted entity.
-     */
-    Optional<AdresseLocalDTO> partialUpdate(AdresseLocalDTO adresseLocalDTO);
-
-    /**
      * Get all the adresseLocals.
      *
      * @param pageable the pagination information.

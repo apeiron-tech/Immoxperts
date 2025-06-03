@@ -35,7 +35,7 @@ export const AdresseDispoparcDeleteDialog = () => {
   }, [updateSuccess]);
 
   const confirmDelete = () => {
-    dispatch(deleteEntity(adresseDispoparcEntity.id));
+    dispatch(deleteEntity(adresseDispoparcEntity.iddispopar));
   };
 
   return (

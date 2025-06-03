@@ -47,12 +47,12 @@ public interface LocalService {
      * @param id the id of the entity.
      * @return the entity.
      */
-    Optional<LocalDTO> findOne(Long id);
+    Optional<LocalDTO> findOne(Integer id);
 
     /**
      * Delete the "id" local.
      *
      * @param id the id of the entity.
      */
-    void delete(Long id);
+    void delete(Integer id);
 }

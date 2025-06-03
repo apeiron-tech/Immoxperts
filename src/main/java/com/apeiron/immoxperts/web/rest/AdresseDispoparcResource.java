@@ -61,12 +61,14 @@ public class AdresseDispoparcResource {
     public ResponseEntity<AdresseDispoparcDTO> createAdresseDispoparc(@Valid @RequestBody AdresseDispoparcDTO adresseDispoparcDTO)
         throws URISyntaxException {
         LOG.debug("REST request to save AdresseDispoparc : {}", adresseDispoparcDTO);
-        if (adresseDispoparcDTO.getId() != null) {
+        if (adresseDispoparcDTO.getIddispopar() != null) {
             throw new BadRequestAlertException("A new adresseDispoparc cannot already have an ID", ENTITY_NAME, "idexists");
         }
         adresseDispoparcDTO = adresseDispoparcService.save(adresseDispoparcDTO);
-        return ResponseEntity.created(new URI("/api/adresse-dispoparcs/" + adresseDispoparcDTO.getId()))
-            .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, adresseDispoparcDTO.getId().toString()))
+        return ResponseEntity.created(new URI("/api/adresse-dispoparcs/" + adresseDispoparcDTO.getIddispopar()))
+            .headers(
+                HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, adresseDispoparcDTO.getIddispopar().toString())
+            )
             .body(adresseDispoparcDTO);
     }
 
@@ -86,10 +88,10 @@ public class AdresseDispoparcResource {
         @Valid @RequestBody AdresseDispoparcDTO adresseDispoparcDTO
     ) throws URISyntaxException {
         LOG.debug("REST request to update AdresseDispoparc : {}, {}", id, adresseDispoparcDTO);
-        if (adresseDispoparcDTO.getId() == null) {
+        if (adresseDispoparcDTO.getIddispopar() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (!Objects.equals(id, adresseDispoparcDTO.getId())) {
+        if (!Objects.equals(id, adresseDispoparcDTO.getIddispopar())) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
@@ -99,7 +101,9 @@ public class AdresseDispoparcResource {
 
         adresseDispoparcDTO = adresseDispoparcService.update(adresseDispoparcDTO);
         return ResponseEntity.ok()
-            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, adresseDispoparcDTO.getId().toString()))
+            .headers(
+                HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, adresseDispoparcDTO.getIddispopar().toString())
+            )
             .body(adresseDispoparcDTO);
     }
 
@@ -120,10 +124,10 @@ public class AdresseDispoparcResource {
         @NotNull @RequestBody AdresseDispoparcDTO adresseDispoparcDTO
     ) throws URISyntaxException {
         LOG.debug("REST request to partial update AdresseDispoparc partially : {}, {}", id, adresseDispoparcDTO);
-        if (adresseDispoparcDTO.getId() == null) {
+        if (adresseDispoparcDTO.getIddispopar() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (!Objects.equals(id, adresseDispoparcDTO.getId())) {
+        if (!Objects.equals(id, adresseDispoparcDTO.getIddispopar())) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
@@ -135,7 +139,7 @@ public class AdresseDispoparcResource {
 
         return ResponseUtil.wrapOrNotFound(
             result,
-            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, adresseDispoparcDTO.getId().toString())
+            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, adresseDispoparcDTO.getIddispopar().toString())
         );
     }
 

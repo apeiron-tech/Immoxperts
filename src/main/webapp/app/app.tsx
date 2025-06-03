@@ -8,7 +8,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
-import { getSession } from 'app/shared/reducers/authentication';
+// import { getSession } from 'app/shared/reducers/authentication';
 import { getProfile } from 'app/shared/reducers/application-profile';
 import Header from 'app/layouts/Header';
 import Footer from 'app/layouts/Footer';
@@ -41,7 +41,7 @@ export const App = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    dispatch(getSession());
+    // dispatch(getSession());
     dispatch(getProfile());
   }, []);
 

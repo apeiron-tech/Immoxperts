@@ -26,7 +26,7 @@ export const AdresseDispoparcDetail = () => {
           <dt>
             <span id="id">Id</span>
           </dt>
-          <dd>{adresseDispoparcEntity.id}</dd>
+          <dd>{adresseDispoparcEntity.iddispopar}</dd>
           <dt>Mutation</dt>
           <dd>{adresseDispoparcEntity.mutation ? adresseDispoparcEntity.mutation.id : ''}</dd>
           <dt>Adresse</dt>
@@ -36,7 +36,7 @@ export const AdresseDispoparcDetail = () => {
           <FontAwesomeIcon icon="arrow-left" /> <span className="d-none d-md-inline">Retour</span>
         </Button>
         &nbsp;
-        <Button tag={Link} to={`/adresse-dispoparc/${adresseDispoparcEntity.id}/edit`} replace color="primary">
+        <Button tag={Link} to={`/adresse-dispoparc/${adresseDispoparcEntity.iddispopar}/edit`} replace color="primary">
           <FontAwesomeIcon icon="pencil-alt" /> <span className="d-none d-md-inline">Editer</span>
         </Button>
       </Col>

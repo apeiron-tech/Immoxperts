@@ -21,11 +21,6 @@ public class Adresse implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGenerator")
-    @SequenceGenerator(name = "sequenceGenerator")
-    @Column(name = "id")
-    private Long id;
-
     @NotNull
     @Column(name = "idadresse", nullable = false)
     private Integer idadresse;
@@ -65,19 +60,6 @@ public class Adresse implements Serializable {
     private Set<AdresseDispoparc> adresseDispoparcs = new HashSet<>();
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
-
-    public Long getId() {
-        return this.id;
-    }
-
-    public Adresse id(Long id) {
-        this.setId(id);
-        return this;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Integer getIdadresse() {
         return this.idadresse;
@@ -268,7 +250,7 @@ public class Adresse implements Serializable {
         if (!(o instanceof Adresse)) {
             return false;
         }
-        return getId() != null && getId().equals(((Adresse) o).getId());
+        return getIdadresse() != null && getIdadresse().equals(((Adresse) o).getIdadresse());
     }
 
     @Override
@@ -281,9 +263,8 @@ public class Adresse implements Serializable {
     @Override
     public String toString() {
         return "Adresse{" +
-            "id=" + getId() +
-            ", idadresse=" + getIdadresse() +
-            ", novoie=" + getNovoie() +
+            "idadresse=" + getIdadresse() +
+            ", novoie='" + getNovoie() + "'" +
             ", btq='" + getBtq() + "'" +
             ", typvoie='" + getTypvoie() + "'" +
             ", codvoie='" + getCodvoie() + "'" +

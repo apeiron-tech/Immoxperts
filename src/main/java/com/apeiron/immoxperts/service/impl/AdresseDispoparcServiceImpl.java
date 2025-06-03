@@ -55,7 +55,7 @@ public class AdresseDispoparcServiceImpl implements AdresseDispoparcService {
         LOG.debug("Request to partially update AdresseDispoparc : {}", adresseDispoparcDTO);
 
         return adresseDispoparcRepository
-            .findById(adresseDispoparcDTO.getId())
+            .findById(adresseDispoparcDTO.getIddispopar())
             .map(existingAdresseDispoparc -> {
                 adresseDispoparcMapper.partialUpdate(existingAdresseDispoparc, adresseDispoparcDTO);
 

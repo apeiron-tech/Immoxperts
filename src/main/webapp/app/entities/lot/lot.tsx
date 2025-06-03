@@ -17,7 +17,7 @@ export const Lot = () => {
   const navigate = useNavigate();
 
   const [paginationState, setPaginationState] = useState(
-    overridePaginationStateWithQueryParams(getPaginationState(pageLocation, ITEMS_PER_PAGE, 'id'), pageLocation.search),
+    overridePaginationStateWithQueryParams(getPaginationState(pageLocation, ITEMS_PER_PAGE, 'iddispolot'), pageLocation.search),
   );
 
   const lotList = useAppSelector(state => state.lot.entities);

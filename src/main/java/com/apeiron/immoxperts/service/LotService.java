@@ -42,17 +42,17 @@ public interface LotService {
     Page<LotDTO> findAll(Pageable pageable);
 
     /**
-     * Get the "id" lot.
+     * Get the "iddispolot" lot.
      *
-     * @param id the id of the entity.
+     * @param iddispolot the iddispolot of the entity.
      * @return the entity.
      */
-    Optional<LotDTO> findOne(Long id);
+    Optional<LotDTO> findOne(Integer iddispolot);
 
     /**
-     * Delete the "id" lot.
+     * Delete the "iddispolot" lot.
      *
-     * @param id the id of the entity.
+     * @param iddispolot the iddispolot of the entity.
      */
-    void delete(Long id);
+    void delete(Integer iddispolot);
 }

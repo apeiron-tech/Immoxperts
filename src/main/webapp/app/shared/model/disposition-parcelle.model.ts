@@ -1,5 +1,4 @@
 export interface IDispositionParcelle {
-  id?: number;
   iddispopar?: number;
   dcntagri?: number | null;
   dcntsol?: number | null;

@@ -11,8 +11,6 @@ import java.util.Objects;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class LocalDTO implements Serializable {
 
-    private Long id;
-
     @NotNull
     private Integer iddispoloc;
 
@@ -23,14 +21,6 @@ public class LocalDTO implements Serializable {
     private String libtyploc;
 
     private Integer nbpprinc;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Integer getIddispoloc() {
         return iddispoloc;
@@ -82,23 +72,22 @@ public class LocalDTO implements Serializable {
         }
 
         LocalDTO localDTO = (LocalDTO) o;
-        if (this.id == null) {
+        if (this.iddispoloc == null) {
             return false;
         }
-        return Objects.equals(this.id, localDTO.id);
+        return Objects.equals(this.iddispoloc, localDTO.iddispoloc);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.id);
+        return Objects.hash(this.iddispoloc);
     }
 
     // prettier-ignore
     @Override
     public String toString() {
         return "LocalDTO{" +
-            "id=" + getId() +
-            ", iddispoloc=" + getIddispoloc() +
+            "iddispoloc=" + getIddispoloc() +
             ", idmutation=" + getIdmutation() +
             ", sbati=" + getSbati() +
             ", libtyploc='" + getLibtyploc() + "'" +

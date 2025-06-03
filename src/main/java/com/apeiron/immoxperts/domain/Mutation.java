@@ -23,11 +23,6 @@ public class Mutation implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGenerator")
-    @SequenceGenerator(name = "sequenceGenerator")
-    @Column(name = "id")
-    private Long id;
-
     @NotNull
     @Column(name = "idmutation", nullable = false)
     private Integer idmutation;
@@ -61,19 +56,6 @@ public class Mutation implements Serializable {
     private Set<AdresseDispoparc> adresseDispoparcs = new HashSet<>();
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
-
-    public Long getId() {
-        return this.id;
-    }
-
-    public Mutation id(Long id) {
-        this.setId(id);
-        return this;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Integer getIdmutation() {
         return this.idmutation;
@@ -238,7 +220,7 @@ public class Mutation implements Serializable {
         if (!(o instanceof Mutation)) {
             return false;
         }
-        return getId() != null && getId().equals(((Mutation) o).getId());
+        return getIdmutation() != null && getIdmutation().equals(((Mutation) o).getIdmutation());
     }
 
     @Override
@@ -251,8 +233,7 @@ public class Mutation implements Serializable {
     @Override
     public String toString() {
         return "Mutation{" +
-            "id=" + getId() +
-            ", idmutation=" + getIdmutation() +
+            "idmutation=" + getIdmutation() +
             ", datemut='" + getDatemut() + "'" +
             ", valeurfonc=" + getValeurfonc() +
             ", idnatmut=" + getIdnatmut() +

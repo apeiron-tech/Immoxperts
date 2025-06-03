@@ -52,7 +52,7 @@ public class LotServiceImpl implements LotService {
         LOG.debug("Request to partially update Lot : {}", lotDTO);
 
         return lotRepository
-            .findById(lotDTO.getId())
+            .findById(lotDTO.getIddispolot())
             .map(existingLot -> {
                 lotMapper.partialUpdate(existingLot, lotDTO);
 
@@ -71,14 +71,14 @@ public class LotServiceImpl implements LotService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<LotDTO> findOne(Long id) {
-        LOG.debug("Request to get Lot : {}", id);
-        return lotRepository.findById(id).map(lotMapper::toDto);
+    public Optional<LotDTO> findOne(Integer iddispolot) {
+        LOG.debug("Request to get Lot : {}", iddispolot);
+        return lotRepository.findById(iddispolot).map(lotMapper::toDto);
     }
 
     @Override
-    public void delete(Long id) {
-        LOG.debug("Request to delete Lot : {}", id);
-        lotRepository.deleteById(id);
+    public void delete(Integer iddispolot) {
+        LOG.debug("Request to delete Lot : {}", iddispolot);
+        lotRepository.deleteById(iddispolot);
     }
 }

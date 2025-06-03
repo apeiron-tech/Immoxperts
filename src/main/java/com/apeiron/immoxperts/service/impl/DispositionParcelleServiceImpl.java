@@ -53,12 +53,10 @@ public class DispositionParcelleServiceImpl implements DispositionParcelleServic
     @Override
     public Optional<DispositionParcelleDTO> partialUpdate(DispositionParcelleDTO dispositionParcelleDTO) {
         LOG.debug("Request to partially update DispositionParcelle : {}", dispositionParcelleDTO);
-
         return dispositionParcelleRepository
-            .findById(dispositionParcelleDTO.getId())
+            .findById(dispositionParcelleDTO.getIddispopar())
             .map(existingDispositionParcelle -> {
                 dispositionParcelleMapper.partialUpdate(existingDispositionParcelle, dispositionParcelleDTO);
-
                 return existingDispositionParcelle;
             })
             .map(dispositionParcelleRepository::save)
@@ -74,14 +72,14 @@ public class DispositionParcelleServiceImpl implements DispositionParcelleServic
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<DispositionParcelleDTO> findOne(Long id) {
-        LOG.debug("Request to get DispositionParcelle : {}", id);
-        return dispositionParcelleRepository.findById(id).map(dispositionParcelleMapper::toDto);
+    public Optional<DispositionParcelleDTO> findOne(Integer iddispopar) {
+        LOG.debug("Request to get DispositionParcelle : {}", iddispopar);
+        return dispositionParcelleRepository.findById(iddispopar).map(dispositionParcelleMapper::toDto);
     }
 
     @Override
-    public void delete(Long id) {
-        LOG.debug("Request to delete DispositionParcelle : {}", id);
-        dispositionParcelleRepository.deleteById(id);
+    public void delete(Integer iddispopar) {
+        LOG.debug("Request to delete DispositionParcelle : {}", iddispopar);
+        dispositionParcelleRepository.deleteById(iddispopar);
     }
 }

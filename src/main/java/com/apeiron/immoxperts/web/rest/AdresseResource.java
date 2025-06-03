@@ -1,7 +1,9 @@
 package com.apeiron.immoxperts.web.rest;
 
+import com.apeiron.immoxperts.domain.Adresse;
 import com.apeiron.immoxperts.repository.AdresseRepository;
 import com.apeiron.immoxperts.service.AdresseService;
+import com.apeiron.immoxperts.service.dto.AddressSearchDTO;
 import com.apeiron.immoxperts.service.dto.AdresseDTO;
 import com.apeiron.immoxperts.web.rest.errors.BadRequestAlertException;
 import jakarta.validation.Valid;
@@ -11,6 +13,7 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -57,12 +60,12 @@ public class AdresseResource {
     @PostMapping("")
     public ResponseEntity<AdresseDTO> createAdresse(@Valid @RequestBody AdresseDTO adresseDTO) throws URISyntaxException {
         LOG.debug("REST request to save Adresse : {}", adresseDTO);
-        if (adresseDTO.getId() != null) {
+        if (adresseDTO.getIdadresse() != null) {
             throw new BadRequestAlertException("A new adresse cannot already have an ID", ENTITY_NAME, "idexists");
         }
         adresseDTO = adresseService.save(adresseDTO);
-        return ResponseEntity.created(new URI("/api/adresses/" + adresseDTO.getId()))
-            .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, adresseDTO.getId().toString()))
+        return ResponseEntity.created(new URI("/api/adresses/" + adresseDTO.getIdadresse()))
+            .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, adresseDTO.getIdadresse().toString()))
             .body(adresseDTO);
     }
 
@@ -78,14 +81,14 @@ public class AdresseResource {
      */
     @PutMapping("/{id}")
     public ResponseEntity<AdresseDTO> updateAdresse(
-        @PathVariable(value = "id", required = false) final Long id,
+        @PathVariable(value = "id", required = false) final Integer id,
         @Valid @RequestBody AdresseDTO adresseDTO
     ) throws URISyntaxException {
         LOG.debug("REST request to update Adresse : {}, {}", id, adresseDTO);
-        if (adresseDTO.getId() == null) {
+        if (adresseDTO.getIdadresse() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (!Objects.equals(id, adresseDTO.getId())) {
+        if (!Objects.equals(id, adresseDTO.getIdadresse())) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
@@ -95,7 +98,7 @@ public class AdresseResource {
 
         adresseDTO = adresseService.update(adresseDTO);
         return ResponseEntity.ok()
-            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, adresseDTO.getId().toString()))
+            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, adresseDTO.getIdadresse().toString()))
             .body(adresseDTO);
     }
 
@@ -112,14 +115,14 @@ public class AdresseResource {
      */
     @PatchMapping(value = "/{id}", consumes = { "application/json", "application/merge-patch+json" })
     public ResponseEntity<AdresseDTO> partialUpdateAdresse(
-        @PathVariable(value = "id", required = false) final Long id,
+        @PathVariable(value = "id", required = false) final Integer id,
         @NotNull @RequestBody AdresseDTO adresseDTO
     ) throws URISyntaxException {
         LOG.debug("REST request to partial update Adresse partially : {}, {}", id, adresseDTO);
-        if (adresseDTO.getId() == null) {
+        if (adresseDTO.getIdadresse() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (!Objects.equals(id, adresseDTO.getId())) {
+        if (!Objects.equals(id, adresseDTO.getIdadresse())) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
@@ -131,7 +134,7 @@ public class AdresseResource {
 
         return ResponseUtil.wrapOrNotFound(
             result,
-            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, adresseDTO.getId().toString())
+            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, adresseDTO.getIdadresse().toString())
         );
     }
 
@@ -156,7 +159,7 @@ public class AdresseResource {
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the adresseDTO, or with status {@code 404 (Not Found)}.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<AdresseDTO> getAdresse(@PathVariable("id") Long id) {
+    public ResponseEntity<AdresseDTO> getAdresse(@PathVariable Integer id) {
         LOG.debug("REST request to get Adresse : {}", id);
         Optional<AdresseDTO> adresseDTO = adresseService.findOne(id);
         return ResponseUtil.wrapOrNotFound(adresseDTO);
@@ -169,11 +172,24 @@ public class AdresseResource {
      * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAdresse(@PathVariable("id") Long id) {
+    public ResponseEntity<Void> deleteAdresse(@PathVariable Integer id) {
         LOG.debug("REST request to delete Adresse : {}", id);
         adresseService.delete(id);
         return ResponseEntity.noContent()
             .headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, id.toString()))
             .build();
+    }
+
+    /**
+     * {@code POST  /adresses/search} : Search for adresses.
+     *
+     * @param searchDTO the search criteria.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of matching adresses in body.
+     */
+    @PostMapping("/search")
+    public ResponseEntity<List<AdresseDTO>> searchAdresses(@Valid @RequestBody AddressSearchDTO searchDTO) {
+        LOG.debug("REST request to search Adresses with criteria : {}", searchDTO);
+        List<AdresseDTO> results = adresseService.searchAddresses(searchDTO);
+        return ResponseEntity.ok().body(results);
     }
 }

@@ -22,30 +22,32 @@ public class AdresseDispoparc implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGenerator")
     @SequenceGenerator(name = "sequenceGenerator")
-    @Column(name = "id", nullable = false)
-    private Integer id;
+    @Column(name = "iddispopar", nullable = false)
+    private Integer iddispopar;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idmutation")
     @JsonIgnoreProperties(value = { "adresseLocals", "adresseDispoparcs" }, allowSetters = true)
     private Mutation mutation;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "idadresse")
     @JsonIgnoreProperties(value = { "adresseLocals", "adresseDispoparcs" }, allowSetters = true)
     private Adresse adresse;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
-    public Integer getId() {
-        return this.id;
+    public Integer getIddispopar() {
+        return this.iddispopar;
     }
 
-    public AdresseDispoparc id(Integer id) {
-        this.setId(id);
+    public void setIddispopar(Integer iddispopar) {
+        this.iddispopar = iddispopar;
+    }
+
+    public AdresseDispoparc iddispopar(Integer iddispopar) {
+        this.setIddispopar(iddispopar);
         return this;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
     }
 
     public Mutation getMutation() {
@@ -84,7 +86,7 @@ public class AdresseDispoparc implements Serializable {
         if (!(o instanceof AdresseDispoparc)) {
             return false;
         }
-        return getId() != null && getId().equals(((AdresseDispoparc) o).getId());
+        return getIddispopar() != null && getIddispopar().equals(((AdresseDispoparc) o).getIddispopar());
     }
 
     @Override
@@ -97,7 +99,7 @@ public class AdresseDispoparc implements Serializable {
     @Override
     public String toString() {
         return "AdresseDispoparc{" +
-            "id=" + getId() +
+            "iddispopar=" + getIddispopar() +
             "}";
     }
 }

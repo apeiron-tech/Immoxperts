@@ -62,52 +62,54 @@ public class DispositionParcelleResource {
         @Valid @RequestBody DispositionParcelleDTO dispositionParcelleDTO
     ) throws URISyntaxException {
         LOG.debug("REST request to save DispositionParcelle : {}", dispositionParcelleDTO);
-        if (dispositionParcelleDTO.getId() != null) {
+        if (dispositionParcelleDTO.getIddispopar() != null) {
             throw new BadRequestAlertException("A new dispositionParcelle cannot already have an ID", ENTITY_NAME, "idexists");
         }
-        dispositionParcelleDTO = dispositionParcelleService.save(dispositionParcelleDTO);
-        return ResponseEntity.created(new URI("/api/disposition-parcelles/" + dispositionParcelleDTO.getId()))
-            .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, dispositionParcelleDTO.getId().toString()))
-            .body(dispositionParcelleDTO);
+        DispositionParcelleDTO result = dispositionParcelleService.save(dispositionParcelleDTO);
+        return ResponseEntity.created(new URI("/api/disposition-parcelles/" + result.getIddispopar()))
+            .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, result.getIddispopar().toString()))
+            .body(result);
     }
 
     /**
-     * {@code PUT  /disposition-parcelles/:id} : Updates an existing dispositionParcelle.
+     * {@code PUT  /disposition-parcelles/:iddispopar} : Updates an existing dispositionParcelle.
      *
-     * @param id the id of the dispositionParcelleDTO to save.
+     * @param iddispopar the iddispopar of the dispositionParcelleDTO to save.
      * @param dispositionParcelleDTO the dispositionParcelleDTO to update.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated dispositionParcelleDTO,
      * or with status {@code 400 (Bad Request)} if the dispositionParcelleDTO is not valid,
      * or with status {@code 500 (Internal Server Error)} if the dispositionParcelleDTO couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
-    @PutMapping("/{id}")
+    @PutMapping("/{iddispopar}")
     public ResponseEntity<DispositionParcelleDTO> updateDispositionParcelle(
-        @PathVariable(value = "id", required = false) final Long id,
+        @PathVariable(value = "iddispopar", required = false) final Integer iddispopar,
         @Valid @RequestBody DispositionParcelleDTO dispositionParcelleDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to update DispositionParcelle : {}, {}", id, dispositionParcelleDTO);
-        if (dispositionParcelleDTO.getId() == null) {
+        LOG.debug("REST request to update DispositionParcelle : {}, {}", iddispopar, dispositionParcelleDTO);
+        if (dispositionParcelleDTO.getIddispopar() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (!Objects.equals(id, dispositionParcelleDTO.getId())) {
+        if (!Objects.equals(iddispopar, dispositionParcelleDTO.getIddispopar())) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
-        if (!dispositionParcelleRepository.existsById(id)) {
+        if (!dispositionParcelleRepository.existsById(iddispopar)) {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        dispositionParcelleDTO = dispositionParcelleService.update(dispositionParcelleDTO);
+        DispositionParcelleDTO result = dispositionParcelleService.update(dispositionParcelleDTO);
         return ResponseEntity.ok()
-            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, dispositionParcelleDTO.getId().toString()))
-            .body(dispositionParcelleDTO);
+            .headers(
+                HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, dispositionParcelleDTO.getIddispopar().toString())
+            )
+            .body(result);
     }
 
     /**
-     * {@code PATCH  /disposition-parcelles/:id} : Partial updates given fields of an existing dispositionParcelle, field will ignore if it is null
+     * {@code PATCH  /disposition-parcelles/:iddispopar} : Partial updates given fields of an existing dispositionParcelle, field will ignore if it is null
      *
-     * @param id the id of the dispositionParcelleDTO to save.
+     * @param iddispopar the iddispopar of the dispositionParcelleDTO to save.
      * @param dispositionParcelleDTO the dispositionParcelleDTO to update.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated dispositionParcelleDTO,
      * or with status {@code 400 (Bad Request)} if the dispositionParcelleDTO is not valid,
@@ -115,20 +117,20 @@ public class DispositionParcelleResource {
      * or with status {@code 500 (Internal Server Error)} if the dispositionParcelleDTO couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
-    @PatchMapping(value = "/{id}", consumes = { "application/json", "application/merge-patch+json" })
+    @PatchMapping(value = "/{iddispopar}", consumes = { "application/json", "application/merge-patch+json" })
     public ResponseEntity<DispositionParcelleDTO> partialUpdateDispositionParcelle(
-        @PathVariable(value = "id", required = false) final Long id,
+        @PathVariable(value = "iddispopar", required = false) final Integer iddispopar,
         @NotNull @RequestBody DispositionParcelleDTO dispositionParcelleDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update DispositionParcelle partially : {}, {}", id, dispositionParcelleDTO);
-        if (dispositionParcelleDTO.getId() == null) {
+        LOG.debug("REST request to partial update DispositionParcelle partially : {}, {}", iddispopar, dispositionParcelleDTO);
+        if (dispositionParcelleDTO.getIddispopar() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (!Objects.equals(id, dispositionParcelleDTO.getId())) {
+        if (!Objects.equals(iddispopar, dispositionParcelleDTO.getIddispopar())) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
-        if (!dispositionParcelleRepository.existsById(id)) {
+        if (!dispositionParcelleRepository.existsById(iddispopar)) {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
@@ -136,7 +138,7 @@ public class DispositionParcelleResource {
 
         return ResponseUtil.wrapOrNotFound(
             result,
-            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, dispositionParcelleDTO.getId().toString())
+            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, dispositionParcelleDTO.getIddispopar().toString())
         );
     }
 
@@ -157,30 +159,30 @@ public class DispositionParcelleResource {
     }
 
     /**
-     * {@code GET  /disposition-parcelles/:id} : get the "id" dispositionParcelle.
+     * {@code GET  /disposition-parcelles/:iddispopar} : get the "iddispopar" dispositionParcelle.
      *
-     * @param id the id of the dispositionParcelleDTO to retrieve.
+     * @param iddispopar the iddispopar of the dispositionParcelleDTO to retrieve.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the dispositionParcelleDTO, or with status {@code 404 (Not Found)}.
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<DispositionParcelleDTO> getDispositionParcelle(@PathVariable("id") Long id) {
-        LOG.debug("REST request to get DispositionParcelle : {}", id);
-        Optional<DispositionParcelleDTO> dispositionParcelleDTO = dispositionParcelleService.findOne(id);
+    @GetMapping("/{iddispopar}")
+    public ResponseEntity<DispositionParcelleDTO> getDispositionParcelle(@PathVariable("iddispopar") Integer iddispopar) {
+        LOG.debug("REST request to get DispositionParcelle : {}", iddispopar);
+        Optional<DispositionParcelleDTO> dispositionParcelleDTO = dispositionParcelleService.findOne(iddispopar);
         return ResponseUtil.wrapOrNotFound(dispositionParcelleDTO);
     }
 
     /**
-     * {@code DELETE  /disposition-parcelles/:id} : delete the "id" dispositionParcelle.
+     * {@code DELETE  /disposition-parcelles/:iddispopar} : delete the "iddispopar" dispositionParcelle.
      *
-     * @param id the id of the dispositionParcelleDTO to delete.
+     * @param iddispopar the iddispopar of the dispositionParcelleDTO to delete.
      * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDispositionParcelle(@PathVariable("id") Long id) {
-        LOG.debug("REST request to delete DispositionParcelle : {}", id);
-        dispositionParcelleService.delete(id);
+    @DeleteMapping("/{iddispopar}")
+    public ResponseEntity<Void> deleteDispositionParcelle(@PathVariable("iddispopar") Integer iddispopar) {
+        LOG.debug("REST request to delete DispositionParcelle : {}", iddispopar);
+        dispositionParcelleService.delete(iddispopar);
         return ResponseEntity.noContent()
-            .headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, id.toString()))
+            .headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, iddispopar.toString()))
             .build();
     }
 }

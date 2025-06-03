@@ -48,21 +48,6 @@ public class AdresseLocalServiceImpl implements AdresseLocalService {
     }
 
     @Override
-    public Optional<AdresseLocalDTO> partialUpdate(AdresseLocalDTO adresseLocalDTO) {
-        LOG.debug("Request to partially update AdresseLocal : {}", adresseLocalDTO);
-
-        return adresseLocalRepository
-            .findById(adresseLocalDTO.getId())
-            .map(existingAdresseLocal -> {
-                adresseLocalMapper.partialUpdate(existingAdresseLocal, adresseLocalDTO);
-
-                return existingAdresseLocal;
-            })
-            .map(adresseLocalRepository::save)
-            .map(adresseLocalMapper::toDto);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public Page<AdresseLocalDTO> findAll(Pageable pageable) {
         LOG.debug("Request to get all AdresseLocals");

@@ -57,50 +57,52 @@ public class LotResource {
     @PostMapping("")
     public ResponseEntity<LotDTO> createLot(@Valid @RequestBody LotDTO lotDTO) throws URISyntaxException {
         LOG.debug("REST request to save Lot : {}", lotDTO);
-        if (lotDTO.getId() != null) {
+        if (lotDTO.getIddispolot() != null) {
             throw new BadRequestAlertException("A new lot cannot already have an ID", ENTITY_NAME, "idexists");
         }
         lotDTO = lotService.save(lotDTO);
-        return ResponseEntity.created(new URI("/api/lots/" + lotDTO.getId()))
-            .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, lotDTO.getId().toString()))
+        return ResponseEntity.created(new URI("/api/lots/" + lotDTO.getIddispolot()))
+            .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, lotDTO.getIddispolot().toString()))
             .body(lotDTO);
     }
 
     /**
-     * {@code PUT  /lots/:id} : Updates an existing lot.
+     * {@code PUT  /lots/:iddispolot} : Updates an existing lot.
      *
-     * @param id the id of the lotDTO to save.
+     * @param iddispolot the iddispolot of the lotDTO to save.
      * @param lotDTO the lotDTO to update.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated lotDTO,
      * or with status {@code 400 (Bad Request)} if the lotDTO is not valid,
      * or with status {@code 500 (Internal Server Error)} if the lotDTO couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
-    @PutMapping("/{id}")
-    public ResponseEntity<LotDTO> updateLot(@PathVariable(value = "id", required = false) final Long id, @Valid @RequestBody LotDTO lotDTO)
-        throws URISyntaxException {
-        LOG.debug("REST request to update Lot : {}, {}", id, lotDTO);
-        if (lotDTO.getId() == null) {
+    @PutMapping("/{iddispolot}")
+    public ResponseEntity<LotDTO> updateLot(
+        @PathVariable(value = "iddispolot", required = false) final Integer iddispolot,
+        @Valid @RequestBody LotDTO lotDTO
+    ) throws URISyntaxException {
+        LOG.debug("REST request to update Lot : {}, {}", iddispolot, lotDTO);
+        if (lotDTO.getIddispolot() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (!Objects.equals(id, lotDTO.getId())) {
+        if (!Objects.equals(iddispolot, lotDTO.getIddispolot())) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
-        if (!lotRepository.existsById(id)) {
+        if (!lotRepository.existsById(iddispolot)) {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
         lotDTO = lotService.update(lotDTO);
         return ResponseEntity.ok()
-            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, lotDTO.getId().toString()))
+            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, lotDTO.getIddispolot().toString()))
             .body(lotDTO);
     }
 
     /**
-     * {@code PATCH  /lots/:id} : Partial updates given fields of an existing lot, field will ignore if it is null
+     * {@code PATCH  /lots/:iddispolot} : Partial updates given fields of an existing lot, field will ignore if it is null
      *
-     * @param id the id of the lotDTO to save.
+     * @param iddispolot the iddispolot of the lotDTO to save.
      * @param lotDTO the lotDTO to update.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated lotDTO,
      * or with status {@code 400 (Bad Request)} if the lotDTO is not valid,
@@ -108,20 +110,20 @@ public class LotResource {
      * or with status {@code 500 (Internal Server Error)} if the lotDTO couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
-    @PatchMapping(value = "/{id}", consumes = { "application/json", "application/merge-patch+json" })
+    @PatchMapping(value = "/{iddispolot}", consumes = { "application/json", "application/merge-patch+json" })
     public ResponseEntity<LotDTO> partialUpdateLot(
-        @PathVariable(value = "id", required = false) final Long id,
+        @PathVariable(value = "iddispolot", required = false) final Integer iddispolot,
         @NotNull @RequestBody LotDTO lotDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Lot partially : {}, {}", id, lotDTO);
-        if (lotDTO.getId() == null) {
+        LOG.debug("REST request to partial update Lot partially : {}, {}", iddispolot, lotDTO);
+        if (lotDTO.getIddispolot() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (!Objects.equals(id, lotDTO.getId())) {
+        if (!Objects.equals(iddispolot, lotDTO.getIddispolot())) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
-        if (!lotRepository.existsById(id)) {
+        if (!lotRepository.existsById(iddispolot)) {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
@@ -129,7 +131,7 @@ public class LotResource {
 
         return ResponseUtil.wrapOrNotFound(
             result,
-            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, lotDTO.getId().toString())
+            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, lotDTO.getIddispolot().toString())
         );
     }
 
@@ -148,30 +150,30 @@ public class LotResource {
     }
 
     /**
-     * {@code GET  /lots/:id} : get the "id" lot.
+     * {@code GET  /lots/:iddispolot} : get the "iddispolot" lot.
      *
-     * @param id the id of the lotDTO to retrieve.
+     * @param iddispolot the iddispolot of the lotDTO to retrieve.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the lotDTO, or with status {@code 404 (Not Found)}.
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<LotDTO> getLot(@PathVariable("id") Long id) {
-        LOG.debug("REST request to get Lot : {}", id);
-        Optional<LotDTO> lotDTO = lotService.findOne(id);
+    @GetMapping("/{iddispolot}")
+    public ResponseEntity<LotDTO> getLot(@PathVariable("iddispolot") Integer iddispolot) {
+        LOG.debug("REST request to get Lot : {}", iddispolot);
+        Optional<LotDTO> lotDTO = lotService.findOne(iddispolot);
         return ResponseUtil.wrapOrNotFound(lotDTO);
     }
 
     /**
-     * {@code DELETE  /lots/:id} : delete the "id" lot.
+     * {@code DELETE  /lots/:iddispolot} : delete the "iddispolot" lot.
      *
-     * @param id the id of the lotDTO to delete.
+     * @param iddispolot the iddispolot of the lotDTO to delete.
      * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteLot(@PathVariable("id") Long id) {
-        LOG.debug("REST request to delete Lot : {}", id);
-        lotService.delete(id);
+    @DeleteMapping("/{iddispolot}")
+    public ResponseEntity<Void> deleteLot(@PathVariable("iddispolot") Integer iddispolot) {
+        LOG.debug("REST request to delete Lot : {}", iddispolot);
+        lotService.delete(iddispolot);
         return ResponseEntity.noContent()
-            .headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, id.toString()))
+            .headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, iddispolot.toString()))
             .build();
     }
 }

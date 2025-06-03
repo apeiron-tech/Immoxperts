@@ -1,5 +1,6 @@
 package com.apeiron.immoxperts.service.dto;
 
+import com.apeiron.immoxperts.domain.AdresseLocalId;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.util.Objects;
@@ -11,7 +12,7 @@ import java.util.Objects;
 public class AdresseLocalDTO implements Serializable {
 
     @NotNull
-    private Integer id;
+    private AdresseLocalId id;
 
     private String coddep;
 
@@ -19,11 +20,11 @@ public class AdresseLocalDTO implements Serializable {
 
     private AdresseDTO adresse;
 
-    public Integer getId() {
+    public AdresseLocalId getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(AdresseLocalId id) {
         this.id = id;
     }
 

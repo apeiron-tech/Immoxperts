@@ -11,18 +11,18 @@ import java.util.Objects;
 public class AdresseDispoparcDTO implements Serializable {
 
     @NotNull
-    private Integer id;
+    private Integer iddispopar;
 
     private MutationDTO mutation;
 
     private AdresseDTO adresse;
 
-    public Integer getId() {
-        return id;
+    public Integer getIddispopar() {
+        return iddispopar;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public void setIddispopar(Integer iddispopar) {
+        this.iddispopar = iddispopar;
     }
 
     public MutationDTO getMutation() {
@@ -51,22 +51,22 @@ public class AdresseDispoparcDTO implements Serializable {
         }
 
         AdresseDispoparcDTO adresseDispoparcDTO = (AdresseDispoparcDTO) o;
-        if (this.id == null) {
+        if (this.iddispopar == null) {
             return false;
         }
-        return Objects.equals(this.id, adresseDispoparcDTO.id);
+        return Objects.equals(this.iddispopar, adresseDispoparcDTO.iddispopar);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.id);
+        return Objects.hash(this.iddispopar);
     }
 
     // prettier-ignore
     @Override
     public String toString() {
         return "AdresseDispoparcDTO{" +
-            "id=" + getId() +
+            "iddispopar=" + getIddispopar() +
             ", mutation=" + getMutation() +
             ", adresse=" + getAdresse() +
             "}";

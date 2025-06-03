@@ -11,11 +11,8 @@
     -->
     <changeSet id="20250526190657-1" author="jhipster">
         <createTable tableName="lot">
-            <column name="id" type="bigint">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
             <column name="iddispolot" type="integer">
-                <constraints nullable="false" />
+                <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="scarrez" type="decimal(21,2)">
                 <constraints nullable="true" />

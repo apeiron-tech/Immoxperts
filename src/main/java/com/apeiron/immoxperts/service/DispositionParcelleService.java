@@ -42,17 +42,17 @@ public interface DispositionParcelleService {
     Page<DispositionParcelleDTO> findAll(Pageable pageable);
 
     /**
-     * Get the "id" dispositionParcelle.
+     * Get the "iddispopar" dispositionParcelle.
      *
-     * @param id the id of the entity.
+     * @param iddispopar the iddispopar of the entity.
      * @return the entity.
      */
-    Optional<DispositionParcelleDTO> findOne(Long id);
+    Optional<DispositionParcelleDTO> findOne(Integer iddispopar);
 
     /**
-     * Delete the "id" dispositionParcelle.
+     * Delete the "iddispopar" dispositionParcelle.
      *
-     * @param id the id of the entity.
+     * @param iddispopar the iddispopar of the entity.
      */
-    void delete(Long id);
+    void delete(Integer iddispopar);
 }

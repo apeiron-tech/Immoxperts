@@ -1,6 +1,8 @@
 package com.apeiron.immoxperts.service;
 
+import com.apeiron.immoxperts.service.dto.AddressSearchDTO;
 import com.apeiron.immoxperts.service.dto.AdresseDTO;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -47,12 +49,20 @@ public interface AdresseService {
      * @param id the id of the entity.
      * @return the entity.
      */
-    Optional<AdresseDTO> findOne(Long id);
+    Optional<AdresseDTO> findOne(Integer id);
 
     /**
      * Delete the "id" adresse.
      *
      * @param id the id of the entity.
      */
-    void delete(Long id);
+    void delete(Integer id);
+
+    /**
+     * Search for adresses based on search criteria.
+     *
+     * @param searchDTO the search criteria.
+     * @return the list of matching adresses.
+     */
+    List<AdresseDTO> searchAddresses(AddressSearchDTO searchDTO);
 }

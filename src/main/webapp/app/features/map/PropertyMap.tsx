@@ -147,7 +147,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
     const fetchMutations = async (street: string, commune: string): Promise<void> => {
       try {
-        const response = await axios.get('https://immoxperts.apeiron-tech.dev/api/mutations/by-street-and-commune', {
+        const response = await axios.get('http://localhost:8080/api/mutations/by-street-and-commune', {
           params: {
             street: encodeURIComponent(street),
             commune: encodeURIComponent(commune),
@@ -234,7 +234,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
       params.append('_t', Date.now().toString());
 
-      const response = await fetch(`https://immoxperts.apeiron-tech.dev/api/mutations/search?${params}`);
+      const response = await fetch(`http://localhost:8080/api/mutations/search?${params}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -846,7 +846,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
       try {
         setIsLoading(true);
-        const response = await axios.get(`https://immoxperts.apeiron-tech.dev/api/mutations/statistics/${currentCity.toLowerCase()}`);
+        const response = await axios.get(`http://localhost:8080/api/mutations/statistics/${currentCity.toLowerCase()}`);
         setPropertyStats(response.data);
       } catch (err) {
         console.error('Erreur:', err);

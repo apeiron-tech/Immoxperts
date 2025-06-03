@@ -3,9 +3,13 @@ package com.apeiron.immoxperts.service.impl;
 import com.apeiron.immoxperts.domain.Adresse;
 import com.apeiron.immoxperts.repository.AdresseRepository;
 import com.apeiron.immoxperts.service.AdresseService;
+import com.apeiron.immoxperts.service.dto.AddressSearchDTO;
 import com.apeiron.immoxperts.service.dto.AdresseDTO;
 import com.apeiron.immoxperts.service.mapper.AdresseMapper;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -52,7 +56,7 @@ public class AdresseServiceImpl implements AdresseService {
         LOG.debug("Request to partially update Adresse : {}", adresseDTO);
 
         return adresseRepository
-            .findById(adresseDTO.getId())
+            .findById(adresseDTO.getIdadresse())
             .map(existingAdresse -> {
                 adresseMapper.partialUpdate(existingAdresse, adresseDTO);
 
@@ -71,14 +75,25 @@ public class AdresseServiceImpl implements AdresseService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AdresseDTO> findOne(Long id) {
+    public Optional<AdresseDTO> findOne(Integer id) {
         LOG.debug("Request to get Adresse : {}", id);
         return adresseRepository.findById(id).map(adresseMapper::toDto);
     }
 
     @Override
-    public void delete(Long id) {
+    public void delete(Integer id) {
         LOG.debug("Request to delete Adresse : {}", id);
         adresseRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdresseDTO> searchAddresses(AddressSearchDTO searchDTO) {
+        LOG.debug("Request to search Adresses with criteria : {}", searchDTO);
+        return adresseRepository
+            .findBySearchCriteria(searchDTO.getVoie(), searchDTO.getCommune(), searchDTO.getCodepostal())
+            .stream()
+            .map(adresseMapper::toDto)
+            .collect(Collectors.toList());
     }
 }

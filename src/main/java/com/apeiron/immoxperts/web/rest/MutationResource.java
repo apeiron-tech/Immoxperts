@@ -1,8 +1,12 @@
 package com.apeiron.immoxperts.web.rest;
 
+import com.apeiron.immoxperts.repository.MutationCustomRepository;
 import com.apeiron.immoxperts.repository.MutationRepository;
 import com.apeiron.immoxperts.service.MutationService;
+import com.apeiron.immoxperts.service.PropertyStatisticsService;
+import com.apeiron.immoxperts.service.dto.CommuneStatsDTO;
 import com.apeiron.immoxperts.service.dto.MutationDTO;
+import com.apeiron.immoxperts.service.dto.PropertyStatisticsDTO;
 import com.apeiron.immoxperts.web.rest.errors.BadRequestAlertException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,13 +43,23 @@ public class MutationResource {
     @Value("${jhipster.clientApp.name}")
     private String applicationName;
 
+    @Autowired
+    private final MutationCustomRepository mutationCustomRepository;
+
     private final MutationService mutationService;
-
     private final MutationRepository mutationRepository;
+    private final PropertyStatisticsService propertyStatisticsService;
 
-    public MutationResource(MutationService mutationService, MutationRepository mutationRepository) {
+    public MutationResource(
+        MutationCustomRepository mutationCustomRepository,
+        MutationService mutationService,
+        MutationRepository mutationRepository,
+        PropertyStatisticsService propertyStatisticsService
+    ) {
+        this.mutationCustomRepository = mutationCustomRepository;
         this.mutationService = mutationService;
         this.mutationRepository = mutationRepository;
+        this.propertyStatisticsService = propertyStatisticsService;
     }
 
     /**
@@ -57,12 +72,12 @@ public class MutationResource {
     @PostMapping("")
     public ResponseEntity<MutationDTO> createMutation(@Valid @RequestBody MutationDTO mutationDTO) throws URISyntaxException {
         LOG.debug("REST request to save Mutation : {}", mutationDTO);
-        if (mutationDTO.getId() != null) {
+        if (mutationDTO.getIdmutation(1) != null) {
             throw new BadRequestAlertException("A new mutation cannot already have an ID", ENTITY_NAME, "idexists");
         }
         mutationDTO = mutationService.save(mutationDTO);
-        return ResponseEntity.created(new URI("/api/mutations/" + mutationDTO.getId()))
-            .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, mutationDTO.getId().toString()))
+        return ResponseEntity.created(new URI("/api/mutations/" + mutationDTO.getIdmutation(1)))
+            .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, mutationDTO.getIdmutation(1).toString()))
             .body(mutationDTO);
     }
 
@@ -78,14 +93,14 @@ public class MutationResource {
      */
     @PutMapping("/{id}")
     public ResponseEntity<MutationDTO> updateMutation(
-        @PathVariable(value = "id", required = false) final Long id,
+        @PathVariable(value = "id", required = false) final Integer id,
         @Valid @RequestBody MutationDTO mutationDTO
     ) throws URISyntaxException {
         LOG.debug("REST request to update Mutation : {}, {}", id, mutationDTO);
-        if (mutationDTO.getId() == null) {
+        if (mutationDTO.getIdmutation(1) == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (!Objects.equals(id, mutationDTO.getId())) {
+        if (!Objects.equals(id, mutationDTO.getIdmutation(1))) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
@@ -95,7 +110,7 @@ public class MutationResource {
 
         mutationDTO = mutationService.update(mutationDTO);
         return ResponseEntity.ok()
-            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, mutationDTO.getId().toString()))
+            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, mutationDTO.getIdmutation(1).toString()))
             .body(mutationDTO);
     }
 
@@ -112,14 +127,14 @@ public class MutationResource {
      */
     @PatchMapping(value = "/{id}", consumes = { "application/json", "application/merge-patch+json" })
     public ResponseEntity<MutationDTO> partialUpdateMutation(
-        @PathVariable(value = "id", required = false) final Long id,
+        @PathVariable(value = "id", required = false) final Integer id,
         @NotNull @RequestBody MutationDTO mutationDTO
     ) throws URISyntaxException {
         LOG.debug("REST request to partial update Mutation partially : {}, {}", id, mutationDTO);
-        if (mutationDTO.getId() == null) {
+        if (mutationDTO.getIdmutation(1) == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
-        if (!Objects.equals(id, mutationDTO.getId())) {
+        if (!Objects.equals(id, mutationDTO.getIdmutation(1))) {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
@@ -131,7 +146,7 @@ public class MutationResource {
 
         return ResponseUtil.wrapOrNotFound(
             result,
-            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, mutationDTO.getId().toString())
+            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, mutationDTO.getIdmutation(1).toString())
         );
     }
 
@@ -156,7 +171,7 @@ public class MutationResource {
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the mutationDTO, or with status {@code 404 (Not Found)}.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<MutationDTO> getMutation(@PathVariable("id") Long id) {
+    public ResponseEntity<MutationDTO> getMutation(@PathVariable("id") Integer id) {
         LOG.debug("REST request to get Mutation : {}", id);
         Optional<MutationDTO> mutationDTO = mutationService.findOne(id);
         return ResponseUtil.wrapOrNotFound(mutationDTO);
@@ -169,11 +184,52 @@ public class MutationResource {
      * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteMutation(@PathVariable("id") Long id) {
+    public ResponseEntity<Void> deleteMutation(@PathVariable("id") Integer id) {
         LOG.debug("REST request to delete Mutation : {}", id);
         mutationService.delete(id);
         return ResponseEntity.noContent()
             .headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, id.toString()))
             .build();
+    }
+
+    @GetMapping("/by-address/{adresseId}")
+    public ResponseEntity<List<MutationDTO>> getMutationsByAddress(@PathVariable Integer adresseId) {
+        List<MutationDTO> mutations = mutationService.getMutationsByAdresseId(adresseId);
+        if (mutations.isEmpty()) {
+            List<MutationDTO> mutations2 = mutationService.getMutationsByAdresseId2(adresseId);
+            return ResponseEntity.ok(mutations2);
+        }
+        return ResponseEntity.ok(mutations);
+    }
+
+    @GetMapping("/by-voie/{voie}")
+    public List<MutationDTO> getMutationsByVoie(@PathVariable String voie) {
+        return mutationService.getMutationsByVoie(voie);
+    }
+
+    @GetMapping("/search")
+    public List<MutationDTO> searchMutations(@RequestParam(required = false) String novoie, @RequestParam(required = false) String voie) {
+        return mutationService.searchMutations(novoie, voie);
+    }
+
+    @GetMapping("/commune")
+    public ResponseEntity<CommuneStatsDTO> getCommuneStats(@RequestParam("commune") String commune) {
+        return ResponseEntity.ok(mutationCustomRepository.getStatsByCommune(commune));
+    }
+
+    @GetMapping("/statistics/{commune}")
+    public ResponseEntity<List<PropertyStatisticsDTO>> getPropertyStatistics(@PathVariable String commune) {
+        List<PropertyStatisticsDTO> statistics = propertyStatisticsService.getPropertyStatisticsByCommune(commune);
+        return ResponseEntity.ok(statistics);
+    }
+
+    @GetMapping("/mutations/by-street-and-commune")
+    public ResponseEntity<List<MutationDTO>> getMutationsByStreetAndCommune(
+        @RequestParam("street") String street,
+        @RequestParam("commune") String commune
+    ) {
+        LOG.debug("REST request to get Mutations by street : {} and commune : {}", street, commune);
+        List<MutationDTO> mutations = mutationService.searchMutationsByStreetAndCommune(street, commune);
+        return ResponseEntity.ok().body(mutations);
     }
 }

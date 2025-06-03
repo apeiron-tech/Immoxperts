@@ -10,8 +10,6 @@ import java.util.Objects;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class AdresseDTO implements Serializable {
 
-    private Long id;
-
     @NotNull
     private Integer idadresse;
 
@@ -30,14 +28,6 @@ public class AdresseDTO implements Serializable {
     private String commune;
 
     private String coddep;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Integer getIdadresse() {
         return idadresse;
@@ -121,24 +111,23 @@ public class AdresseDTO implements Serializable {
         }
 
         AdresseDTO adresseDTO = (AdresseDTO) o;
-        if (this.id == null) {
+        if (this.idadresse == null) {
             return false;
         }
-        return Objects.equals(this.id, adresseDTO.id);
+        return Objects.equals(this.idadresse, adresseDTO.idadresse);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.id);
+        return Objects.hash(this.idadresse);
     }
 
     // prettier-ignore
     @Override
     public String toString() {
         return "AdresseDTO{" +
-            "id=" + getId() +
-            ", idadresse=" + getIdadresse() +
-            ", novoie=" + getNovoie() +
+            "idadresse=" + getIdadresse() +
+            ", novoie='" + getNovoie() + "'" +
             ", btq='" + getBtq() + "'" +
             ", typvoie='" + getTypvoie() + "'" +
             ", codvoie='" + getCodvoie() + "'" +

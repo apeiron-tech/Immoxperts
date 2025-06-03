@@ -101,42 +101,6 @@ public class AdresseLocalResource {
     }
 
     /**
-     * {@code PATCH  /adresse-locals/:id} : Partial updates given fields of an existing adresseLocal, field will ignore if it is null
-     *
-     * @param id the id of the adresseLocalDTO to save.
-     * @param adresseLocalDTO the adresseLocalDTO to update.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated adresseLocalDTO,
-     * or with status {@code 400 (Bad Request)} if the adresseLocalDTO is not valid,
-     * or with status {@code 404 (Not Found)} if the adresseLocalDTO is not found,
-     * or with status {@code 500 (Internal Server Error)} if the adresseLocalDTO couldn't be updated.
-     * @throws URISyntaxException if the Location URI syntax is incorrect.
-     */
-    @PatchMapping(value = "/{id}", consumes = { "application/json", "application/merge-patch+json" })
-    public ResponseEntity<AdresseLocalDTO> partialUpdateAdresseLocal(
-        @PathVariable(value = "id", required = false) final Integer id,
-        @NotNull @RequestBody AdresseLocalDTO adresseLocalDTO
-    ) throws URISyntaxException {
-        LOG.debug("REST request to partial update AdresseLocal partially : {}, {}", id, adresseLocalDTO);
-        if (adresseLocalDTO.getId() == null) {
-            throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
-        }
-        if (!Objects.equals(id, adresseLocalDTO.getId())) {
-            throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
-        }
-
-        if (!adresseLocalRepository.existsById(id)) {
-            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
-        }
-
-        Optional<AdresseLocalDTO> result = adresseLocalService.partialUpdate(adresseLocalDTO);
-
-        return ResponseUtil.wrapOrNotFound(
-            result,
-            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, adresseLocalDTO.getId().toString())
-        );
-    }
-
-    /**
      * {@code GET  /adresse-locals} : get all the adresseLocals.
      *
      * @param pageable the pagination information.

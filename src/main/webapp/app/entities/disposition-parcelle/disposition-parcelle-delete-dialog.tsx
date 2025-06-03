@@ -35,7 +35,7 @@ export const DispositionParcelleDeleteDialog = () => {
   }, [updateSuccess]);
 
   const confirmDelete = () => {
-    dispatch(deleteEntity(dispositionParcelleEntity.id));
+    dispatch(deleteEntity(dispositionParcelleEntity.iddispopar));
   };
 
   return (
@@ -44,7 +44,7 @@ export const DispositionParcelleDeleteDialog = () => {
         Confirmation de suppression
       </ModalHeader>
       <ModalBody id="immoxpertsApp.dispositionParcelle.delete.question">
-        Êtes-vous certain de vouloir supprimer le Disposition Parcelle {dispositionParcelleEntity.id} ?
+        Êtes-vous certain de vouloir supprimer le Disposition Parcelle {dispositionParcelleEntity.iddispopar} ?
       </ModalBody>
       <ModalFooter>
         <Button color="secondary" onClick={handleClose}>

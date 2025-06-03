@@ -49,7 +49,7 @@ export const createEntity = createAsyncThunk(
 export const updateEntity = createAsyncThunk(
   'adresseDispoparc/update_entity',
   async (entity: IAdresseDispoparc, thunkAPI) => {
-    const result = await axios.put<IAdresseDispoparc>(`${apiUrl}/${entity.id}`, cleanEntity(entity));
+    const result = await axios.put<IAdresseDispoparc>(`${apiUrl}/${entity.iddispopar}`, cleanEntity(entity));
     thunkAPI.dispatch(getEntities({}));
     return result;
   },
@@ -59,7 +59,7 @@ export const updateEntity = createAsyncThunk(
 export const partialUpdateEntity = createAsyncThunk(
   'adresseDispoparc/partial_update_entity',
   async (entity: IAdresseDispoparc, thunkAPI) => {
-    const result = await axios.patch<IAdresseDispoparc>(`${apiUrl}/${entity.id}`, cleanEntity(entity));
+    const result = await axios.patch<IAdresseDispoparc>(`${apiUrl}/${entity.iddispopar}`, cleanEntity(entity));
     thunkAPI.dispatch(getEntities({}));
     return result;
   },

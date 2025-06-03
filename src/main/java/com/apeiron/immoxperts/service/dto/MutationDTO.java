@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -11,8 +12,6 @@ import java.util.Objects;
  */
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class MutationDTO implements Serializable {
-
-    private Long id;
 
     @NotNull
     private Integer idmutation;
@@ -29,15 +28,25 @@ public class MutationDTO implements Serializable {
 
     private BigDecimal sterr;
 
-    public Long getId() {
-        return id;
+    private BigDecimal terrain;
+
+    private List<String> libtyplocList;
+
+    private int nbpprincTotal;
+
+    private List<String> addresses;
+
+    private BigDecimal surface;
+
+    public MutationDTO() {}
+
+    public MutationDTO(Integer idmutation, Instant datemut, BigDecimal valeurfonc) {
+        this.idmutation = idmutation;
+        this.datemut = datemut;
+        this.valeurfonc = valeurfonc;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Integer getIdmutation() {
+    public Integer getIdmutation(int i) {
         return idmutation;
     }
 
@@ -93,6 +102,46 @@ public class MutationDTO implements Serializable {
         this.sterr = sterr;
     }
 
+    public BigDecimal getTerrain() {
+        return terrain;
+    }
+
+    public void setTerrain(BigDecimal terrain) {
+        this.terrain = terrain;
+    }
+
+    public List<String> getLibtyplocList() {
+        return libtyplocList;
+    }
+
+    public void setLibtyplocList(List<String> libtyplocList) {
+        this.libtyplocList = libtyplocList;
+    }
+
+    public int getNbpprincTotal() {
+        return nbpprincTotal;
+    }
+
+    public void setNbpprincTotal(int nbpprincTotal) {
+        this.nbpprincTotal = nbpprincTotal;
+    }
+
+    public List<String> getAddresses() {
+        return addresses;
+    }
+
+    public void setAddresses(List<String> addresses) {
+        this.addresses = addresses;
+    }
+
+    public BigDecimal getSurface() {
+        return surface;
+    }
+
+    public void setSurface(BigDecimal surface) {
+        this.surface = surface;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -103,23 +152,22 @@ public class MutationDTO implements Serializable {
         }
 
         MutationDTO mutationDTO = (MutationDTO) o;
-        if (this.id == null) {
+        if (this.idmutation == null) {
             return false;
         }
-        return Objects.equals(this.id, mutationDTO.id);
+        return Objects.equals(this.idmutation, mutationDTO.idmutation);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.id);
+        return Objects.hash(this.idmutation);
     }
 
     // prettier-ignore
     @Override
     public String toString() {
         return "MutationDTO{" +
-            "id=" + getId() +
-            ", idmutation=" + getIdmutation() +
+            "idmutation=" + getIdmutation(1) +
             ", datemut='" + getDatemut() + "'" +
             ", valeurfonc=" + getValeurfonc() +
             ", idnatmut=" + getIdnatmut() +

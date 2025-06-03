@@ -19,11 +19,6 @@ public class Lot implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGenerator")
-    @SequenceGenerator(name = "sequenceGenerator")
-    @Column(name = "id")
-    private Long id;
-
     @NotNull
     @Column(name = "iddispolot", nullable = false)
     private Integer iddispolot;
@@ -32,19 +27,6 @@ public class Lot implements Serializable {
     private BigDecimal scarrez;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
-
-    public Long getId() {
-        return this.id;
-    }
-
-    public Lot id(Long id) {
-        this.setId(id);
-        return this;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Integer getIddispolot() {
         return this.iddispolot;
@@ -82,7 +64,7 @@ public class Lot implements Serializable {
         if (!(o instanceof Lot)) {
             return false;
         }
-        return getId() != null && getId().equals(((Lot) o).getId());
+        return getIddispolot() != null && getIddispolot().equals(((Lot) o).getIddispolot());
     }
 
     @Override
@@ -95,8 +77,7 @@ public class Lot implements Serializable {
     @Override
     public String toString() {
         return "Lot{" +
-            "id=" + getId() +
-            ", iddispolot=" + getIddispolot() +
+            "iddispolot=" + getIddispolot() +
             ", scarrez=" + getScarrez() +
             "}";
     }

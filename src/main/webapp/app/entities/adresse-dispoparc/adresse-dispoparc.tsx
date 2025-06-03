@@ -123,8 +123,8 @@ export const AdresseDispoparc = () => {
               {adresseDispoparcList.map((adresseDispoparc, i) => (
                 <tr key={`entity-${i}`} data-cy="entityTable">
                   <td>
-                    <Button tag={Link} to={`/adresse-dispoparc/${adresseDispoparc.id}`} color="link" size="sm">
-                      {adresseDispoparc.id}
+                    <Button tag={Link} to={`/adresse-dispoparc/${adresseDispoparc.iddispopar}`} color="link" size="sm">
+                      {adresseDispoparc.iddispopar}
                     </Button>
                   </td>
                   <td>
@@ -145,7 +145,7 @@ export const AdresseDispoparc = () => {
                     <div className="btn-group flex-btn-group-container">
                       <Button
                         tag={Link}
-                        to={`/adresse-dispoparc/${adresseDispoparc.id}`}
+                        to={`/adresse-dispoparc/${adresseDispoparc.iddispopar}`}
                         color="info"
                         size="sm"
                         data-cy="entityDetailsButton"
@@ -154,7 +154,7 @@ export const AdresseDispoparc = () => {
                       </Button>
                       <Button
                         tag={Link}
-                        to={`/adresse-dispoparc/${adresseDispoparc.id}/edit?page=${paginationState.activePage}&sort=${paginationState.sort},${paginationState.order}`}
+                        to={`/adresse-dispoparc/${adresseDispoparc.iddispopar}/edit?page=${paginationState.activePage}&sort=${paginationState.sort},${paginationState.order}`}
                         color="primary"
                         size="sm"
                         data-cy="entityEditButton"
@@ -163,7 +163,7 @@ export const AdresseDispoparc = () => {
                       </Button>
                       <Button
                         onClick={() =>
-                          (window.location.href = `/adresse-dispoparc/${adresseDispoparc.id}/delete?page=${paginationState.activePage}&sort=${paginationState.sort},${paginationState.order}`)
+                          (window.location.href = `/adresse-dispoparc/${adresseDispoparc.iddispopar}/delete?page=${paginationState.activePage}&sort=${paginationState.sort},${paginationState.order}`)
                         }
                         color="danger"
                         size="sm"

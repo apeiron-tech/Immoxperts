@@ -11,22 +11,12 @@ import java.util.Objects;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class DispositionParcelleDTO implements Serializable {
 
-    private Long id;
-
     @NotNull
     private Integer iddispopar;
 
     private BigDecimal dcntagri;
 
     private BigDecimal dcntsol;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Integer getIddispopar() {
         return iddispopar;
@@ -62,23 +52,22 @@ public class DispositionParcelleDTO implements Serializable {
         }
 
         DispositionParcelleDTO dispositionParcelleDTO = (DispositionParcelleDTO) o;
-        if (this.id == null) {
+        if (this.iddispopar == null) {
             return false;
         }
-        return Objects.equals(this.id, dispositionParcelleDTO.id);
+        return Objects.equals(this.iddispopar, dispositionParcelleDTO.iddispopar);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.id);
+        return Objects.hash(this.iddispopar);
     }
 
     // prettier-ignore
     @Override
     public String toString() {
         return "DispositionParcelleDTO{" +
-            "id=" + getId() +
-            ", iddispopar=" + getIddispopar() +
+            "iddispopar=" + getIddispopar() +
             ", dcntagri=" + getDcntagri() +
             ", dcntsol=" + getDcntsol() +
             "}";

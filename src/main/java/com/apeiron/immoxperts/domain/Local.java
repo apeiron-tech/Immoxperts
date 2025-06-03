@@ -18,13 +18,8 @@ public class Local implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGenerator")
-    @SequenceGenerator(name = "sequenceGenerator")
-    @Column(name = "id")
-    private Long id;
-
     @NotNull
+    @Id
     @Column(name = "iddispoloc", nullable = false)
     private Integer iddispoloc;
 
@@ -41,19 +36,6 @@ public class Local implements Serializable {
     private Integer nbpprinc;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
-
-    public Long getId() {
-        return this.id;
-    }
-
-    public Local id(Long id) {
-        this.setId(id);
-        return this;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Integer getIddispoloc() {
         return this.iddispoloc;
@@ -130,7 +112,7 @@ public class Local implements Serializable {
         if (!(o instanceof Local)) {
             return false;
         }
-        return getId() != null && getId().equals(((Local) o).getId());
+        return getIddispoloc() != null && getIddispoloc().equals(((Local) o).getIddispoloc());
     }
 
     @Override
@@ -143,8 +125,7 @@ public class Local implements Serializable {
     @Override
     public String toString() {
         return "Local{" +
-            "id=" + getId() +
-            ", iddispoloc=" + getIddispoloc() +
+            "iddispoloc=" + getIddispoloc() +
             ", idmutation=" + getIdmutation() +
             ", sbati=" + getSbati() +
             ", libtyploc='" + getLibtyploc() + "'" +
