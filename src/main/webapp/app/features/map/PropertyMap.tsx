@@ -227,14 +227,12 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         return mutationCache.current.get(cacheKey) || [];
       }
 
-      const params = new URLSearchParams({
-        novoie: streetNumber.replace(/\D/g, ''),
-        voie: streetName,
-      });
+      // Extract street number and name
+      const novoie = streetNumber.replace(/\D/g, '');
+      const voie = streetName;
 
-      params.append('_t', Date.now().toString());
-
-      const response = await fetch(`http://localhost:8080/api/mutations/search?${params}`);
+      // Make the search request
+      const response = await fetch(`http://localhost:8080/api/mutations/search?novoie=${novoie}&voie=${encodeURIComponent(voie)}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -243,6 +241,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
       const data = await response.json();
 
+      // Process the response data
       const formattedProperties: Property[] = data.map((mutation: any) => {
         const surface = mutation.surface || 1;
         const valeurfonc = mutation.valeurfonc || 0;
@@ -280,6 +279,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         };
       });
 
+      // Cache the results
       mutationCache.current.set(cacheKey, formattedProperties);
 
       return formattedProperties;

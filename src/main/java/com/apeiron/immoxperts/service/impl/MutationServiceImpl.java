@@ -283,17 +283,29 @@ public class MutationServiceImpl implements MutationService {
             return cb.and(predicates.toArray(new Predicate[0]));
         });
 
-        return addresses
-            .stream()
-            .map(adresse -> {
-                Stream<Mutation> localMutations = adresse.getAdresseLocals().stream().map(AdresseLocal::getMutation);
-                Stream<Mutation> dispoMutations = adresse.getAdresseDispoparcs().stream().map(AdresseDispoparc::getMutation);
-                return Stream.concat(localMutations, dispoMutations).filter(Objects::nonNull).findFirst().orElse(null);
-            })
-            .filter(Objects::nonNull)
-            .distinct()
-            .map(this::convertToDTO)
-            .collect(Collectors.toList());
+        // Use a Set to ensure uniqueness of mutations
+        Set<Mutation> uniqueMutations = new HashSet<>();
+
+        // Process addresses and collect unique mutations
+        for (Adresse adresse : addresses) {
+            // Add mutations from adresseLocals
+            if (adresse.getAdresseLocals() != null) {
+                adresse.getAdresseLocals().stream().map(AdresseLocal::getMutation).filter(Objects::nonNull).forEach(uniqueMutations::add);
+            }
+
+            // Add mutations from adresseDispoparcs
+            if (adresse.getAdresseDispoparcs() != null) {
+                adresse
+                    .getAdresseDispoparcs()
+                    .stream()
+                    .map(AdresseDispoparc::getMutation)
+                    .filter(Objects::nonNull)
+                    .forEach(uniqueMutations::add);
+            }
+        }
+
+        // Convert unique mutations to DTOs
+        return uniqueMutations.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     public List<MutationDTO> getMutationsByVoie(String voie) {

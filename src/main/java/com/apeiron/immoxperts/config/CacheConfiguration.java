@@ -57,6 +57,7 @@ public class CacheConfiguration {
             createCache(cm, com.apeiron.immoxperts.domain.DispositionParcelle.class.getName());
             createCache(cm, com.apeiron.immoxperts.domain.AdresseLocal.class.getName());
             createCache(cm, com.apeiron.immoxperts.domain.AdresseDispoparc.class.getName());
+            createCache(cm, "streetCommuneCache");
             // jhipster-needle-caffeine-add-entry
         };
     }
