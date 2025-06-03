@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import './styles/mapbox-popup.css';
 import axios from 'axios';
 import { TrendingUp } from 'lucide-react';
 
@@ -67,6 +68,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   const [activeLayers, setActiveLayers] = useState<string[]>([]);
   const [showStatsPanel, setShowStatsPanel] = useState<boolean>(false);
   const [currentCity, setCurrentCity] = useState<string>('Ajaccio');
+  const [is3DView, setIs3DView] = useState<boolean>(false);
   const { numero, nomVoie, coordinates } = searchParams;
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [similarProperties, setSimilarProperties] = useState<Property[]>([]);
@@ -513,6 +515,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       center: [8.73692, 41.9281],
       zoom: 17,
       attributionControl: false,
+      minZoom: 13.5, // Limit zoom out to ~1km
     });
 
     // Create scale elements first
@@ -524,14 +527,15 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     Object.assign(scaleContainer.style, {
       position: 'absolute',
       zIndex: 10,
-      top: '10px',
-      right: '10px',
+      bottom: '20px',
+      right: '20px',
       backgroundColor: 'rgba(255, 255, 255, 0.9)',
       padding: '0 6px',
       borderRadius: '4px',
       display: 'flex',
       alignItems: 'center',
       pointerEvents: 'none',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     });
 
     Object.assign(scaleLine.style, {
@@ -546,6 +550,8 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       marginLeft: '8px',
       fontSize: '12px',
       color: '#4a5568',
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: '500',
     });
 
     scaleContainer.appendChild(scaleLine);
@@ -564,10 +570,18 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
       if (!isNaN(widthMeters)) {
         if (widthMeters > 1000) {
-          displayText = `${(widthMeters / 1000).toFixed(1)}km`;
-          displayWidth = (1000 / widthMeters) * 100;
+          // Force exactly 1km at minimum zoom
+          if (zoom <= 13.5) {
+            displayText = '1km';
+            displayWidth = 100;
+          } else {
+            const kmValue = (Math.round(widthMeters / 100) * 100) / 1000;
+            displayText = `${kmValue}km`;
+            displayWidth = (1000 / widthMeters) * 100;
+          }
         } else {
-          displayText = `${Math.round(widthMeters)}m`;
+          const mValue = Math.round(widthMeters / 10) * 10;
+          displayText = `${mValue}m`;
         }
       }
 
@@ -593,6 +607,17 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     // Set up event listeners
     map.current.on('move', updateScale);
     map.current.on('zoom', updateScale);
+
+    // Add wheel zoom limits
+    map.current.on('wheel', e => {
+      const currentZoom = map.current.getZoom();
+      if (e.originalEvent.deltaY > 0 && currentZoom <= 13.5) {
+        e.preventDefault();
+      }
+    });
+
+    // Configure scroll zoom
+    map.current.scrollZoom.setWheelZoomRate(0.5);
 
     // Rest of your existing map setup...
     map.current.on('load', () => {
@@ -895,6 +920,32 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     };
   }, []);
 
+  const toggleMapStyle = () => {
+    if (!map.current) return;
+
+    const newStyle = is3DView
+      ? 'mapbox://styles/saber5180/cmawpgdtd007301sc5ww48tds' // 2D style
+      : 'mapbox://styles/saber5180/cm9737hvv00en01qzefcd57b7'; // 3D style
+
+    map.current.setStyle(newStyle);
+    setIs3DView(!is3DView);
+  };
+
+  // Add zoom limit functions
+  const handleZoomIn = () => {
+    if (!map.current) return;
+    map.current.zoomIn();
+  };
+
+  const handleZoomOut = () => {
+    if (!map.current) return;
+    const currentZoom = map.current.getZoom();
+    const minZoom = 13.5; // This corresponds to approximately 1km
+    if (currentZoom > minZoom) {
+      map.current.zoomOut();
+    }
+  };
+
   return (
     <div className="relative h-screen w-screen">
       {/* Toggle Button */}
@@ -992,27 +1043,27 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       )}
 
       {/* Map Controls */}
-      <div className="absolute top-20 right-5 flex flex-col gap-2 z-10">
+      <div className="fixed bottom-20 right-5 flex flex-col gap-2 z-50">
         <div className="bg-white rounded-lg shadow-md flex flex-col">
-          <button onClick={() => map.current?.zoomIn()} className="p-2 hover:bg-gray-100 rounded-t-lg flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <button onClick={handleZoomIn} className="p-2 hover:bg-gray-100 rounded-t-lg flex items-center justify-center text-gray-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
-          <div className="border-t"></div>
-          <button onClick={() => map.current?.zoomOut()} className="p-2 hover:bg-gray-100 rounded-b-lg flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <div className="border-t border-gray-200"></div>
+          <button onClick={handleZoomOut} className="p-2 hover:bg-gray-100 rounded-b-lg flex items-center justify-center text-gray-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 12h14" />
             </svg>
           </button>
         </div>
 
         <button
-          onClick={() => map.current?.setStyle('mapbox://styles/saber5180/cm9737hvv00en01qzefcd57b7')}
-          className="bg-white p-2 rounded-lg shadow-md hover:bg-gray-100 flex items-center justify-center"
-          title="Changer le style de la carte"
+          onClick={toggleMapStyle}
+          className="bg-white p-2 rounded-lg shadow-md hover:bg-gray-100 flex items-center justify-center text-gray-700"
+          title={is3DView ? 'Passer en vue 2D' : 'Passer en vue 3D'}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
             <path d="M7.5 4.21l4.5 2.6M7.5 19.79V14.6L3 12M16.5 4.21V9.4L21 12M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
           </svg>

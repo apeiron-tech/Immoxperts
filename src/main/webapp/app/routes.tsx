@@ -47,17 +47,15 @@ const AppRoutes = () => {
     <div className="view-routes">
       <ErrorBoundaryRoutes>
         <Route index element={<Home />} />
-        {/*<Route path="login" element={<Login />} />*/}
-        {/*<Route path="logout" element={<Logout />} />*/}
+        {/* <Route path="login" element={<Login />} />*/}
+        {/* <Route path="logout" element={<Logout />} />*/}
         <Route
           path="/PrixImmobliers"
           element={
             <div className="flex flex-col h-full">
               <SearchBar onSearch={setSearchParams} />
-              <div className="flex-1 container   pb-4 pt-2 ">
-                <div className="flex h-full shadow-lg border border-gray-200 rounded-lg overflow-hidden bg-white">
-                  <PropertyList searchParams={searchParams} />
-                </div>
+              <div className="flex h-full shadow-lg border border-gray-200 rounded-lg overflow-hidden bg-white">
+                <PropertyList searchParams={searchParams} />
               </div>
             </div>
           }

@@ -8,10 +8,10 @@ import Password from './password/password';
 
 const AccountRoutes = () => (
   <div>
-    {/*<ErrorBoundaryRoutes>*/}
+    {/* <ErrorBoundaryRoutes>*/}
     {/*  <Route path="settings" element={<Settings />} />*/}
     {/*  <Route path="password" element={<Password />} />*/}
-    {/*</ErrorBoundaryRoutes>*/}
+    {/* </ErrorBoundaryRoutes>*/}
   </div>
 );
 

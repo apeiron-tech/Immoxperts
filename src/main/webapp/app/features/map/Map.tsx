@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import axios from 'axios';
-
+import './styles/mapbox-popup.css';
 mapboxgl.accessToken = 'pk.eyJ1Ijoic2FiZXI1MTgwIiwiYSI6ImNtOGhqcWs4cTAybnEycXNiaHl6eWgwcjAifQ.8C8bv3cwz9skLXv-y6U3FA';
 
 interface LocationInfo {
@@ -210,7 +210,7 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
       });
 
       if (features.length > 0) {
-        console.log('Clicked feature:', features[0].properties);
+        console.warn('Clicked feature:', features[0].properties);
         // Add your click handling logic here
       }
     });
@@ -223,8 +223,8 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
       mapRef.current.getCanvas().style.cursor = '';
     });
     mapRef.current.on('load', () => {
-      console.log('Available sources:', mapRef.current.getStyle().sources);
-      console.log('Available layers:', mapRef.current.getStyle().layers);
+      console.warn('Available sources:', mapRef.current.getStyle().sources);
+      console.warn('Available layers:', mapRef.current.getStyle().layers);
     });
   }, []);
   // Handle 3D mode changes separately
@@ -521,7 +521,7 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
   const parseAddress = address => {
     try {
       // Enhanced regex to better capture French address formats
-      const regex = /(\d+)\s+([A-Za-z\.]{1,}\.?)\s+([A-Za-z\s\-]+)/i;
+      const regex = /(\d+)\s+([A-Za-z.]{1,}\.?)\s+([A-Za-z\s-]+)/i;
       const match = address.match(regex);
 
       if (match && match.length >= 4) {
@@ -548,7 +548,7 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
 
         return {
           novoie: parseInt(match[1], 10),
-          typvoie: typvoie,
+          typvoie,
           voie: match[3].trim().toUpperCase(),
         };
       }
@@ -561,7 +561,7 @@ const Map: React.FC<MapProps> = ({ onPropertiesFound }) => {
 
   const searchMutations = async addressParts => {
     try {
-      console.log('Searching for:', addressParts);
+      console.warn('Searching for:', addressParts);
       const response = await axios.get('http://localhost:8080/api/mutations/search', {
         params: { ...addressParts }, // Parameters without accents
       });

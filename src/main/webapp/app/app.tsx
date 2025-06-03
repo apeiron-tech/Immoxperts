@@ -27,11 +27,11 @@ const MainContent = () => {
         <Header />
       </div>
 
-      <main className={`flex-grow pt-20 ${hideFooter ? 'h-screen overflow-hidden' : 'mb-10'}`}>
+      <div className={`flex-grow pt-20 ${hideFooter ? 'h-screen overflow-hidden' : 'mb-10'}`}>
         <ErrorBoundary>
           <AppRoutes />
         </ErrorBoundary>
-      </main>
+      </div>
       {!hideFooter && <Footer />}
     </div>
   );
