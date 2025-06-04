@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import './styles/mapbox-popup.css';
 import axios from 'axios';
 import { TrendingUp } from 'lucide-react';
+import { API_ENDPOINTS } from 'app/config/api.config';
 
 mapboxgl.accessToken = 'pk.eyJ1Ijoic2FiZXI1MTgwIiwiYSI6ImNtOGhqcWs4cTAybnEycXNiaHl6eWgwcjAifQ.8C8bv3cwz9skLXv-y6U3FA';
 
@@ -149,7 +150,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
     const fetchMutations = async (street: string, commune: string): Promise<void> => {
       try {
-        const response = await axios.get('http://localhost:8080/api/mutations/by-street-and-commune', {
+        const response = await axios.get(API_ENDPOINTS.mutations.byStreetAndCommune, {
           params: {
             street: encodeURIComponent(street),
             commune: encodeURIComponent(commune),
@@ -234,7 +235,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       const voie = streetName;
 
       // Make the search request
-      const response = await fetch(`http://localhost:8080/api/mutations/search?novoie=${novoie}&voie=${encodeURIComponent(voie)}`);
+      const response = await fetch(`${API_ENDPOINTS.mutations.search}?novoie=${novoie}&voie=${encodeURIComponent(voie)}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -830,10 +831,18 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         zoom: 17,
       });
 
-      // Remove existing marker if any
-      if (map.current.getSource('selected-point')) {
+      // Remove existing layers and sources
+      if (map.current.getLayer('selected-point-layer')) {
         map.current.removeLayer('selected-point-layer');
+      }
+      if (map.current.getSource('selected-point')) {
         map.current.removeSource('selected-point');
+      }
+      if (map.current.getLayer('selected-address-circle')) {
+        map.current.removeLayer('selected-address-circle');
+      }
+      if (map.current.getSource('selected-address-circle')) {
+        map.current.removeSource('selected-address-circle');
       }
 
       // Add new marker
@@ -942,7 +951,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
       try {
         setIsLoading(true);
-        const response = await axios.get(`http://localhost:8080/api/mutations/statistics/${currentCity.toLowerCase()}`);
+        const response = await axios.get(`${API_ENDPOINTS.mutations.statistics}/${currentCity.toLowerCase()}`);
         setPropertyStats(response.data);
       } catch (err) {
         console.error('Erreur:', err);

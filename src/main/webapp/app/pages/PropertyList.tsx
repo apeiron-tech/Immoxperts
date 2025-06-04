@@ -6,6 +6,7 @@ import mapboxgl from 'mapbox-gl';
 import PropertyCard from 'app/features/property/PropertyCard';
 import PropertyMap from 'app/features/map/PropertyMap';
 import PropertyCardClick from 'app/features/property/PropertyCardClick';
+import { API_ENDPOINTS } from 'app/config/api.config';
 
 interface Property {
   id: number;
@@ -169,7 +170,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
       setCurrentCity(communeName && streetName ? `${communeName}, ${streetName}` : communeName || streetName);
 
       if (communeName && streetName) {
-        const apiResponse = await axios.get('http://localhost:8080/api/mutations/mutations/by-street-and-commune', {
+        const apiResponse = await axios.get(API_ENDPOINTS.mutations.byStreetAndCommune, {
           params: {
             street: streetName,
             commune: communeName,
@@ -242,7 +243,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
                     <div className="flex items-start justify-between">
                       <div className="space-y-2 p-2 w-full">
                         <motion.div
-                          key={currentIndex}
+                          key={`similar-property-${currentIndex}-${similarProperties[currentIndex]?.id || 'none'}`}
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: -20 }}
