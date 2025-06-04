@@ -829,6 +829,77 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         center: coordinates,
         zoom: 17,
       });
+
+      // Remove existing marker if any
+      if (map.current.getSource('selected-point')) {
+        map.current.removeLayer('selected-point-layer');
+        map.current.removeSource('selected-point');
+      }
+
+      // Add new marker
+      map.current.addSource('selected-point', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates,
+          },
+          properties: {},
+        },
+      });
+
+      map.current.addLayer({
+        id: 'selected-point-layer',
+        type: 'circle',
+        source: 'selected-point',
+        paint: {
+          'circle-radius': 8,
+          'circle-color': '#22C55E',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+        },
+      });
+
+      // Add hover popup
+      map.current.on('mouseenter', 'selected-point-layer', () => {
+        map.current.getCanvas().style.cursor = 'pointer';
+      });
+
+      map.current.on('mouseleave', 'selected-point-layer', () => {
+        map.current.getCanvas().style.cursor = '';
+      });
+
+      map.current.on('mouseenter', 'selected-point-layer', () => {
+        if (hoverPopup.current) {
+          hoverPopup.current.remove();
+        }
+
+        hoverPopup.current = new mapboxgl.Popup({
+          offset: 12,
+          closeOnClick: false,
+          closeButton: false,
+          className: 'hover-popup',
+        })
+          .setLngLat(coordinates)
+          .addTo(map.current);
+
+        createHoverPopupContent({
+          numero: searchParams.numero,
+          nomVoie: searchParams.nomVoie,
+        }).then(content => {
+          if (hoverPopup.current) {
+            hoverPopup.current.setDOMContent(content);
+          }
+        });
+      });
+
+      map.current.on('mouseleave', 'selected-point-layer', () => {
+        if (hoverPopup.current && !popup.current) {
+          hoverPopup.current.remove();
+          hoverPopup.current = null;
+        }
+      });
     }
   }, [coordinates]);
 

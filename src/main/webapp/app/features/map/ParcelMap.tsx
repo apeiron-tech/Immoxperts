@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
 import './styles/mapbox-popup.css';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 mapboxgl.accessToken = 'pk.eyJ1Ijoic2FiZXI1MTgwIiwiYSI6ImNtOGhqcWs4cTAybnEycXNiaHl6eWgwcjAifQ.8C8bv3cwz9skLXv-y6U3FA';
 
@@ -46,15 +46,15 @@ const AddressHighlighter: React.FC = () => {
               type: 'Feature',
               geometry: {
                 type: 'Point',
-                coordinates: coordinates,
+                coordinates,
               },
               properties: {},
             },
           },
           paint: {
             'circle-radius': 25,
-            'circle-color': 'rgba(255, 0, 0, 0.3)',
-            'circle-stroke-color': 'rgba(255, 0, 0, 0.8)',
+            'circle-color': 'rgba(0, 255, 0, 0.3)',
+            'circle-stroke-color': 'rgba(0, 255, 0, 0.8)',
             'circle-stroke-width': 2,
           },
         });
@@ -65,7 +65,7 @@ const AddressHighlighter: React.FC = () => {
           zoom: 18,
         });
       } else {
-        console.log('Adresse non trouvée dans la couche');
+        console.warn('Adresse non trouvée dans la couche');
       }
     });
 

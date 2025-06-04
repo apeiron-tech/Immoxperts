@@ -234,7 +234,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
               initial="hidden"
               animate="visible"
               exit="exit"
-              key="property-details"
+              key={`property-details-${selectedProperty.id}`}
             >
               <div className="w-full h-full overflow-y-auto custom-scroll">
                 <div className="p-4 space-y-4">
@@ -306,7 +306,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
               initial="hidden"
               animate="visible"
               exit="exit"
-              key="default-content"
+              key={`address-details-${currentAddress.address}`}
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -343,7 +343,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
               initial="hidden"
               animate="visible"
               exit="exit"
-              key="property-cards"
+              key="property-list"
             >
               <h2 className="text-sm font-semibold mb-3">Transactions récentes</h2>
               <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-200px)] pr-1 custom-scroll">
