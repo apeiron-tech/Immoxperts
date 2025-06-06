@@ -296,7 +296,14 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     try {
       setLoading(true);
       setError(null);
-      const formattedProperties = await fetchAddressData(properties);
+
+      // Check cache first
+      const cacheKey = getMutationCacheKey(properties);
+      let formattedProperties = mutationCache.current.get(cacheKey);
+
+      if (!formattedProperties) {
+        formattedProperties = await fetchAddressData(properties);
+      }
 
       if (formattedProperties.length > 0) {
         onPropertySelect?.(formattedProperties[0]);
@@ -516,7 +523,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       center: [8.73692, 41.9281],
       zoom: 17,
       attributionControl: false,
-      minZoom: 13.5, // Limit zoom out to ~1km
+      minZoom: 13.5,
     });
 
     // Create scale elements first
@@ -571,7 +578,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
       if (!isNaN(widthMeters)) {
         if (widthMeters > 1000) {
-          // Force exactly 1km at minimum zoom
           if (zoom <= 13.5) {
             displayText = '1km';
             displayWidth = 100;
@@ -594,7 +600,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     map.current.addControl(
       {
         onAdd() {
-          // Initial update
           updateScale();
           return scaleContainer;
         },
@@ -606,40 +611,31 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     );
 
     // Set up event listeners
+    const moveHandler = () => {
+      const center = map.current?.getCenter();
+      if (center && typeof onMapMove === 'function') {
+        onMapMove([center.lng, center.lat]);
+      }
+    };
+
     map.current.on('move', updateScale);
     map.current.on('zoom', updateScale);
+    map.current.on('moveend', moveHandler);
 
     // Add wheel zoom limits
-    map.current.on('wheel', e => {
-      const currentZoom = map.current.getZoom();
-      if (e.originalEvent.deltaY > 0 && currentZoom <= 13.5) {
-        e.preventDefault();
+    const wheelHandler = (e: mapboxgl.MapWheelEvent) => {
+      const currentZoom = map.current?.getZoom();
+      if (e.originalEvent.deltaY > 0 && currentZoom && currentZoom <= 13.5) {
+        e.originalEvent.preventDefault();
       }
-    });
+    };
+
+    map.current.on('wheel', wheelHandler);
 
     // Configure scroll zoom
     map.current.scrollZoom.setWheelZoomRate(0.5);
 
     // Rest of your existing map setup...
-    map.current.on('load', () => {
-      // Your existing layer setup
-      updateScale(); // Additional initial update after load
-    });
-
-    // Rest of your existing map setup...
-    map.current.on('moveend', () => {
-      const center = map.current.getCenter();
-      if (typeof onMapMove === 'function') {
-        onMapMove([center.lng, center.lat]);
-      }
-    });
-    map.current.on('moveend', () => {
-      const center = map.current.getCenter();
-      if (typeof onMapMove === 'function') {
-        onMapMove([center.lng, center.lat]);
-      }
-    });
-
     map.current.on('load', () => {
       map.current.addSource('parcels-source', {
         type: 'vector',
@@ -671,9 +667,62 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         },
       });
 
-      // Gestion du survol
-      map.current.on('mousemove', LAYER_ID, e => {
-        if (e.features.length > 0) {
+      // Get visible layers
+      const layers = map.current.getStyle().layers;
+      const visibleLayers = layers.filter(layer => layer.type === 'circle' && layer.layout?.visibility !== 'none');
+      setActiveLayers(visibleLayers.map(l => l.id));
+
+      // Add event handlers for each visible layer
+      visibleLayers.forEach(({ id: layerId }) => {
+        const clickHandler = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+          popup.current?.remove();
+
+          if (e.features?.length) {
+            const feature = e.features[0];
+            const featureId = feature.id;
+
+            if (selectedId.current) {
+              map.current.setFeatureState(
+                {
+                  source: 'parcels-source',
+                  sourceLayer: SOURCE_LAYER,
+                  id: selectedId.current,
+                },
+                { selected: false },
+              );
+            }
+
+            selectedId.current = featureId;
+            map.current.setFeatureState(
+              {
+                source: 'parcels-source',
+                sourceLayer: SOURCE_LAYER,
+                id: featureId,
+              },
+              { selected: true },
+            );
+
+            if (e.features.length === 1) {
+              handleAddressClick({
+                numero: feature.properties?.numero,
+                nomVoie: feature.properties?.nomVoie,
+              });
+            } else {
+              popup.current = new mapboxgl.Popup({
+                offset: 25,
+                closeOnClick: true,
+                className: 'multi-address-popup',
+              })
+                .setLngLat(e.lngLat)
+                .setDOMContent(createPopupContent(e.features))
+                .addTo(map.current);
+            }
+          }
+        };
+
+        const mouseEnterHandler = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+          if (!e.features?.length) return;
+
           const feature = e.features[0];
           const featureId = feature.id;
 
@@ -697,90 +746,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
             },
             { hover: true },
           );
-        }
-      });
-
-      map.current.on('click', LAYER_ID, e => {
-        if (e.features.length > 0) {
-          const feature = e.features[0];
-          const featureId = feature.id;
-
-          if (selectedId.current) {
-            map.current.setFeatureState(
-              {
-                source: 'parcels-source',
-                sourceLayer: SOURCE_LAYER,
-                id: selectedId.current,
-              },
-              { selected: false },
-            );
-          }
-
-          selectedId.current = featureId;
-          map.current.setFeatureState(
-            {
-              source: 'parcels-source',
-              sourceLayer: SOURCE_LAYER,
-              id: featureId,
-            },
-            { selected: true },
-          );
-        }
-      });
-
-      map.current.on('mouseleave', LAYER_ID, () => {
-        if (hoveredId.current) {
-          map.current.setFeatureState(
-            {
-              source: 'parcels-source',
-              sourceLayer: SOURCE_LAYER,
-              id: hoveredId.current,
-            },
-            { hover: false },
-          );
-          hoveredId.current = null;
-        }
-      });
-    });
-    map.current.on('load', () => {
-      const layers = map.current.getStyle().layers;
-      const visibleLayers = layers.filter(layer => layer.type === 'circle' && layer.layout?.visibility !== 'none');
-
-      setActiveLayers(visibleLayers.map(l => l.id));
-
-      visibleLayers.forEach(({ id: layerId }) => {
-        map.current.on('click', layerId, e => {
-          popup.current?.remove();
-
-          if (e.features.length > 0) {
-            if (e.features.length === 1) {
-              // Un seul résultat - traitement direct
-              const feature = e.features[0];
-              handleAddressClick({
-                numero: feature.properties.numero,
-                nomVoie: feature.properties.nomVoie,
-              });
-            } else {
-              // Multiple résultats - afficher le popup
-              popup.current = new mapboxgl.Popup({
-                offset: 25,
-                closeOnClick: true,
-                className: 'multi-address-popup',
-              })
-                .setLngLat(e.lngLat)
-                .setDOMContent(createPopupContent(e.features))
-                .addTo(map.current);
-            }
-          }
-        });
-        map.current.on('mouseenter', layerId, e => {
-          if (!e.features || e.features.length === 0) return;
 
           map.current.getCanvas().style.cursor = 'pointer';
-
           popup.current?.remove();
           popup.current = null;
-
           hoverPopup.current?.remove();
 
           hoverPopup.current = new mapboxgl.Popup({
@@ -792,8 +761,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
             .setLngLat(e.lngLat)
             .addTo(map.current);
 
-          const feature = e.features[0];
-
           if (feature.properties) {
             createHoverPopupContent({
               numero: feature.properties.numero,
@@ -804,21 +771,51 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
               }
             });
           }
-        });
+        };
 
-        map.current.on('mouseleave', layerId, () => {
+        const mouseLeaveHandler = () => {
+          if (hoveredId.current) {
+            map.current.setFeatureState(
+              {
+                source: 'parcels-source',
+                sourceLayer: SOURCE_LAYER,
+                id: hoveredId.current,
+              },
+              { hover: false },
+            );
+            hoveredId.current = null;
+          }
+
           map.current.getCanvas().style.cursor = '';
-
           if (hoverPopup.current && !popup.current) {
             hoverPopup.current.remove();
             hoverPopup.current = null;
           }
-        });
+        };
+
+        map.current.on('click', layerId, clickHandler);
+        map.current.on('mouseenter', layerId, mouseEnterHandler);
+        map.current.on('mouseleave', layerId, mouseLeaveHandler);
+
+        // Store handlers for cleanup
+        return () => {
+          if (map.current) {
+            map.current.off('click', layerId, clickHandler);
+            map.current.off('mouseenter', layerId, mouseEnterHandler);
+            map.current.off('mouseleave', layerId, mouseLeaveHandler);
+          }
+        };
       });
     });
 
     return () => {
-      map.current?.remove();
+      if (map.current) {
+        map.current.off('move', updateScale);
+        map.current.off('zoom', updateScale);
+        map.current.off('moveend', moveHandler);
+        map.current.off('wheel', wheelHandler);
+        map.current.remove();
+      }
       popup.current?.remove();
       hoverPopup.current?.remove();
     };
