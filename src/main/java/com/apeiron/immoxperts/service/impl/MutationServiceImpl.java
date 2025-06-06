@@ -201,56 +201,56 @@ public class MutationServiceImpl implements MutationService {
             voieRestante = foundVoieRestante;
         }
 
-        // Use Set to avoid duplicates more efficiently
+        // Use a Set to ensure uniqueness of mutations
         Set<Mutation> uniqueMutations = new HashSet<>();
-        int pageNumber = 0;
-        final int pageSize = 1000;
         boolean hasMorePages = true;
+        int pageNumber = 0;
+        int pageSize = 100;
 
         while (hasMorePages) {
             Pageable pageable = PageRequest.of(pageNumber, pageSize);
-
-            // Build predicates more efficiently
             Page<Adresse> addressPage = adresseRepository.findAll(
                 (root, query, cb) -> {
-                    List<Predicate> predicates = new ArrayList<>(4); // Pre-allocate with expected size
+                    List<Predicate> predicates = new ArrayList<>();
 
                     if (novoie != null) {
                         predicates.add(cb.equal(root.get("novoie"), novoie));
                     }
-
                     if (btq != null) {
-                        predicates.add(cb.equal(cb.upper(root.get("btq")), btq));
+                        predicates.add(cb.equal(root.get("btq"), btq));
                     }
-
                     if (typvoie != null) {
                         predicates.add(cb.equal(cb.upper(root.get("typvoie")), typvoie));
                     }
-
-                    if (voieRestante != null) {
+                    if (voieRestante != null && !voieRestante.isEmpty()) {
                         predicates.add(cb.like(cb.upper(root.get("voie")), "%" + voieRestante + "%"));
                     }
 
-                    return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
+                    return cb.and(predicates.toArray(new Predicate[0]));
                 },
                 pageable
             );
 
-            // Process addresses in a single pass
+            // Process addresses and collect unique mutations
             for (Adresse adresse : addressPage.getContent()) {
+                // Add mutations from adresseLocals
                 if (adresse.getAdresseLocals() != null) {
-                    for (AdresseLocal al : adresse.getAdresseLocals()) {
-                        if (al.getMutation() != null) {
-                            uniqueMutations.add(al.getMutation());
-                        }
-                    }
+                    adresse
+                        .getAdresseLocals()
+                        .stream()
+                        .map(AdresseLocal::getMutation)
+                        .filter(Objects::nonNull)
+                        .forEach(uniqueMutations::add);
                 }
+
+                // Add mutations from adresseDispoparcs
                 if (adresse.getAdresseDispoparcs() != null) {
-                    for (AdresseDispoparc adp : adresse.getAdresseDispoparcs()) {
-                        if (adp.getMutation() != null) {
-                            uniqueMutations.add(adp.getMutation());
-                        }
-                    }
+                    adresse
+                        .getAdresseDispoparcs()
+                        .stream()
+                        .map(AdresseDispoparc::getMutation)
+                        .filter(Objects::nonNull)
+                        .forEach(uniqueMutations::add);
                 }
             }
 
@@ -259,12 +259,7 @@ public class MutationServiceImpl implements MutationService {
         }
 
         // Convert to DTOs
-        List<MutationDTO> result = new ArrayList<>(uniqueMutations.size());
-        for (Mutation mutation : uniqueMutations) {
-            result.add(convertToDTO(mutation));
-        }
-
-        return result;
+        return uniqueMutations.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     @Cacheable(value = "streetCommuneCache", key = "#street + '|' + #commune", unless = "#result == null || #result.isEmpty()")

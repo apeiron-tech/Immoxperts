@@ -50,6 +50,7 @@ public class CacheConfiguration {
             createCache(cm, com.apeiron.immoxperts.domain.Mutation.class.getName() + ".adresseLocals");
             createCache(cm, com.apeiron.immoxperts.domain.Mutation.class.getName() + ".adresseDispoparcs");
             createCache(cm, com.apeiron.immoxperts.domain.Mutation.class.getName() + ".streetCommune");
+            createCache(cm, "streetCommuneCache");
             createCache(cm, com.apeiron.immoxperts.domain.Adresse.class.getName());
             createCache(cm, com.apeiron.immoxperts.domain.Adresse.class.getName() + ".adresseLocals");
             createCache(cm, com.apeiron.immoxperts.domain.Adresse.class.getName() + ".adresseDispoparcs");
