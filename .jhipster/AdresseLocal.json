@@ -1,0 +1,23 @@
+{
+  "annotations": {
+    "changelogDate": "20250526190659"
+  },
+  "applications": "*",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "coddep",
+      "fieldType": "String"
+    }
+  ],
+  "name": "AdresseLocal",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

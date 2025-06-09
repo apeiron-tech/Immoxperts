@@ -1,0 +1,27 @@
+{
+  "annotations": {
+    "changelogDate": "20250526190658"
+  },
+  "applications": "*",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "iddispopar",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "dcntagri",
+      "fieldType": "BigDecimal"
+    },
+    {
+      "fieldName": "dcntsol",
+      "fieldType": "BigDecimal"
+    }
+  ],
+  "name": "DispositionParcelle",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

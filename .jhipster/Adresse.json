@@ -1,0 +1,64 @@
+{
+  "annotations": {
+    "changelogDate": "20250526190655"
+  },
+  "applications": "*",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "idadresse",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "novoie",
+      "fieldType": "Integer"
+    },
+    {
+      "fieldName": "btq",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "typvoie",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "codvoie",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "voie",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "codepostal",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "commune",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "coddep",
+      "fieldType": "String"
+    }
+  ],
+  "name": "Adresse",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityName": "adresseLocal",
+      "relationshipName": "adresseLocals",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-many"
+    },
+    {
+      "otherEntityName": "adresseDispoparc",
+      "relationshipName": "adresseDispoparcs",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-many"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

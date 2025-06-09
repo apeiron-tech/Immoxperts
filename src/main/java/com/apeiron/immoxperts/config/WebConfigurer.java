@@ -90,6 +90,17 @@ public class WebConfigurer implements ServletContextInitializer, WebServerFactor
             source.registerCorsConfiguration("/management/**", config);
             source.registerCorsConfiguration("/v3/api-docs", config);
             source.registerCorsConfiguration("/swagger-ui/**", config);
+
+            // Add Mapbox CORS configuration
+            CorsConfiguration mapboxConfig = new CorsConfiguration();
+            mapboxConfig.addAllowedOrigin("https://mapbox.com");
+            mapboxConfig.addAllowedOrigin("https://events.mapbox.com");
+            mapboxConfig.addAllowedMethod("GET");
+            mapboxConfig.addAllowedMethod("POST");
+            mapboxConfig.addAllowedMethod("PUT");
+            mapboxConfig.addAllowedMethod("DELETE");
+            mapboxConfig.addAllowedMethod("OPTIONS");
+            source.registerCorsConfiguration("/**", mapboxConfig);
         }
         return new CorsFilter(source);
     }

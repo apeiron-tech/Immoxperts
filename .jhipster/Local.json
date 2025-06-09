@@ -1,0 +1,35 @@
+{
+  "annotations": {
+    "changelogDate": "20250526190656"
+  },
+  "applications": "*",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "iddispoloc",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "idmutation",
+      "fieldType": "Integer"
+    },
+    {
+      "fieldName": "sbati",
+      "fieldType": "BigDecimal"
+    },
+    {
+      "fieldName": "libtyploc",
+      "fieldType": "String"
+    },
+    {
+      "fieldName": "nbpprinc",
+      "fieldType": "Integer"
+    }
+  ],
+  "name": "Local",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

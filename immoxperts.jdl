@@ -1,0 +1,61 @@
+entity Mutation {
+  idmutation Integer required
+  datemut Instant
+  valeurfonc BigDecimal
+  idnatmut Integer
+  coddep String
+  vefa Boolean
+  sterr BigDecimal
+}
+
+entity Adresse {
+  idadresse Integer required
+  novoie Integer
+  btq String
+  typvoie String
+  codvoie String
+  voie String
+  codepostal String
+  commune String
+  coddep String
+}
+
+entity Local {
+  iddispoloc Integer required
+  idmutation Integer
+  sbati BigDecimal
+  libtyploc String
+  nbpprinc Integer
+}
+
+entity Lot {
+  iddispolot Integer required
+  scarrez BigDecimal
+}
+
+entity DispositionParcelle {
+  iddispopar Integer required
+  dcntagri BigDecimal
+  dcntsol BigDecimal
+}
+
+entity AdresseLocal {
+  id Integer required
+  coddep String
+}
+
+entity AdresseDispoparc {
+  id Integer required
+}
+
+// Unidirectional OneToMany relationships
+relationship OneToMany {
+  Mutation{adresseLocals} to AdresseLocal
+  Mutation{adresseDispoparcs} to AdresseDispoparc
+  Adresse{adresseLocals} to AdresseLocal
+  Adresse{adresseDispoparcs} to AdresseDispoparc
+}
+
+dto * with mapstruct
+service * with serviceImpl
+paginate * with pagination
