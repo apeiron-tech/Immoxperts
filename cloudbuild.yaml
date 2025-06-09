@@ -1,0 +1,61 @@
+# Google Cloud Build script for Cloud Teleport
+
+steps:
+  ###########################################################
+  # Step 1: Retrieve the cached .m2 directory from GCS
+  ###########################################################
+  - name: 'gcr.io/cloud-builders/gsutil'
+    args:
+      - '-m'
+      - 'rsync'
+      - '-r'
+      - 'gs://${_BUCKET}/cache/.m2'
+      - '/cache/.m2'
+    volumes:
+      - path: '/cache/.m2'
+        name: 'm2_cache'
+
+  ###########################################################
+  # Step 2a: Run Python script (example operation with Python 3)
+  ###########################################################
+  - name: 'python:3.9'
+    entrypoint: python
+    args: ["-c", "print('Running Python script before Maven build')"]
+
+  ###########################################################
+  # Step 2b: Build, Test, and Verify using Maven
+  ###########################################################
+  - name: 'maven:3.8.3-openjdk-17'
+    entrypoint: 'mvn'
+    args: ["-D", "skipTests", "-P", "prod", "clean", "package"]
+    volumes:
+      - path: '/cache/.m2'
+        name: 'm2_cache'
+    env:
+      - MAVEN_OPTS=-Dmaven.repo.local=/cache/.m2
+
+  ###########################################################
+  # Step 3: Update cached .m2 directory on GCS with any
+  #         additional dependencies downloaded during the
+  #         build.
+  ###########################################################
+  - name: 'gcr.io/cloud-builders/gsutil'
+    args:
+      - '-m'
+      - 'rsync'
+      - '-r'
+      - '/cache/.m2'
+      - 'gs://${_BUCKET}/cache/.m2/'
+    volumes:
+      - path: '/cache/.m2'
+        name: 'm2_cache'
+
+
+artifacts:
+  # Upload the jars created during the build.
+  objects:
+    location: 'gs://${_BUCKET}/artifacts/bcar-backoffice/$BRANCH_NAME/$REVISION_ID'
+    paths: ['target/*.jar']
+
+logsBucket: 'gs://immoxperts-devops'
+timeout: '1600s'
