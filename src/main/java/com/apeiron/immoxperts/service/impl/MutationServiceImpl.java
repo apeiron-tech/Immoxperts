@@ -201,8 +201,8 @@ public class MutationServiceImpl implements MutationService {
             voieRestante = foundVoieRestante;
         }
 
-        // Use a Set to ensure uniqueness of mutations
-        Set<Mutation> uniqueMutations = new HashSet<>();
+        // Use a Map to ensure uniqueness of mutations by ID
+        Map<Integer, Mutation> uniqueMutations = new HashMap<>();
         boolean hasMorePages = true;
         int pageNumber = 0;
         int pageSize = 100;
@@ -240,7 +240,7 @@ public class MutationServiceImpl implements MutationService {
                         .stream()
                         .map(AdresseLocal::getMutation)
                         .filter(Objects::nonNull)
-                        .forEach(uniqueMutations::add);
+                        .forEach(mutation -> uniqueMutations.put(mutation.getIdmutation(), mutation));
                 }
 
                 // Add mutations from adresseDispoparcs
@@ -250,7 +250,7 @@ public class MutationServiceImpl implements MutationService {
                         .stream()
                         .map(AdresseDispoparc::getMutation)
                         .filter(Objects::nonNull)
-                        .forEach(uniqueMutations::add);
+                        .forEach(mutation -> uniqueMutations.put(mutation.getIdmutation(), mutation));
                 }
             }
 
@@ -259,7 +259,7 @@ public class MutationServiceImpl implements MutationService {
         }
 
         // Convert to DTOs
-        return uniqueMutations.stream().map(this::convertToDTO).collect(Collectors.toList());
+        return uniqueMutations.values().stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     @Cacheable(value = "streetCommuneCache", key = "#street + '|' + #commune", unless = "#result == null || #result.isEmpty()")

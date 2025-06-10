@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import './styles/mapbox-popup.css';
 import axios from 'axios';
 import { TrendingUp } from 'lucide-react';
 import { API_ENDPOINTS } from 'app/config/api.config';
+import debounce from 'lodash/debounce';
 
 mapboxgl.accessToken = 'pk.eyJ1Ijoic2FiZXI1MTgwIiwiYSI6ImNtOGhqcWs4cTAybnEycXNiaHl6eWgwcjAifQ.8C8bv3cwz9skLXv-y6U3FA';
 
@@ -78,6 +79,8 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   const [activePropertyType, setActivePropertyType] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const statsCache = useRef<Map<string, { data: PropertyStats[]; timestamp: number }>>(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache duration
 
   const hoveredId = useRef<string | number | null>(null);
   const selectedId = useRef<string | number | null>(null);
@@ -87,6 +90,11 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   const LAYER_ID = 'parcels-interactive-layer';
 
   const typeNames: string[] = ['Appartement', 'Maison', 'Local', 'Terrain', 'Bien Multiple'];
+
+  // Formatter les nombres pour l'affichage
+  const formatNumber = (num: number): string => {
+    return new Intl.NumberFormat('fr-FR').format(num);
+  };
 
   const getShortTypeName = typeBien => {
     const names = {
@@ -98,6 +106,179 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     };
     return names[typeBien] || typeBien.split(' ')[0];
   };
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const pendingRequestsRef = useRef<Map<string, { promise: Promise<any>; controller: AbortController }>>(new Map());
+
+  // Cancel all pending requests
+  const cancelPendingRequests = useCallback(() => {
+    pendingRequestsRef.current.forEach(({ controller }) => {
+      controller.abort();
+    });
+    pendingRequestsRef.current.clear();
+  }, []);
+
+  // Create a new abort controller for each request
+  const createAbortController = useCallback(() => {
+    const controller = new AbortController();
+    return controller;
+  }, []);
+
+  // Create a unique key for each request
+  const createRequestKey = (type: 'address' | 'stats', params: any): string => {
+    if (type === 'address') {
+      const { numero: addressNumero, nomVoie: addressNomVoie } = params;
+      return `address_${addressNumero}_${addressNomVoie}`;
+    }
+    return `stats_${params}`;
+  };
+
+  // Deduplicate requests
+  const deduplicateRequest = async <T,>(
+    type: 'address' | 'stats',
+    params: any,
+    requestFn: (controller: AbortController) => Promise<T>,
+  ): Promise<T> => {
+    const requestKey = createRequestKey(type, params);
+
+    // Check if there's already a pending request
+    const existingRequest = pendingRequestsRef.current.get(requestKey);
+    if (existingRequest) {
+      return existingRequest.promise;
+    }
+
+    // Create new request
+    const controller = createAbortController();
+    const promise = requestFn(controller);
+
+    pendingRequestsRef.current.set(requestKey, { promise, controller });
+
+    try {
+      const result = await promise;
+      return result;
+    } finally {
+      pendingRequestsRef.current.delete(requestKey);
+    }
+  };
+
+  // Optimized fetchAddressData with deduplication
+  const fetchAddressData = async (properties: SearchParams): Promise<Property[]> => {
+    return deduplicateRequest('address', properties, async controller => {
+      try {
+        const streetNumber = normalizeSearchParams(properties.numero?.toString() || '');
+        const streetName = normalizeSearchParams(properties.nomVoie || '');
+
+        if (!streetNumber || !streetName) {
+          throw new Error("Données d'adresse incomplètes");
+        }
+
+        const cacheKey = getMutationCacheKey(properties);
+        const cachedData = mutationCache.current.get(cacheKey);
+
+        if (cachedData) {
+          return cachedData;
+        }
+
+        const novoie = streetNumber.replace(/\D/g, '');
+        const voie = streetName;
+
+        const response = await fetch(`${API_ENDPOINTS.mutations.search}?novoie=${novoie}&voie=${encodeURIComponent(voie)}`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Erreur API: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        const formattedProperties: Property[] = data.map((mutation: any) => {
+          const surface = mutation.surface || 1;
+          const valeurfonc = mutation.valeurfonc || 0;
+          const rawAddress = mutation.addresses?.[0] || '';
+
+          const addressParts = rawAddress.split(' ');
+          const propertyNumber = addressParts.find(part => /^\d+/.test(part)) || '';
+          const streetNameParts = addressParts.filter(part => part !== propertyNumber && !/^\d{5}/.test(part));
+          const cityParts = addressParts.slice(-2);
+
+          return {
+            id: mutation.idmutation || Date.now(),
+            address: `${propertyNumber} ${streetNameParts.join(' ')}`,
+            city: cityParts.join(' '),
+            numericPrice: valeurfonc,
+            numericSurface: surface,
+            price: `${Math.round(valeurfonc).toLocaleString('fr-FR')}€`,
+            pricePerSqm: `${Math.round(valeurfonc / surface).toLocaleString('fr-FR')} €`,
+            type: (mutation.libtyplocList?.[0] || 'Terrain')
+              .replace(/\./g, '')
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, ''),
+            surface: `${surface.toLocaleString('fr-FR')} m²`,
+            rooms: mutation.nbpprincTotal ?? 'N/A',
+            soldDate: new Date(mutation.datemut).toLocaleDateString('fr-FR', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }),
+            rawData: {
+              terrain: mutation.terrain,
+              mutationType: mutation.idnatmut,
+              department: mutation.coddep,
+            },
+          };
+        });
+
+        mutationCache.current.set(cacheKey, formattedProperties);
+        return formattedProperties;
+      } catch (fetchError) {
+        if (fetchError.name === 'AbortError') {
+          return [];
+        }
+        console.error('Erreur:', fetchError);
+        return [];
+      }
+    });
+  };
+
+  // Optimized stats fetching with deduplication
+  const fetchPropertyStats = useCallback(async (city: string) => {
+    return deduplicateRequest('stats', city, async controller => {
+      const now = Date.now();
+      const cachedStats = statsCache.current.get(city);
+
+      if (cachedStats && now - cachedStats.timestamp < CACHE_DURATION) {
+        setPropertyStats(cachedStats.data);
+        return cachedStats.data;
+      }
+
+      try {
+        setIsLoading(true);
+
+        const response = await axios.get(`${API_ENDPOINTS.mutations.statistics}/${city.toLowerCase()}`, {
+          signal: controller.signal,
+        });
+
+        const stats = response.data;
+        statsCache.current.set(city, {
+          data: stats,
+          timestamp: now,
+        });
+
+        setPropertyStats(stats);
+        return stats;
+      } catch (err) {
+        if (axios.isCancel(err)) {
+          return null;
+        }
+        console.error('Erreur:', err);
+        setError('Erreur de chargement');
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const panelRef = document.querySelector('.sidebar-panel');
@@ -216,88 +397,12 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     return `${streetNumber}-${streetName}-${currentCity}`;
   };
 
-  const fetchAddressData = async (properties: SearchParams): Promise<Property[]> => {
-    try {
-      const streetNumber = normalizeSearchParams(properties.numero?.toString() || '');
-      const streetName = normalizeSearchParams(properties.nomVoie || '');
-
-      if (!streetNumber || !streetName) {
-        throw new Error("Données d'adresse incomplètes");
-      }
-
-      const cacheKey = getMutationCacheKey(properties);
-      if (mutationCache.current.has(cacheKey)) {
-        return mutationCache.current.get(cacheKey) || [];
-      }
-
-      // Extract street number and name
-      const novoie = streetNumber.replace(/\D/g, '');
-      const voie = streetName;
-
-      // Make the search request
-      const response = await fetch(`${API_ENDPOINTS.mutations.search}?novoie=${novoie}&voie=${encodeURIComponent(voie)}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Erreur API: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-
-      // Process the response data
-      const formattedProperties: Property[] = data.map((mutation: any) => {
-        const surface = mutation.surface || 1;
-        const valeurfonc = mutation.valeurfonc || 0;
-        const rawAddress = mutation.addresses?.[0] || '';
-
-        const addressParts = rawAddress.split(' ');
-        const propertyNumber = addressParts.find(part => /^\d+/.test(part)) || '';
-        const streetNameParts = addressParts.filter(part => part !== propertyNumber && !/^\d{5}/.test(part));
-        const cityParts = addressParts.slice(-2);
-
-        return {
-          id: mutation.idmutation || Date.now(),
-          address: `${propertyNumber} ${streetNameParts.join(' ')}`,
-          city: cityParts.join(' '),
-          numericPrice: valeurfonc,
-          numericSurface: surface,
-          price: `${Math.round(valeurfonc).toLocaleString('fr-FR')}€`,
-          pricePerSqm: `${Math.round(valeurfonc / surface).toLocaleString('fr-FR')} €`,
-          type: (mutation.libtyplocList?.[0] || 'Terrain')
-            .replace(/\./g, '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, ''),
-          surface: `${surface.toLocaleString('fr-FR')} m²`,
-          rooms: mutation.nbpprincTotal ?? 'N/A',
-          soldDate: new Date(mutation.datemut).toLocaleDateString('fr-FR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          }),
-          rawData: {
-            terrain: mutation.terrain,
-            mutationType: mutation.idnatmut,
-            department: mutation.coddep,
-          },
-        };
-      });
-
-      // Cache the results
-      mutationCache.current.set(cacheKey, formattedProperties);
-
-      return formattedProperties;
-    } catch (fetchError) {
-      console.error('Erreur:', fetchError);
-      return [];
-    }
-  };
-
+  // Update the handleAddressClick to use the optimized fetchAddressData
   const handleAddressClick = async (properties: SearchParams): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
 
-      // Check cache first
       const cacheKey = getMutationCacheKey(properties);
       let formattedProperties = mutationCache.current.get(cacheKey);
 
@@ -354,33 +459,40 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     loadingIndicator.innerHTML = '';
     container.appendChild(loadingIndicator);
 
-    const formattedProperties = await fetchAddressData(properties);
-    const getPropertyTypeColor = type => {
-      const colorMap = {
-        appartement: '#4F46E5',
-        'local industriel commercial ou assimile': '#8B5CF6',
-        terrain: '#60A5FA',
-        'bien multiple': '#2563EB',
-        maison: '#1E3A8A',
+    try {
+      const formattedProperties = await fetchAddressData(properties);
+      const getPropertyTypeColor = type => {
+        const colorMap = {
+          appartement: '#4F46E5',
+          'local industriel commercial ou assimile': '#8B5CF6',
+          terrain: '#60A5FA',
+          'bien multiple': '#2563EB',
+          maison: '#1E3A8A',
+        };
+        return colorMap[type?.toLowerCase()?.trim()] || '#9CA3AF';
       };
-      return colorMap[type.toLowerCase().trim()] || '#9CA3AF';
-    };
 
-    if (formattedProperties.length > 0) {
-      container.innerHTML = '';
+      if (formattedProperties && formattedProperties.length > 0) {
+        container.innerHTML = '';
 
-      const property = formattedProperties[0];
+        const property = formattedProperties[0];
+        if (!property) return container;
 
-      const propertyTypeLabel = property.type
-        .toLowerCase()
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-      const cityName = property.city.split(' ')[1] || '';
+        const propertyTypeLabel =
+          property.type
+            ?.toLowerCase()
+            ?.split(' ')
+            ?.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            ?.join(' ') || 'Type inconnu';
+        const cityName = property.city?.split(' ')?.[1] || '';
 
-      const priceFormatted = property.numericPrice.toLocaleString('fr-FR') + ' €';
-      const pricePerSqm = Math.round(property.numericPrice / property.numericSurface).toLocaleString('fr-FR') + ' €/m²';
-      container.innerHTML = `
+        const priceFormatted = property.numericPrice?.toLocaleString('fr-FR') + ' €';
+        const pricePerSqm =
+          property.numericPrice && property.numericSurface
+            ? Math.round(property.numericPrice / property.numericSurface).toLocaleString('fr-FR') + ' €/m²'
+            : 'N/A';
+
+        container.innerHTML = `
       <div style="
         background: #fff;
         padding: 1px;
@@ -392,7 +504,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       ">
         <!-- Address -->
         <div style="font-weight: 700; font-size: 16px;width:75%; margin-bottom: 10px; color: #1a1a1a;">
-          ${property.address.toUpperCase()} – ${cityName}
+            ${property.address?.toUpperCase() || ''} – ${cityName}
         </div>
 
         <!-- Property Type, Rooms, Surface -->
@@ -400,7 +512,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
           <span style="color: ${getPropertyTypeColor(propertyTypeLabel)}; font-weight: 900; margin-bottom: 10px;">
             ${propertyTypeLabel}
           </span>
-          <span style="margin-top: 10px;">${property.rooms} pièces – ${property.surface}</span>
+            <span style="margin-top: 10px;">${property.rooms || 'N/A'} pièces – ${property.surface || 'N/A'}</span>
         </div>
 
         <!-- Price Box -->
@@ -428,31 +540,29 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
           font-size: 14px;
           color: #444;
         ">
-          Vendu le <strong style="color: #000;">${formatFrenchDate(property.soldDate)}</strong>
+            Vendu le <strong style="color: #000;">${formatFrenchDate(property.soldDate || '')}</strong>
         </div>
       </div>
     `;
 
-      container.querySelector('.popup-button')?.addEventListener('click', e => {
-        e.stopPropagation();
-        handleAddressClick(properties);
-        hoverPopup.current?.remove();
-      });
-    } else {
-      const addressLine = properties?.address || '';
-
-      let street = '';
-      let cityName = '';
-
-      if (addressLine.includes(' - ')) {
-        const [rawStreet, rawCity] = addressLine.split(' - ');
-        street = rawStreet || '';
-        cityName = rawCity?.split(' ')[1] || '';
+        container.querySelector('.popup-button')?.addEventListener('click', e => {
+          e.stopPropagation();
+          handleAddressClick(properties);
+          hoverPopup.current?.remove();
+        });
       } else {
-        console.warn('Unexpected address format:', addressLine);
-      }
+        const addressLine = properties?.address || '';
 
-      container.innerHTML = `
+        let street = '';
+        let cityName = '';
+
+        if (addressLine.includes(' - ')) {
+          const [rawStreet, rawCity] = addressLine.split(' - ');
+          street = rawStreet || '';
+          cityName = rawCity?.split(' ')?.[1] || '';
+        }
+
+        container.innerHTML = `
         <div style="
             background: #fff;
             padding: 4px;
@@ -464,12 +574,29 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         ">
             <!-- Address -->
             <div style="font-weight: 700; font-size: 16px;width:75%; margin-bottom: 10px; color: #1a1a1a;">
-            ${properties.numero}  ${properties.nomVoie}
+              ${properties.numero || ''}  ${properties.nomVoie || ''}
             </div>
 
             <!-- No sales message -->
             <div style="font-size: 14px; color: #333; margin-top: 8px;">
                 Aucune vente identifiée à cette adresse
+              </div>
+          </div>`;
+      }
+    } catch (popupError) {
+      console.error('Error creating hover popup:', popupError);
+      container.innerHTML = `
+        <div style="
+          background: #fff;
+          padding: 4px;
+          font-family: 'Maven Pro', sans-serif;
+          max-width: 480px;
+          width: 100%;
+          position: relative;
+          border-radius: 16px;
+        ">
+          <div style="font-size: 14px; color: #333; margin-top: 8px;">
+            Erreur lors du chargement des données
             </div>
         </div>`;
     }
@@ -523,7 +650,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       center: [8.73692, 41.9281],
       zoom: 17,
       attributionControl: false,
-      minZoom: 13.5,
+      minZoom: 17,
     });
 
     // Create scale elements first
@@ -533,7 +660,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
     // Apply styles
     Object.assign(scaleContainer.style, {
-      position: 'absolute',
+      position: 'fixed',
       zIndex: 10,
       bottom: '20px',
       right: '20px',
@@ -861,7 +988,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         source: 'selected-point',
         paint: {
           'circle-radius': 8,
-          'circle-color': '#22C55E',
+          'circle-color': '#EF4444',
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
         },
@@ -942,60 +1069,27 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   const toggleStatsPanel = () => {
     setShowStatsPanel(prev => !prev);
   };
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentCity) return;
 
-      try {
-        setIsLoading(true);
-        const response = await axios.get(`${API_ENDPOINTS.mutations.statistics}/${currentCity.toLowerCase()}`);
-        setPropertyStats(response.data);
-      } catch (err) {
-        console.error('Erreur:', err);
-        setError('Erreur de chargement');
-      } finally {
-        setIsLoading(false);
-      }
+  // Replace the existing useEffect for stats with this optimized version
+  useEffect(() => {
+    if (!currentCity) return;
+    fetchPropertyStats(currentCity);
+  }, [currentCity]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cancelPendingRequests();
+      mutationCache.current.clear();
+      statsCache.current.clear();
+      pendingRequestsRef.current.clear();
     };
-
-    fetchData();
-  }, [currentCity]);
-
-  const getActiveStats = () => {
-    // Ajouter une gestion explicite de "Bien Multiple"
-    const typeName = typeNames[activePropertyType]?.replace(/\./g, '').trim();
-
-    return propertyStats.find(stat => stat.typeBien.replace(/\./g, '').trim() === typeName) || { nombre: 0, prixMoyen: 0, prixM2Moyen: 0 };
-  };
-  const activeStats = getActiveStats();
-
-  // Formatter les nombres pour l'affichage
-  const formatNumber = num => {
-    return new Intl.NumberFormat('fr-FR').format(num);
-  };
-
-  // 📌 Regrouper les stats par nom court
-  const statsByShortType = {};
-  propertyStats.forEach(stat => {
-    const shortName = getShortTypeName(stat.typeBien);
-    statsByShortType[shortName] = stat;
-  });
-
-  useEffect(() => {
-    mutationCache.current.clear();
-  }, [currentCity]);
+  }, [cancelPendingRequests]);
 
   // Clear mutation cache when city changes
   useEffect(() => {
     mutationCache.current.clear();
   }, [currentCity]);
-
-  // Clear mutation cache when component unmounts
-  useEffect(() => {
-    return () => {
-      mutationCache.current.clear();
-    };
-  }, []);
 
   const toggleMapStyle = () => {
     if (!map.current) return;
@@ -1017,8 +1111,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   const handleZoomOut = () => {
     if (!map.current) return;
     const currentZoom = map.current.getZoom();
-    const minZoom = 13.5; // This corresponds to approximately 1km
-    if (currentZoom > minZoom) {
+    if (currentZoom > 17) {
       map.current.zoomOut();
     }
   };
