@@ -12,6 +12,8 @@ import com.apeiron.immoxperts.repository.MutationRepository;
 import com.apeiron.immoxperts.service.MutationService;
 import com.apeiron.immoxperts.service.dto.MutationDTO;
 import com.apeiron.immoxperts.service.mapper.MutationMapper;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.util.*;
@@ -129,7 +131,9 @@ public class MutationServiceImpl implements MutationService {
         return mutationRepository.findByAdresseId(adresseId).stream().map(mutationMapper::toDto).collect(Collectors.toList());
     }
 
+    @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "mutationSearchCache", key = "#novoie + '|' + #voie", unless = "#result == null || #result.isEmpty()")
     public List<MutationDTO> searchMutations(String novoieStr, String voie) {
         // Early return if both inputs are empty
         if ((novoieStr == null || novoieStr.trim().isEmpty()) && (voie == null || voie.trim().isEmpty())) {
@@ -201,65 +205,11 @@ public class MutationServiceImpl implements MutationService {
             voieRestante = foundVoieRestante;
         }
 
-        // Use a Set to ensure uniqueness of mutations
-        Set<Mutation> uniqueMutations = new HashSet<>();
-        boolean hasMorePages = true;
-        int pageNumber = 0;
-        int pageSize = 100;
-
-        while (hasMorePages) {
-            Pageable pageable = PageRequest.of(pageNumber, pageSize);
-            Page<Adresse> addressPage = adresseRepository.findAll(
-                (root, query, cb) -> {
-                    List<Predicate> predicates = new ArrayList<>();
-
-                    if (novoie != null) {
-                        predicates.add(cb.equal(root.get("novoie"), novoie));
-                    }
-                    if (btq != null) {
-                        predicates.add(cb.equal(root.get("btq"), btq));
-                    }
-                    if (typvoie != null) {
-                        predicates.add(cb.equal(cb.upper(root.get("typvoie")), typvoie));
-                    }
-                    if (voieRestante != null && !voieRestante.isEmpty()) {
-                        predicates.add(cb.like(cb.upper(root.get("voie")), "%" + voieRestante + "%"));
-                    }
-
-                    return cb.and(predicates.toArray(new Predicate[0]));
-                },
-                pageable
-            );
-
-            // Process addresses and collect unique mutations
-            for (Adresse adresse : addressPage.getContent()) {
-                // Add mutations from adresseLocals
-                if (adresse.getAdresseLocals() != null) {
-                    adresse
-                        .getAdresseLocals()
-                        .stream()
-                        .map(AdresseLocal::getMutation)
-                        .filter(Objects::nonNull)
-                        .forEach(uniqueMutations::add);
-                }
-
-                // Add mutations from adresseDispoparcs
-                if (adresse.getAdresseDispoparcs() != null) {
-                    adresse
-                        .getAdresseDispoparcs()
-                        .stream()
-                        .map(AdresseDispoparc::getMutation)
-                        .filter(Objects::nonNull)
-                        .forEach(uniqueMutations::add);
-                }
-            }
-
-            hasMorePages = addressPage.hasNext();
-            pageNumber++;
-        }
+        // Use the optimized repository method
+        List<Mutation> mutations = mutationRepository.searchMutationsByCriteria(novoie, btq, typvoie, voieRestante);
 
         // Convert to DTOs
-        return uniqueMutations.stream().map(this::convertToDTO).collect(Collectors.toList());
+        return mutations.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     @Cacheable(value = "streetCommuneCache", key = "#street + '|' + #commune", unless = "#result == null || #result.isEmpty()")

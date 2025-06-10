@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -22,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -208,8 +210,17 @@ public class MutationResource {
     }
 
     @GetMapping("/search")
-    public List<MutationDTO> searchMutations(@RequestParam(required = false) String novoie, @RequestParam(required = false) String voie) {
-        return mutationService.searchMutations(novoie, voie);
+    public ResponseEntity<List<MutationDTO>> searchMutations(
+        @RequestParam(required = false) String novoie,
+        @RequestParam(required = false) String voie
+    ) {
+        try {
+            List<MutationDTO> results = mutationService.searchMutations(novoie, voie);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            LOG.error("Error searching mutations: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.emptyList());
+        }
     }
 
     @GetMapping("/commune")
