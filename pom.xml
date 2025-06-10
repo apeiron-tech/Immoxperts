@@ -622,6 +622,23 @@
                     <groupId>com.github.eirslett</groupId>
                     <artifactId>frontend-maven-plugin</artifactId>
                     <version>${frontend-maven-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>install-node-and-npm</id>
+                            <goals>
+                                <goal>install-node-and-npm</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>npm run webapp:prod</id>
+                            <goals>
+                                <goal>npm</goal>
+                            </goals>
+                            <configuration>
+                                <arguments>run webapp:prod</arguments>
+                            </configuration>
+                        </execution>
+                    </executions>
                     <configuration>
                         <installDirectory>target</installDirectory>
                         <nodeVersion>${node.version}</nodeVersion>
@@ -1019,18 +1036,12 @@
                                 </configuration>
                             </execution>
                             <execution>
-                                <id>webapp build prod</id>
+                                <id>npm run webapp:prod</id>
                                 <goals>
                                     <goal>npm</goal>
                                 </goals>
-                                <phase>generate-resources</phase>
                                 <configuration>
                                     <arguments>run webapp:prod</arguments>
-                                    <environmentVariables>
-                                        <APP_VERSION>${project.version}</APP_VERSION>
-                                    </environmentVariables>
-                                    <arguments>install --force</arguments>
-                                    <npmInheritsProxyConfigFromMaven>false</npmInheritsProxyConfigFromMaven>
                                 </configuration>
                             </execution>
                         </executions>

@@ -25,7 +25,7 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
 
     @Query(
         """
-        SELECT m FROM Mutation m
+        SELECT DISTINCT m FROM Mutation m
         JOIN m.adresseLocals al
         JOIN al.adresse a
         WHERE UPPER(a.voie) LIKE %:street%
@@ -33,6 +33,24 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
         """
     )
     List<Mutation> findMutationsByStreetAndCommune(@Param("street") String street, @Param("commune") String commune);
+
+    @Query(
+        """
+        SELECT DISTINCT m FROM Mutation m
+        JOIN m.adresseLocals al
+        JOIN al.adresse a
+        WHERE (:novoie IS NULL OR a.novoie = :novoie)
+          AND (:btq IS NULL OR a.btq = :btq)
+          AND (:typvoie IS NULL OR UPPER(a.typvoie) = UPPER(:typvoie))
+          AND (:voieRestante IS NULL OR UPPER(a.voie) LIKE %:voieRestante%)
+        """
+    )
+    List<Mutation> searchMutationsByCriteria(
+        @Param("novoie") Integer novoie,
+        @Param("btq") String btq,
+        @Param("typvoie") String typvoie,
+        @Param("voieRestante") String voieRestante
+    );
 
     @Query(
         value = """

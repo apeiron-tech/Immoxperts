@@ -33,9 +33,9 @@ spring:
       enabled: false
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
-    url: jdbc:postgresql://localhost:5432/immoxperts
-    username: immoxperts
-    password:
+    url: jdbc:postgresql://localhost:5432/immoxperts?currentSchema=dvf
+    username: postgres
+    password: postgres
     hikari:
       poolName: Hikari
       auto-commit: false

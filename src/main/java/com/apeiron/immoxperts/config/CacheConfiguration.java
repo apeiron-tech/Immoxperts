@@ -49,17 +49,17 @@ public class CacheConfiguration {
             createCache(cm, com.apeiron.immoxperts.domain.Mutation.class.getName());
             createCache(cm, com.apeiron.immoxperts.domain.Mutation.class.getName() + ".adresseLocals");
             createCache(cm, com.apeiron.immoxperts.domain.Mutation.class.getName() + ".adresseDispoparcs");
-            createCache(cm, com.apeiron.immoxperts.domain.Mutation.class.getName() + ".streetCommune");
-            createCache(cm, "streetCommuneCache");
+            createCache(cm, com.apeiron.immoxperts.domain.AdresseLocal.class.getName());
+            createCache(cm, com.apeiron.immoxperts.domain.AdresseLocal.class.getName() + ".mutation");
+            createCache(cm, com.apeiron.immoxperts.domain.AdresseLocal.class.getName() + ".adresse");
+            createCache(cm, com.apeiron.immoxperts.domain.AdresseDispoparc.class.getName());
+            createCache(cm, com.apeiron.immoxperts.domain.AdresseDispoparc.class.getName() + ".mutation");
+            createCache(cm, com.apeiron.immoxperts.domain.AdresseDispoparc.class.getName() + ".adresse");
             createCache(cm, com.apeiron.immoxperts.domain.Adresse.class.getName());
             createCache(cm, com.apeiron.immoxperts.domain.Adresse.class.getName() + ".adresseLocals");
             createCache(cm, com.apeiron.immoxperts.domain.Adresse.class.getName() + ".adresseDispoparcs");
-            createCache(cm, com.apeiron.immoxperts.domain.Local.class.getName());
-            createCache(cm, com.apeiron.immoxperts.domain.Lot.class.getName());
-            createCache(cm, com.apeiron.immoxperts.domain.DispositionParcelle.class.getName());
-            createCache(cm, com.apeiron.immoxperts.domain.AdresseLocal.class.getName());
-            createCache(cm, com.apeiron.immoxperts.domain.AdresseDispoparc.class.getName());
-            // jhipster-needle-caffeine-add-entry
+            createCache(cm, "mutationSearchCache");
+            createCache(cm, "streetCommuneCache");
         };
     }
 

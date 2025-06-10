@@ -12,6 +12,8 @@ import com.apeiron.immoxperts.repository.MutationRepository;
 import com.apeiron.immoxperts.service.MutationService;
 import com.apeiron.immoxperts.service.dto.MutationDTO;
 import com.apeiron.immoxperts.service.mapper.MutationMapper;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.util.*;
@@ -129,7 +131,9 @@ public class MutationServiceImpl implements MutationService {
         return mutationRepository.findByAdresseId(adresseId).stream().map(mutationMapper::toDto).collect(Collectors.toList());
     }
 
+    @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "mutationSearchCache", key = "#novoie + '|' + #voie", unless = "#result == null || #result.isEmpty()")
     public List<MutationDTO> searchMutations(String novoieStr, String voie) {
         // Early return if both inputs are empty
         if ((novoieStr == null || novoieStr.trim().isEmpty()) && (voie == null || voie.trim().isEmpty())) {
