@@ -227,3 +227,8 @@ jhipster:
 # ===================================================================
 
 # application:
+
+cache:
+  caffeine:
+    time-to-live-seconds: 3600 # 1 hour
+    max-entries: 1000
