@@ -69,7 +69,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   const [loading, setLoading] = useState<boolean>(false);
   const [activeLayers, setActiveLayers] = useState<string[]>([]);
   const [showStatsPanel, setShowStatsPanel] = useState<boolean>(false);
-  const [currentCity, setCurrentCity] = useState<string>('Ajaccio');
+  const [currentCity, setCurrentCity] = useState<string>('');
   const [is3DView, setIs3DView] = useState<boolean>(false);
   const { numero, nomVoie, coordinates } = searchParams;
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -379,6 +379,33 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         setError('Erreur de géocodage');
       }
     };
+    map.current.on('click', LAYER_ID, e => {
+      if (e.features.length > 0) {
+        const feature = e.features[0];
+        const featureId = feature.id;
+
+        if (selectedId.current) {
+          map.current.setFeatureState(
+            {
+              source: 'parcels-source',
+              sourceLayer: SOURCE_LAYER,
+              id: selectedId.current,
+            },
+            { selected: false },
+          );
+        }
+
+        selectedId.current = featureId;
+        map.current.setFeatureState(
+          {
+            source: 'parcels-source',
+            sourceLayer: SOURCE_LAYER,
+            id: featureId,
+          },
+          { selected: true },
+        );
+      }
+    });
 
     map.current.on('moveend', updateLocationName);
     map.current.on('zoomend', updateLocationName);
@@ -484,7 +511,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
             ?.split(' ')
             ?.map(word => word.charAt(0).toUpperCase() + word.slice(1))
             ?.join(' ') || 'Type inconnu';
-        const cityName = property.city?.split(' ')?.[1] || '';
+        const cityName = property.city || '';
 
         const priceFormatted = property.numericPrice?.toLocaleString('fr-FR') + ' €';
         const pricePerSqm =
@@ -648,9 +675,11 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       container: mapContainer.current,
       style: 'mapbox://styles/saber5180/cmawpgdtd007301sc5ww48tds',
       center: [8.73692, 41.9281],
-      zoom: 17,
+      zoom: 15,
+      minZoom: 10,
+      pitch: 0,
+      bearing: 0,
       attributionControl: false,
-      minZoom: 17,
     });
 
     // Create scale elements first
@@ -743,6 +772,11 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       if (center && typeof onMapMove === 'function') {
         onMapMove([center.lng, center.lat]);
       }
+      // Clear popups on map move
+      popup.current?.remove();
+      hoverPopup.current?.remove();
+      popup.current = null;
+      hoverPopup.current = null;
     };
 
     map.current.on('move', updateScale);
@@ -871,7 +905,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
               sourceLayer: SOURCE_LAYER,
               id: featureId,
             },
-            { hover: true },
+            { hover: false },
           );
 
           map.current.getCanvas().style.cursor = 'pointer';
@@ -919,7 +953,34 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
             hoverPopup.current = null;
           }
         };
+        // Gestion du survol
+        map.current.on('mousemove', LAYER_ID, e => {
+          if (e.features.length > 0) {
+            const feature = e.features[0];
+            const featureId = feature.id;
 
+            if (hoveredId.current) {
+              map.current.setFeatureState(
+                {
+                  source: 'parcels-source',
+                  sourceLayer: SOURCE_LAYER,
+                  id: hoveredId.current,
+                },
+                { hover: false },
+              );
+            }
+
+            hoveredId.current = featureId;
+            map.current.setFeatureState(
+              {
+                source: 'parcels-source',
+                sourceLayer: SOURCE_LAYER,
+                id: featureId,
+              },
+              { hover: true },
+            );
+          }
+        });
         map.current.on('click', layerId, clickHandler);
         map.current.on('mouseenter', layerId, mouseEnterHandler);
         map.current.on('mouseleave', layerId, mouseLeaveHandler);
@@ -950,6 +1011,12 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
   useEffect(() => {
     if (coordinates && map.current) {
+      // Clear existing popups
+      popup.current?.remove();
+      hoverPopup.current?.remove();
+      popup.current = null;
+      hoverPopup.current = null;
+
       map.current.flyTo({
         center: coordinates,
         zoom: 17,
@@ -1111,9 +1178,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   const handleZoomOut = () => {
     if (!map.current) return;
     const currentZoom = map.current.getZoom();
-    if (currentZoom > 17) {
-      map.current.zoomOut();
-    }
+    map.current.zoomOut();
   };
 
   return (

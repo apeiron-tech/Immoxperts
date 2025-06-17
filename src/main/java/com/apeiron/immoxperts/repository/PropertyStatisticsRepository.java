@@ -1,8 +1,10 @@
 package com.apeiron.immoxperts.repository;
 
 import com.apeiron.immoxperts.domain.Mutation;
+import com.apeiron.immoxperts.service.dto.PropertyStatisticsDTO;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -44,4 +46,23 @@ public interface PropertyStatisticsRepository extends JpaRepository<Mutation, Lo
         nativeQuery = true
     )
     List<Object[]> getPropertyStatistics(@Param("commune") String commune);
+
+    @Query(
+        value = """
+        SELECT
+            type_bien AS typeBien,
+            commune,
+            nombre,
+            prixMoyen,
+            prixM2Moyen
+        FROM property_statistics_mv
+        WHERE UPPER(commune) = UPPER(:commune)
+        """,
+        nativeQuery = true
+    )
+    List<PropertyStatisticsDTO> findStatsByCommune(@Param("commune") String commune);
+
+    @Modifying
+    @Query(value = "REFRESH MATERIALIZED VIEW CONCURRENTLY property_statistics_mv", nativeQuery = true)
+    void refreshMaterializedView();
 }

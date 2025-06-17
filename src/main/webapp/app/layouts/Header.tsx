@@ -31,13 +31,17 @@ const Header: React.FC = () => {
         {/* Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
           {navItems.map((item, index) => (
-            <Link
-              key={index}
-              to={item.path}
-              className={`text-gray-700 hover:text-black transition ${location.pathname === item.path ? 'font-semibold text-black' : ''}`}
-            >
-              {item.name}
-            </Link>
+            <div key={index} className="relative">
+              <Link
+                to={item.path}
+                className={`text-gray-700 hover:text-primary transition ${location.pathname === item.path ? 'font-bold text-black' : ''}`}
+              >
+                {item.name}
+              </Link>
+              {location.pathname === item.path && (
+                <div className="absolute left-0 right-0 -bottom-px h-[2px] bg-gradient-to-r from-blue-500 via-purple-500 to-yellow-300" />
+              )}
+            </div>
           ))}
         </nav>
 

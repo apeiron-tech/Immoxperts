@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="20240320000000-1" author="jhipster">
+        <sql>
+            CREATE MATERIALIZED VIEW IF NOT EXISTS property_statistics_mv AS
+            WITH filtered_mutations AS (
+                SELECT
+                    m.idmutation,
+                    m.valeurfonc,
+                    a.commune,
+                    CASE
+                        WHEN COUNT(DISTINCT l.libtyploc) >= 2 THEN 'Bien Multiple'
+                        ELSE MAX(l.libtyploc)
+                    END AS type_bien,
+                    SUM(l.sbati) as total_surface
+                FROM mutation m
+                JOIN adresse_local al ON m.idmutation = al.idmutation
+                JOIN adresse a ON al.idadresse = a.idadresse
+                JOIN local l ON al.iddispoloc = l.iddispoloc
+                WHERE UPPER(m.libnatmut) = UPPER('Vente')
+                AND m.valeurfonc > 0
+                AND l.sbati > 0
+                GROUP BY m.idmutation, m.valeurfonc, a.commune
+            )
+            SELECT
+                type_bien,
+                commune,
+                COUNT(*) AS nombre,
+                ROUND(AVG(valeurfonc)::NUMERIC) AS prixMoyen,
+                ROUND(AVG(CASE
+                    WHEN total_surface > 0 THEN valeurfonc / total_surface
+                    ELSE NULL
+                END)::NUMERIC) AS prixM2Moyen
+            FROM filtered_mutations
+            GROUP BY type_bien, commune;
+        </sql>
+        <rollback>
+            DROP MATERIALIZED VIEW IF EXISTS property_statistics_mv;
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20240320000000-2" author="jhipster">
+        <sql>
+            CREATE INDEX IF NOT EXISTS idx_property_statistics_mv_commune ON property_statistics_mv (commune);
+            CREATE INDEX IF NOT EXISTS idx_property_statistics_mv_type_bien ON property_statistics_mv (type_bien);
+        </sql>
+        <rollback>
+            DROP INDEX IF EXISTS idx_property_statistics_mv_commune;
+            DROP INDEX IF EXISTS idx_property_statistics_mv_type_bien;
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

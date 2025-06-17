@@ -11,6 +11,7 @@ import com.apeiron.immoxperts.repository.DispositionParcelleRepository;
 import com.apeiron.immoxperts.repository.MutationRepository;
 import com.apeiron.immoxperts.service.MutationService;
 import com.apeiron.immoxperts.service.dto.MutationDTO;
+import com.apeiron.immoxperts.service.dto.MutationSearchDTO;
 import com.apeiron.immoxperts.service.mapper.MutationMapper;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -23,8 +24,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -131,180 +134,109 @@ public class MutationServiceImpl implements MutationService {
         return mutationRepository.findByAdresseId(adresseId).stream().map(mutationMapper::toDto).collect(Collectors.toList());
     }
 
-    @Override
     @Transactional(readOnly = true)
-    @Cacheable(value = "mutationSearchCache", key = "#novoie + '|' + #voie", unless = "#result == null || #result.isEmpty()")
+    @Cacheable(
+        value = "mutationSearchCache",
+        key = "#novoieStr + '|' + #voie",
+        unless = "#result == null || #result.isEmpty()",
+        condition = "#novoieStr != null || #voie != null"
+    )
     public List<MutationDTO> searchMutations(String novoieStr, String voie) {
-        // Early return if both inputs are empty
         if ((novoieStr == null || novoieStr.trim().isEmpty()) && (voie == null || voie.trim().isEmpty())) {
             return Collections.emptyList();
         }
 
-        // Parse number and complement in one pass
-        final Integer novoie;
-        final String btq;
-        {
-            Integer parsedNovoie = null;
-            String parsedBtq = null;
-
-            if (novoieStr != null && !novoieStr.trim().isEmpty()) {
-                String trimmed = novoieStr.trim();
-                int i = 0;
-                while (i < trimmed.length() && Character.isDigit(trimmed.charAt(i))) {
-                    i++;
-                }
-                if (i > 0) {
-                    try {
-                        parsedNovoie = Integer.parseInt(trimmed.substring(0, i));
-                        if (i < trimmed.length()) {
-                            String complement = trimmed.substring(i).toUpperCase();
-                            if (complement.equals("B") || complement.equals("BIS")) {
-                                parsedBtq = "BIS";
-                            } else if (complement.equals("T") || complement.equals("TER")) {
-                                parsedBtq = "TER";
-                            } else {
-                                parsedBtq = complement;
-                            }
+        // Parse street number and suffix
+        Integer novoie = null;
+        String btq = null;
+        if (novoieStr != null && !novoieStr.trim().isEmpty()) {
+            String trimmed = novoieStr.trim();
+            int i = 0;
+            while (i < trimmed.length() && Character.isDigit(trimmed.charAt(i))) i++;
+            if (i > 0) {
+                try {
+                    novoie = Integer.parseInt(trimmed.substring(0, i));
+                    if (i < trimmed.length()) {
+                        String complement = trimmed.substring(i).toUpperCase();
+                        if (complement.equals("B") || complement.equals("BIS")) {
+                            btq = "BIS";
+                        } else if (complement.equals("T") || complement.equals("TER")) {
+                            btq = "TER";
+                        } else {
+                            btq = complement;
                         }
-                    } catch (NumberFormatException ignored) {
-                        // Keep null values
                     }
-                }
+                } catch (NumberFormatException ignored) {}
             }
-            novoie = parsedNovoie;
-            btq = parsedBtq;
         }
 
-        // Process voie more efficiently
-        final String typvoie;
-        final String voieRestante;
-        {
-            String foundTypvoie = null;
-            String foundVoieRestante = null;
-
-            if (voie != null && !voie.trim().isEmpty()) {
-                String voieTrimmed = voie.trim().toUpperCase();
-
-                for (Map.Entry<String, String> entry : TYPE_VOIE_MAPPING.entrySet()) {
-                    String typeVoieKey = entry.getKey();
-                    if (voieTrimmed.startsWith(typeVoieKey)) {
-                        foundTypvoie = entry.getValue();
-                        foundVoieRestante = voieTrimmed.substring(typeVoieKey.length()).trim();
-                        break;
-                    }
-                }
-
-                if (foundTypvoie == null && voieTrimmed.contains(" ")) {
-                    String firstWord = voieTrimmed.split(" ", 2)[0];
-                    foundTypvoie = TYPE_VOIE_MAPPING.getOrDefault(firstWord, firstWord);
-                    foundVoieRestante = voieTrimmed.substring(firstWord.length()).trim();
+        // Parse street type and name
+        String typvoie = null;
+        String voieRestante = null;
+        if (voie != null && !voie.trim().isEmpty()) {
+            String voieTrimmed = voie.trim().toUpperCase();
+            for (Map.Entry<String, String> entry : TYPE_VOIE_MAPPING.entrySet()) {
+                String typeVoieKey = entry.getKey();
+                if (voieTrimmed.startsWith(typeVoieKey)) {
+                    typvoie = entry.getValue();
+                    voieRestante = voieTrimmed.substring(typeVoieKey.length()).trim();
+                    break;
                 }
             }
-
-            typvoie = foundTypvoie;
-            voieRestante = foundVoieRestante;
-        }
-
-        // Use a Map to ensure uniqueness of mutations by ID
-        Map<Integer, Mutation> uniqueMutations = new HashMap<>();
-        boolean hasMorePages = true;
-        int pageNumber = 0;
-        int pageSize = 100;
-
-        while (hasMorePages) {
-            Pageable pageable = PageRequest.of(pageNumber, pageSize);
-            Page<Adresse> addressPage = adresseRepository.findAll(
-                (root, query, cb) -> {
-                    List<Predicate> predicates = new ArrayList<>();
-
-                    if (novoie != null) {
-                        predicates.add(cb.equal(root.get("novoie"), novoie));
-                    }
-                    if (btq != null) {
-                        predicates.add(cb.equal(root.get("btq"), btq));
-                    }
-                    if (typvoie != null) {
-                        predicates.add(cb.equal(cb.upper(root.get("typvoie")), typvoie));
-                    }
-                    if (voieRestante != null && !voieRestante.isEmpty()) {
-                        predicates.add(cb.like(cb.upper(root.get("voie")), "%" + voieRestante + "%"));
-                    }
-
-                    return cb.and(predicates.toArray(new Predicate[0]));
-                },
-                pageable
-            );
-
-            // Process addresses and collect unique mutations
-            for (Adresse adresse : addressPage.getContent()) {
-                // Add mutations from adresseLocals
-                if (adresse.getAdresseLocals() != null) {
-                    adresse
-                        .getAdresseLocals()
-                        .stream()
-                        .map(AdresseLocal::getMutation)
-                        .filter(Objects::nonNull)
-                        .forEach(mutation -> uniqueMutations.put(mutation.getIdmutation(), mutation));
-                }
-
-                // Add mutations from adresseDispoparcs
-                if (adresse.getAdresseDispoparcs() != null) {
-                    adresse
-                        .getAdresseDispoparcs()
-                        .stream()
-                        .map(AdresseDispoparc::getMutation)
-                        .filter(Objects::nonNull)
-                        .forEach(mutation -> uniqueMutations.put(mutation.getIdmutation(), mutation));
-                }
+            if (typvoie == null && voieTrimmed.contains(" ")) {
+                String firstWord = voieTrimmed.split(" ", 2)[0];
+                typvoie = TYPE_VOIE_MAPPING.getOrDefault(firstWord, firstWord);
+                voieRestante = voieTrimmed.substring(firstWord.length()).trim();
             }
-
-            hasMorePages = addressPage.hasNext();
-            pageNumber++;
         }
 
-        // Convert to DTOs
-        return uniqueMutations.values().stream().map(this::convertToDTO).collect(Collectors.toList());
+        // Use a reasonable page size and sort by mutation date
+        Pageable pageable = PageRequest.of(0, 100, Sort.by("datemut").descending());
+
+        // Use the materialized view for faster querying
+        Page<Mutation> mutations = mutationRepository.searchMutationsByCriteria(novoie, btq, typvoie, voieRestante, pageable);
+
+        // Convert to DTOs and limit results if needed
+        return mutations
+            .getContent()
+            .stream()
+            .map(this::convertToDTO)
+            .limit(100) // Ensure we don't return too many results
+            .collect(Collectors.toList());
     }
 
-    @Cacheable(value = "streetCommuneCache", key = "#street + '|' + #commune", unless = "#result == null || #result.isEmpty()")
-    public List<MutationDTO> searchMutationsByStreetAndCommune(String street, String commune) {
-        if (street == null || street.trim().isEmpty() || commune == null || commune.trim().isEmpty()) {
-            return Collections.emptyList();
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(
+        value = "streetCommuneCache",
+        key = "#street + '|' + #commune + '|' + #pageable.pageNumber + '|' + #pageable.pageSize",
+        unless = "#result == null || #result.isEmpty()"
+    )
+    public Page<MutationDTO> searchMutationsByStreetAndCommune(String street, String commune, Pageable pageable) {
+        if (commune == null || commune.trim().isEmpty()) {
+            return Page.empty(pageable);
         }
 
-        String normalizedStreet = street.trim().toUpperCase();
-        String normalizedCommune = commune.trim().toUpperCase();
+        String trimmedCommune = commune.trim();
+        String trimmedStreet = street != null ? street.trim() : null;
 
-        List<Adresse> addresses = adresseRepository.findAll((root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(cb.upper(root.get("voie")), normalizedStreet));
-            predicates.add(cb.equal(cb.upper(root.get("commune")), normalizedCommune));
-            return cb.and(predicates.toArray(new Predicate[0]));
-        });
+        // Get total count
+        long total = mutationRepository.countMutationsByCommuneAndStreet(trimmedCommune, trimmedStreet);
 
-        // Use a Set to ensure uniqueness of mutations
-        Set<Mutation> uniqueMutations = new HashSet<>();
-
-        // Process addresses and collect unique mutations
-        for (Adresse adresse : addresses) {
-            // Add mutations from adresseLocals
-            if (adresse.getAdresseLocals() != null) {
-                adresse.getAdresseLocals().stream().map(AdresseLocal::getMutation).filter(Objects::nonNull).forEach(uniqueMutations::add);
-            }
-
-            // Add mutations from adresseDispoparcs
-            if (adresse.getAdresseDispoparcs() != null) {
-                adresse
-                    .getAdresseDispoparcs()
-                    .stream()
-                    .map(AdresseDispoparc::getMutation)
-                    .filter(Objects::nonNull)
-                    .forEach(uniqueMutations::add);
-            }
+        if (total == 0) {
+            return Page.empty(pageable);
         }
 
-        // Convert unique mutations to DTOs
-        return uniqueMutations.stream().map(this::convertToDTO).collect(Collectors.toList());
+        // Get paginated results
+        List<Mutation> mutations = mutationRepository.findMutationsByCommuneAndStreet(
+            trimmedCommune,
+            trimmedStreet,
+            pageable.getPageSize()
+        );
+
+        List<MutationDTO> dtos = mutations.stream().map(this::convertToDTO).collect(Collectors.toList());
+
+        return new PageImpl<>(dtos, pageable, total);
     }
 
     public List<MutationDTO> getMutationsByVoie(String voie) {
@@ -401,17 +333,23 @@ public class MutationServiceImpl implements MutationService {
     }
 
     private String formatAddress(Adresse adresse) {
-        return Stream.of(
-            adresse.getNovoie(),
-            adresse.getBtq(),
-            adresse.getTypvoie(),
-            adresse.getVoie(),
-            adresse.getCodepostal(),
-            adresse.getCommune()
-        )
-            .filter(Objects::nonNull)
-            .map(Object::toString)
-            .collect(Collectors.joining(" "));
+        StringBuilder sb = new StringBuilder();
+        if (adresse.getNovoie() != null) {
+            sb.append(adresse.getNovoie());
+        }
+        if (adresse.getTypvoie() != null) {
+            sb.append(" ").append(adresse.getTypvoie());
+        }
+        if (adresse.getVoie() != null) {
+            sb.append(" ").append(adresse.getVoie());
+        }
+        if (adresse.getCodepostal() != null) {
+            sb.append(", ").append(adresse.getCodepostal());
+        }
+        if (adresse.getCommune() != null) {
+            sb.append(" ").append(adresse.getCommune());
+        }
+        return sb.toString();
     }
 
     public List<MutationDTO> getMutationsByAdresseId2(Integer idadresse) {
@@ -458,5 +396,38 @@ public class MutationServiceImpl implements MutationService {
             );
         }
         return dto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MutationDTO> searchMutationsByAddress(Integer streetNumber, String streetName, String postalCode, String city) {
+        LOG.debug(
+            "Request to search mutations by address: streetNumber={}, streetName={}, postalCode={}, city={}",
+            streetNumber,
+            streetName,
+            postalCode,
+            city
+        );
+
+        List<Mutation> mutations = mutationRepository.searchMutationsByAddress(streetNumber, streetName, postalCode, city);
+
+        return mutations
+            .stream()
+            .map(mutation -> {
+                MutationDTO dto = mutationMapper.toDto(mutation);
+                // Get the surface area for this mutation
+                BigDecimal surface = adresseLocalRepository.surfaceMutaion(mutation.getIdmutation().longValue());
+                dto.setSurface(surface);
+
+                // Format addresses
+                if (mutation.getAdresseLocals() != null) {
+                    dto.setAddresses(
+                        mutation.getAdresseLocals().stream().map(al -> formatAddress(al.getAdresse())).collect(Collectors.toList())
+                    );
+                }
+
+                return dto;
+            })
+            .collect(Collectors.toList());
     }
 }

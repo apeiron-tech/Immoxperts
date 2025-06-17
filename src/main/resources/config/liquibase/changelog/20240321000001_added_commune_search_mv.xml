@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="20240321000001-1" author="jhipster">
+        <sql>
+            CREATE MATERIALIZED VIEW IF NOT EXISTS dvf.commune_search_mv AS
+            SELECT
+                a.commune,
+                a.codepostal,
+                COUNT(DISTINCT m.idmutation) as total_mutations,
+                COUNT(DISTINCT CASE WHEN m.valeurfonc > 0 THEN m.idmutation END) as total_sales,
+                ROUND(AVG(CASE WHEN m.valeurfonc > 0 THEN m.valeurfonc END)::NUMERIC) as avg_price,
+                ROUND(MIN(CASE WHEN m.valeurfonc > 0 THEN m.valeurfonc END)::NUMERIC) as min_price,
+                ROUND(MAX(CASE WHEN m.valeurfonc > 0 THEN m.valeurfonc END)::NUMERIC) as max_price,
+                COUNT(DISTINCT CASE WHEN l.sbati > 0 THEN m.idmutation END) as total_with_surface,
+                ROUND(AVG(CASE WHEN l.sbati > 0 THEN l.sbati END)::NUMERIC) as avg_surface,
+                COUNT(DISTINCT CASE WHEN UPPER(l.libtyploc) = 'APPARTEMENT' THEN m.idmutation END) as total_apartments,
+                COUNT(DISTINCT CASE WHEN UPPER(l.libtyploc) = 'MAISON' THEN m.idmutation END) as total_houses,
+                COUNT(DISTINCT CASE WHEN UPPER(l.libtyploc) = 'LOCAL' THEN m.idmutation END) as total_commercial
+            FROM dvf.mutation m
+            JOIN dvf.adresse_local al ON m.idmutation = al.idmutation
+            JOIN dvf.adresse a ON al.idadresse = a.idadresse
+            LEFT JOIN dvf.local l ON al.iddispoloc = l.iddispoloc
+            WHERE a.commune IS NOT NULL
+            GROUP BY a.commune, a.codepostal;
+
+            -- Create indexes for better performance
+            CREATE INDEX idx_commune_search_mv_commune ON dvf.commune_search_mv(commune);
+            CREATE INDEX idx_commune_search_mv_codepostal ON dvf.commune_search_mv(codepostal);
+            CREATE INDEX idx_commune_search_mv_total_sales ON dvf.commune_search_mv(total_sales);
+            CREATE INDEX idx_commune_search_mv_avg_price ON dvf.commune_search_mv(avg_price);
+        </sql>
+        <rollback>
+            DROP MATERIALIZED VIEW IF EXISTS dvf.commune_search_mv;
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

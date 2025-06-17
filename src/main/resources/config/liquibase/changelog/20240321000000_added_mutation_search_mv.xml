@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="20240321000000-1" author="jhipster">
+        <sql>
+            CREATE MATERIALIZED VIEW IF NOT EXISTS dvf.mutation_search_mv AS
+            SELECT DISTINCT
+                m.idmutation,
+                m.coddep,
+                m.datemut,
+                m.idnatmut,
+                m.sterr,
+                m.valeurfonc,
+                m.vefa,
+                a.novoie,
+                a.btq,
+                a.typvoie,
+                a.voie,
+                a.codepostal,
+                a.commune
+            FROM dvf.mutation m
+            JOIN dvf.adresse_local al ON m.idmutation = al.idmutation
+            JOIN dvf.adresse a ON al.idadresse = a.idadresse;
+
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_novoie ON dvf.mutation_search_mv(novoie);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_btq ON dvf.mutation_search_mv(btq);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_typvoie ON dvf.mutation_search_mv(typvoie);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_voie ON dvf.mutation_search_mv(voie);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_commune ON dvf.mutation_search_mv(commune);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_codepostal ON dvf.mutation_search_mv(codepostal);
+
+            -- Add composite indexes for common search patterns
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_commune_voie ON dvf.mutation_search_mv(commune, voie);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_commune_datemut ON dvf.mutation_search_mv(commune, datemut DESC);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_commune_voie_datemut ON dvf.mutation_search_mv(commune, voie, datemut DESC);
+
+            -- Create indexes for better performance
+            CREATE INDEX idx_mutation_search_mv_novoie ON mutation_search_mv(novoie);
+            CREATE INDEX idx_mutation_search_mv_btq ON mutation_search_mv(btq);
+            CREATE INDEX idx_mutation_search_mv_typvoie ON mutation_search_mv(typvoie);
+            CREATE INDEX idx_mutation_search_mv_voie ON mutation_search_mv(voie);
+            CREATE INDEX idx_mutation_search_mv_datemut ON mutation_search_mv(datemut DESC);
+
+            -- Composite indexes for common search patterns
+            CREATE INDEX idx_mutation_search_mv_novoie_btq ON mutation_search_mv(novoie, btq);
+            CREATE INDEX idx_mutation_search_mv_typvoie_voie ON mutation_search_mv(typvoie, voie);
+            CREATE INDEX idx_mutation_search_mv_novoie_typvoie ON mutation_search_mv(novoie, typvoie);
+            CREATE INDEX idx_mutation_search_mv_novoie_btq_typvoie ON mutation_search_mv(novoie, btq, typvoie);
+        </sql>
+        <rollback>
+            DROP MATERIALIZED VIEW IF EXISTS mutation_search_mv;
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

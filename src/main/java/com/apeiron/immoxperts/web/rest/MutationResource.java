@@ -6,6 +6,7 @@ import com.apeiron.immoxperts.service.MutationService;
 import com.apeiron.immoxperts.service.PropertyStatisticsService;
 import com.apeiron.immoxperts.service.dto.CommuneStatsDTO;
 import com.apeiron.immoxperts.service.dto.MutationDTO;
+import com.apeiron.immoxperts.service.dto.MutationSearchDTO;
 import com.apeiron.immoxperts.service.dto.PropertyStatisticsDTO;
 import com.apeiron.immoxperts.web.rest.errors.BadRequestAlertException;
 import jakarta.validation.Valid;
@@ -230,17 +231,25 @@ public class MutationResource {
 
     @GetMapping("/statistics/{commune}")
     public ResponseEntity<List<PropertyStatisticsDTO>> getPropertyStatistics(@PathVariable String commune) {
-        List<PropertyStatisticsDTO> statistics = propertyStatisticsService.getPropertyStatisticsByCommune(commune);
+        List<PropertyStatisticsDTO> statistics = propertyStatisticsService.getAllPropertyStatisticsByCommune(commune);
         return ResponseEntity.ok(statistics);
     }
 
+    @PostMapping("/statistics/refresh")
+    public ResponseEntity<Void> refreshPropertyStatistics() {
+        propertyStatisticsService.refreshPropertyStatistics();
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/mutations/by-street-and-commune")
-    public ResponseEntity<List<MutationDTO>> getMutationsByStreetAndCommune(
+    public ResponseEntity<Page<MutationDTO>> getMutationsByStreetAndCommune(
         @RequestParam("street") String street,
-        @RequestParam("commune") String commune
+        @RequestParam("commune") String commune,
+        @org.springdoc.core.annotations.ParameterObject Pageable pageable
     ) {
         LOG.debug("REST request to get Mutations by street : {} and commune : {}", street, commune);
-        List<MutationDTO> mutations = mutationService.searchMutationsByStreetAndCommune(street, commune);
-        return ResponseEntity.ok().body(mutations);
+        Page<MutationDTO> page = mutationService.searchMutationsByStreetAndCommune(street, commune, pageable);
+        HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
+        return ResponseEntity.ok().headers(headers).body(page);
     }
 }

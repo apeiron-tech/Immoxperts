@@ -6,12 +6,14 @@ import java.math.BigDecimal;
 public class PropertyStatisticsDTO implements Serializable {
 
     private String typeBien;
+    private String commune;
     private Long nombre;
     private BigDecimal prixMoyen;
     private BigDecimal prixM2Moyen;
 
-    public PropertyStatisticsDTO(String typeBien, Long nombre, BigDecimal prixMoyen, BigDecimal prixM2Moyen) {
+    public PropertyStatisticsDTO(String typeBien, String commune, Long nombre, BigDecimal prixMoyen, BigDecimal prixM2Moyen) {
         this.typeBien = typeBien;
+        this.commune = commune;
         this.nombre = nombre;
         this.prixMoyen = prixMoyen;
         this.prixM2Moyen = prixM2Moyen;
@@ -23,6 +25,14 @@ public class PropertyStatisticsDTO implements Serializable {
 
     public void setTypeBien(String typeBien) {
         this.typeBien = typeBien;
+    }
+
+    public String getCommune() {
+        return commune;
+    }
+
+    public void setCommune(String commune) {
+        this.commune = commune;
     }
 
     public Long getNombre() {

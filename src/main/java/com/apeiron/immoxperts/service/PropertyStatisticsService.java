@@ -5,4 +5,6 @@ import java.util.List;
 
 public interface PropertyStatisticsService {
     List<PropertyStatisticsDTO> getPropertyStatisticsByCommune(String commune);
+    List<PropertyStatisticsDTO> getAllPropertyStatisticsByCommune(String commune);
+    void refreshPropertyStatistics();
 }

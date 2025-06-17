@@ -177,7 +177,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
           },
         });
 
-        const formatted: Property[] = apiResponse.data.map((mutation: any) => ({
+        const formatted: Property[] = apiResponse.data.content.map((mutation: any) => ({
           id: parseInt(mutation.idmutation, 10),
           address: mutation.addresses?.[0] || 'Adresse inconnue',
           city: communeName,
