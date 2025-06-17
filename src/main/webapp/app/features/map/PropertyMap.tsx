@@ -675,8 +675,8 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       container: mapContainer.current,
       style: 'mapbox://styles/saber5180/cmawpgdtd007301sc5ww48tds',
       center: [8.73692, 41.9281],
-      zoom: 15,
-      minZoom: 10,
+      zoom: 13.5,
+      minZoom: 13.5,
       pitch: 0,
       bearing: 0,
       attributionControl: false,
@@ -1204,10 +1204,38 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         )}
       </button>
 
+      {/* Map Controls */}
+      <div className="absolute top-16 left-4 flex flex-col gap-2 z-50">
+        <div className="bg-white rounded-lg shadow-md flex flex-col">
+          <button onClick={handleZoomIn} className="p-2 hover:bg-gray-100 rounded-t-lg flex items-center justify-center text-gray-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+          <div className="border-t border-gray-200"></div>
+          <button onClick={handleZoomOut} className="p-2 hover:bg-gray-100 rounded-b-lg flex items-center justify-center text-gray-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M5 12h14" />
+            </svg>
+          </button>
+        </div>
+
+        <button
+          onClick={toggleMapStyle}
+          className="bg-white p-2 rounded-lg shadow-md hover:bg-gray-100 flex items-center justify-center text-gray-700"
+          title={is3DView ? 'Passer en vue 2D' : 'Passer en vue 3D'}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <path d="M7.5 4.21l4.5 2.6M7.5 19.79V14.6L3 12M16.5 4.21V9.4L21 12M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
+          </svg>
+        </button>
+      </div>
+
       {/* Stats Panel */}
       {showStatsPanel && (
         <div
-          className="fixed sm:absolute top-0 left-0 sm:top-4 sm:left-16 z-20 bg-white rounded-none sm:rounded-xl shadow-lg p-4 w-full sm:w-[448px] h-full sm:h-auto overflow-y-auto sm:overflow-visible border-t sm:border border-gray-100"
+          className="fixed sm:absolute top-0 left-0 sm:top-4 sm:left-16 z-20 bg-white rounded-none sm:rounded-xl shadow-lg p-4 w-full sm:w-[520px] h-full sm:h-auto overflow-y-auto sm:overflow-visible border-t sm:border border-gray-100"
           onClick={e => e.stopPropagation()}
         >
           <div className="flex justify-between items-center mb-2">
@@ -1237,7 +1265,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
                   {normalizedStats.map((stat, index) => (
                     <button
                       key={stat.typeBien}
-                      className={`flex-1 py-2 px-2 rounded-lg text-center text-xs font-medium ${
+                      className={`flex-1 py-2 px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
                         activePropertyType === index ? `${getIndigoShade(index)} text-white` : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
                       }`}
                       onClick={() => setActivePropertyType(index)}
@@ -1254,19 +1282,21 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
                 ) : error ? (
                   <div className="text-red-500 text-center py-1 text-xs">⚠️ {error}</div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Ventes</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatNumber(normalizedStats[activePropertyType]?.nombre)}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">Nombre de ventes</p>
+                      <p className="text-base font-semibold text-gray-900">{formatNumber(normalizedStats[activePropertyType]?.nombre)}</p>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                       <p className="text-xs text-gray-600 mb-1">Prix Médian</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€</p>
+                      <p className="text-base font-semibold text-gray-900">
+                        {formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€
+                      </p>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">€/m²</p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {formatNumber(normalizedStats[activePropertyType]?.prixM2Moyen)}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">Prix au m² Médian</p>
+                      <p className="text-base font-semibold text-gray-900">
+                        {formatNumber(normalizedStats[activePropertyType]?.prixM2Moyen)}€
                       </p>
                     </div>
                   </div>
@@ -1276,34 +1306,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
           })()}
         </div>
       )}
-
-      {/* Map Controls */}
-      <div className="fixed bottom-20 right-5 flex flex-col gap-2 z-50">
-        <div className="bg-white rounded-lg shadow-md flex flex-col">
-          <button onClick={handleZoomIn} className="p-2 hover:bg-gray-100 rounded-t-lg flex items-center justify-center text-gray-700">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
-          <div className="border-t border-gray-200"></div>
-          <button onClick={handleZoomOut} className="p-2 hover:bg-gray-100 rounded-b-lg flex items-center justify-center text-gray-700">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14" />
-            </svg>
-          </button>
-        </div>
-
-        <button
-          onClick={toggleMapStyle}
-          className="bg-white p-2 rounded-lg shadow-md hover:bg-gray-100 flex items-center justify-center text-gray-700"
-          title={is3DView ? 'Passer en vue 2D' : 'Passer en vue 3D'}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-            <path d="M7.5 4.21l4.5 2.6M7.5 19.79V14.6L3 12M16.5 4.21V9.4L21 12M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
-          </svg>
-        </button>
-      </div>
 
       {/* Map Container */}
       <div ref={mapContainer} className="h-full w-full pb-2" />
