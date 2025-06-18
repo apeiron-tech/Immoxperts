@@ -18,6 +18,7 @@ import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -78,54 +79,10 @@ public class MutationServiceImpl implements MutationService {
     }
 
     @Override
-    public MutationDTO save(MutationDTO mutationDTO) {
-        LOG.debug("Request to save Mutation : {}", mutationDTO);
-        Mutation mutation = mutationMapper.toEntity(mutationDTO);
-        mutation = mutationRepository.save(mutation);
-        return mutationMapper.toDto(mutation);
-    }
-
-    @Override
-    public MutationDTO update(MutationDTO mutationDTO) {
-        LOG.debug("Request to update Mutation : {}", mutationDTO);
-        Mutation mutation = mutationMapper.toEntity(mutationDTO);
-        mutation = mutationRepository.save(mutation);
-        return mutationMapper.toDto(mutation);
-    }
-
-    @Override
-    public Optional<MutationDTO> partialUpdate(MutationDTO mutationDTO) {
-        LOG.debug("Request to partially update Mutation : {}", mutationDTO);
-
-        return mutationRepository
-            .findById(mutationDTO.getIdmutation(1))
-            .map(existingMutation -> {
-                mutationMapper.partialUpdate(existingMutation, mutationDTO);
-
-                return existingMutation;
-            })
-            .map(mutationRepository::save)
-            .map(mutationMapper::toDto);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Page<MutationDTO> findAll(Pageable pageable) {
-        LOG.debug("Request to get all Mutations");
-        return mutationRepository.findAll(pageable).map(mutationMapper::toDto);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public Optional<MutationDTO> findOne(Integer id) {
         LOG.debug("Request to get Mutation : {}", id);
         return mutationRepository.findById(id).map(mutationMapper::toDto);
-    }
-
-    @Override
-    public void delete(Integer id) {
-        LOG.debug("Request to delete Mutation : {}", id);
-        mutationRepository.deleteById(id);
     }
 
     @Override
@@ -253,6 +210,10 @@ public class MutationServiceImpl implements MutationService {
     }
 
     private MutationDTO convertToDTO(Mutation mutation) {
+        if (mutation == null) {
+            return null;
+        }
+
         MutationDTO dto = new MutationDTO();
         dto.setIdmutation(mutation.getIdmutation());
         dto.setDatemut(mutation.getDatemut());
@@ -262,50 +223,79 @@ public class MutationServiceImpl implements MutationService {
         dto.setTerrain(mutation.getSterr());
 
         List<String> libtyplocList = new ArrayList<>();
-        int nbpprincTotal = 0;
+        final int[] nbpprincTotal = { 0 }; // Using array as a mutable container
         List<String> addresses = new ArrayList<>();
 
         if (mutation.getAdresseLocals() != null) {
-            for (AdresseLocal adresseLocal : mutation.getAdresseLocals()) {
-                Local local = adresseLocal.getLocal();
-                if (local != null) {
-                    String type = local.getLibtyploc();
-                    if (type != null && !type.trim().isEmpty()) {
-                        libtyplocList.add(type.trim().toUpperCase());
+            // Use distinct() to avoid duplicates and handle nulls
+            mutation
+                .getAdresseLocals()
+                .stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .forEach(adresseLocal -> {
+                    if (adresseLocal.getLocal() != null) {
+                        String type = adresseLocal.getLocal().getLibtyploc();
+                        if (type != null && !type.trim().isEmpty()) {
+                            libtyplocList.add(type.trim().toUpperCase());
+                        }
+                        if (adresseLocal.getLocal().getNbpprinc() != null) {
+                            nbpprincTotal[0] += adresseLocal.getLocal().getNbpprinc();
+                        }
                     }
-                    if (local.getNbpprinc() != null) {
-                        nbpprincTotal += local.getNbpprinc();
-                    }
-                }
-            }
+                });
 
-            addresses.addAll(mutation.getAdresseLocals().stream().map(al -> formatAddress(al.getAdresse())).collect(Collectors.toList()));
+            addresses.addAll(
+                mutation
+                    .getAdresseLocals()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .map(al -> al.getAdresse() != null ? formatAddress(al.getAdresse()) : null)
+                    .filter(Objects::nonNull)
+                    .distinct() // Add distinct here to remove duplicate addresses
+                    .collect(Collectors.toList())
+            );
         }
 
         dto.setLibtyplocList(libtyplocList);
 
+        // Handle AdresseDispoparcs separately to avoid Hibernate's unique constraint
         if (mutation.getAdresseDispoparcs() != null) {
-            List<String> dispoparcAddresses = mutation
-                .getAdresseDispoparcs()
-                .stream()
-                .map(ad -> formatAddress(ad.getAdresse()))
-                .collect(Collectors.toList());
-            addresses.addAll(dispoparcAddresses);
+            try {
+                List<String> dispoparcAddresses = mutation
+                    .getAdresseDispoparcs()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .map(ad -> ad.getAdresse() != null ? formatAddress(ad.getAdresse()) : null)
+                    .filter(Objects::nonNull)
+                    .distinct() // Add distinct here to remove duplicate addresses
+                    .collect(Collectors.toList());
+                addresses.addAll(dispoparcAddresses);
 
-            if (addresses.isEmpty() && mutation.getSterr() == null) {
-                BigDecimal dcntsolSum = mutation.getAdresseDispoparcs().isEmpty()
-                    ? BigDecimal.ZERO
-                    : dispositionParcelleRepository.sumDcntsolByIddispopars(
-                        mutation.getAdresseDispoparcs().stream().map(AdresseDispoparc::getIddispopar).collect(Collectors.toList())
-                    );
+                if (addresses.isEmpty() && mutation.getSterr() == null) {
+                    // Get unique IDs first
+                    List<Integer> uniqueIds = mutation
+                        .getAdresseDispoparcs()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .map(AdresseDispoparc::getIddispopar)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .collect(Collectors.toList());
 
-                BigDecimal dcntagrSum = mutation.getAdresseDispoparcs().isEmpty()
-                    ? BigDecimal.ZERO
-                    : dispositionParcelleRepository.sumDcntagrclByIddispopars(
-                        mutation.getAdresseDispoparcs().stream().map(AdresseDispoparc::getIddispopar).collect(Collectors.toList())
-                    );
-
-                dto.setTerrain(dcntagrSum.add(dcntsolSum));
+                    if (!uniqueIds.isEmpty()) {
+                        BigDecimal dcntsolSum = dispositionParcelleRepository.sumDcntsolByIddispopars(uniqueIds);
+                        BigDecimal dcntagrSum = dispositionParcelleRepository.sumDcntagrclByIddispopars(uniqueIds);
+                        dto.setTerrain(dcntagrSum.add(dcntsolSum));
+                    } else {
+                        dto.setTerrain(BigDecimal.ZERO);
+                    }
+                }
+            } catch (Exception e) {
+                LOG.warn("Error processing AdresseDispoparcs for mutation {}: {}", mutation.getIdmutation(), e.getMessage());
+                // Continue processing even if there's an error with AdresseDispoparcs
             }
         }
 
@@ -322,8 +312,8 @@ public class MutationServiceImpl implements MutationService {
             dto.setLibtyplocList(normalized);
         }
 
-        dto.setNbpprincTotal(nbpprincTotal);
-        dto.setAddresses(addresses);
+        dto.setNbpprincTotal(nbpprincTotal[0]);
+        dto.setAddresses(addresses.stream().distinct().collect(Collectors.toList())); // Ensure addresses are unique
 
         // Surface
         BigDecimal total = adresseLocalRepository.surfaceMutaion(mutation.getIdmutation().longValue());
@@ -350,52 +340,6 @@ public class MutationServiceImpl implements MutationService {
             sb.append(" ").append(adresse.getCommune());
         }
         return sb.toString();
-    }
-
-    public List<MutationDTO> getMutationsByAdresseId2(Integer idadresse) {
-        // Get mutations from both sources
-        List<Mutation> mutationsDispo = mutationRepository.findByAdresseDispoParcId(idadresse);
-
-        // Combine and deduplicate
-        Set<Mutation> uniqueMutations = new LinkedHashSet<>();
-        uniqueMutations.addAll(mutationsDispo);
-
-        // Calculate land sizes
-        return uniqueMutations
-            .stream()
-            .map(mutation -> {
-                // Get land size for mutations from adresse_dispoparc
-                BigDecimal dcntsolSum = mutation.getAdresseDispoparcs().isEmpty()
-                    ? BigDecimal.ZERO
-                    : dispositionParcelleRepository.sumDcntsolByIddispopars(
-                        mutation.getAdresseDispoparcs().stream().map(AdresseDispoparc::getIddispopar).collect(Collectors.toList())
-                    );
-
-                // Get land size for mutations from adresse_dispoparc
-                BigDecimal dcntagrSum = mutation.getAdresseDispoparcs().isEmpty()
-                    ? BigDecimal.ZERO
-                    : dispositionParcelleRepository.sumDcntagrclByIddispopars(
-                        mutation.getAdresseDispoparcs().stream().map(AdresseDispoparc::getIddispopar).collect(Collectors.toList())
-                    );
-                dcntsolSum = dcntagrSum.add(dcntsolSum);
-                return convertToDTO(mutation, dcntsolSum);
-            })
-            .collect(Collectors.toList());
-    }
-
-    private MutationDTO convertToDTO(Mutation mutation, BigDecimal dcntsolSum) {
-        MutationDTO dto = new MutationDTO();
-        // Existing mappings
-        dto.setIdmutation(mutation.getIdmutation());
-        dto.setDatemut(mutation.getDatemut());
-        dto.setValeurfonc(mutation.getValeurfonc());
-        dto.setTerrain(dcntsolSum);
-        if (mutation.getAdresseDispoparcs() != null) {
-            dto.setAddresses(
-                mutation.getAdresseDispoparcs().stream().map(al -> formatAddress(al.getAdresse())).collect(Collectors.toList())
-            );
-        }
-        return dto;
     }
 
     @Override

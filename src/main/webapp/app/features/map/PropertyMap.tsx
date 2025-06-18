@@ -835,7 +835,88 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
       // Add event handlers for each visible layer
       visibleLayers.forEach(({ id: layerId }) => {
+        const mouseEnterHandler = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+          if (!e.features?.length) return;
+
+          const feature = e.features[0];
+          const featureId = feature.id;
+
+          if (hoveredId.current) {
+            map.current.setFeatureState(
+              {
+                source: 'parcels-source',
+                sourceLayer: SOURCE_LAYER,
+                id: hoveredId.current,
+              },
+              { hover: false },
+            );
+          }
+
+          hoveredId.current = featureId;
+          map.current.setFeatureState(
+            {
+              source: 'parcels-source',
+              sourceLayer: SOURCE_LAYER,
+              id: featureId,
+            },
+            { hover: false },
+          );
+
+          map.current.getCanvas().style.cursor = 'pointer';
+
+          // Remove both popups when entering a new feature
+          popup.current?.remove();
+          popup.current = null;
+          hoverPopup.current?.remove();
+          hoverPopup.current = null;
+
+          hoverPopup.current = new mapboxgl.Popup({
+            offset: 12,
+            closeOnClick: false,
+            closeButton: false,
+            className: 'hover-popup',
+          })
+            .setLngLat(e.lngLat)
+            .addTo(map.current);
+
+          if (feature.properties) {
+            createHoverPopupContent({
+              numero: feature.properties.numero,
+              nomVoie: feature.properties.nomVoie,
+            }).then(content => {
+              if (hoverPopup.current) {
+                hoverPopup.current.setDOMContent(content);
+              }
+            });
+          }
+        };
+
+        const mouseLeaveHandler = () => {
+          if (hoveredId.current) {
+            map.current.setFeatureState(
+              {
+                source: 'parcels-source',
+                sourceLayer: SOURCE_LAYER,
+                id: hoveredId.current,
+              },
+              { hover: false },
+            );
+            hoveredId.current = null;
+          }
+
+          map.current.getCanvas().style.cursor = '';
+
+          // Only remove hover popup if there's no active address popup
+          if (hoverPopup.current && !popup.current) {
+            hoverPopup.current.remove();
+            hoverPopup.current = null;
+          }
+        };
+
         const clickHandler = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+          // Remove hover popup when clicking
+          hoverPopup.current?.remove();
+          hoverPopup.current = null;
           popup.current?.remove();
 
           if (e.features?.length) {
@@ -881,78 +962,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
           }
         };
 
-        const mouseEnterHandler = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
-          if (!e.features?.length) return;
-
-          const feature = e.features[0];
-          const featureId = feature.id;
-
-          if (hoveredId.current) {
-            map.current.setFeatureState(
-              {
-                source: 'parcels-source',
-                sourceLayer: SOURCE_LAYER,
-                id: hoveredId.current,
-              },
-              { hover: false },
-            );
-          }
-
-          hoveredId.current = featureId;
-          map.current.setFeatureState(
-            {
-              source: 'parcels-source',
-              sourceLayer: SOURCE_LAYER,
-              id: featureId,
-            },
-            { hover: false },
-          );
-
-          map.current.getCanvas().style.cursor = 'pointer';
-          popup.current?.remove();
-          popup.current = null;
-          hoverPopup.current?.remove();
-
-          hoverPopup.current = new mapboxgl.Popup({
-            offset: 12,
-            closeOnClick: false,
-            closeButton: false,
-            className: 'hover-popup',
-          })
-            .setLngLat(e.lngLat)
-            .addTo(map.current);
-
-          if (feature.properties) {
-            createHoverPopupContent({
-              numero: feature.properties.numero,
-              nomVoie: feature.properties.nomVoie,
-            }).then(content => {
-              if (hoverPopup.current) {
-                hoverPopup.current.setDOMContent(content);
-              }
-            });
-          }
-        };
-
-        const mouseLeaveHandler = () => {
-          if (hoveredId.current) {
-            map.current.setFeatureState(
-              {
-                source: 'parcels-source',
-                sourceLayer: SOURCE_LAYER,
-                id: hoveredId.current,
-              },
-              { hover: false },
-            );
-            hoveredId.current = null;
-          }
-
-          map.current.getCanvas().style.cursor = '';
-          if (hoverPopup.current && !popup.current) {
-            hoverPopup.current.remove();
-            hoverPopup.current = null;
-          }
-        };
         // Gestion du survol
         map.current.on('mousemove', LAYER_ID, e => {
           if (e.features.length > 0) {

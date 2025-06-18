@@ -26,19 +26,6 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
     List<Mutation> findByAdresseDispoParcId(@Param("idadresse") Integer idadresse);
 
     @Query(
-        """
-        SELECT DISTINCT m FROM Mutation m
-        LEFT JOIN FETCH m.adresseLocals al
-        LEFT JOIN FETCH al.adresse a
-        LEFT JOIN FETCH m.adresseDispoparcs ad
-        LEFT JOIN FETCH ad.adresse adr
-        WHERE (:street IS NULL OR UPPER(a.voie) LIKE UPPER(CONCAT('%', :street, '%')))
-          AND UPPER(a.commune) = UPPER(:commune)
-        """
-    )
-    List<Mutation> findMutationsByStreetAndCommune(@Param("street") String street, @Param("commune") String commune);
-
-    @Query(
         value = """
         SELECT * FROM mutation_search_mv
         WHERE (:novoie IS NULL OR novoie = :novoie)
@@ -55,26 +42,6 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
         @Param("typvoie") String typvoie,
         @Param("voieRestante") String voieRestante,
         Pageable pageable
-    );
-
-    @Query(
-        value = """
-        SELECT DISTINCT m.idmutation, m.coddep, m.datemut, m.idnatmut, m.sterr, m.valeurfonc, m.vefa
-        FROM mutation m
-        JOIN adresse_local al ON m.idmutation = al.idmutation
-        JOIN adresse a ON al.idadresse = a.idadresse
-        WHERE (:novoie IS NULL OR a.novoie = :novoie)
-          AND (:btq IS NULL OR UPPER(CAST(a.btq AS TEXT)) = UPPER(:btq))
-          AND (:typvoie IS NULL OR UPPER(a.typvoie) = UPPER(:typvoie))
-          AND (:voie IS NULL OR UPPER(a.voie) LIKE CONCAT('%', UPPER(:voie), '%'))
-        """,
-        nativeQuery = true
-    )
-    List<Object[]> fastSearchMutationsNative(
-        @Param("novoie") Integer novoie,
-        @Param("btq") String btq,
-        @Param("typvoie") String typvoie,
-        @Param("voie") String voieRestante
     );
 
     @Query(
