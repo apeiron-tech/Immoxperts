@@ -52,6 +52,8 @@ interface PropertyMapProps {
     nomVoie?: string;
     [key: string]: string | [number, number] | undefined;
   };
+  selectedProperty?: Property | null;
+  hoveredProperty?: Property | null;
 }
 
 interface PropertyStats {
@@ -61,7 +63,15 @@ interface PropertyStats {
   prixM2Moyen: number;
 }
 
-const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, onPropertiesFound, onAddressFound, searchParams }) => {
+const PropertyMap: React.FC<PropertyMapProps> = ({
+  onMapMove,
+  onPropertySelect,
+  onPropertiesFound,
+  onAddressFound,
+  searchParams,
+  selectedProperty,
+  hoveredProperty,
+}) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const popup = useRef<mapboxgl.Popup | null>(null);
@@ -72,7 +82,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
   const [currentCity, setCurrentCity] = useState<string>('');
   const [is3DView, setIs3DView] = useState<boolean>(false);
   const { numero, nomVoie, coordinates } = searchParams;
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [similarProperties, setSimilarProperties] = useState<Property[]>([]);
   const mutationCache = useRef<Map<string, Property[]>>(new Map());
   const [propertyStats, setPropertyStats] = useState<PropertyStats[]>([]);
@@ -487,7 +496,18 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
     container.appendChild(loadingIndicator);
 
     try {
-      const formattedProperties = await fetchAddressData(properties);
+      // Fetch the raw data from the API
+      const streetNumber = normalizeSearchParams(properties.numero?.toString() || '');
+      const streetName = normalizeSearchParams(properties.nomVoie || '');
+      const novoie = streetNumber.replace(/\D/g, '');
+      const voie = streetName;
+      const response = await fetch(`${API_ENDPOINTS.mutations.search}?novoie=${novoie}&voie=${encodeURIComponent(voie)}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur API: ${response.status} - ${errorText}`);
+      }
+      const data = await response.json();
+      const mutations = data;
       const getPropertyTypeColor = type => {
         const colorMap = {
           appartement: '#4F46E5',
@@ -499,84 +519,117 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
         return colorMap[type?.toLowerCase()?.trim()] || '#9CA3AF';
       };
 
-      if (formattedProperties && formattedProperties.length > 0) {
-        container.innerHTML = '';
+      if (mutations && mutations.length > 0) {
+        let currentIndex = 0;
+        const renderProperty = index => {
+          const mutation = mutations[index];
+          if (!mutation) return;
 
-        const property = formattedProperties[0];
-        if (!property) return container;
+          const surface = mutation.surface || 1;
+          const valeurfonc = mutation.valeurfonc || 0;
+          const rawAddress = mutation.addresses?.[0] || '';
+          const addressParts = rawAddress.split(' ');
+          const propertyNumber = addressParts.find(part => /^\d+/.test(part)) || '';
+          const streetNameParts = addressParts.filter(part => part !== propertyNumber && !/^\d{5}/.test(part));
+          const cityParts = addressParts.slice(-2);
+          const address = `${propertyNumber} ${streetNameParts.join(' ')}`;
+          const cityName = cityParts.join(' ');
+          const type = (mutation.libtyplocList?.[0] || 'Terrain')
+            .replace(/\./g, '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+          const propertyTypeLabel =
+            type
+              ?.toLowerCase()
+              ?.split(' ')
+              ?.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              ?.join(' ') || 'Type inconnu';
+          const priceFormatted = valeurfonc?.toLocaleString('fr-FR') + ' €';
+          const pricePerSqm = valeurfonc && surface ? Math.round(valeurfonc / surface).toLocaleString('fr-FR') + ' €/m²' : 'N/A';
+          const rooms = mutation.nbpprincTotal ?? 'N/A';
+          const soldDate = new Date(mutation.datemut).toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          });
 
-        const propertyTypeLabel =
-          property.type
-            ?.toLowerCase()
-            ?.split(' ')
-            ?.map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            ?.join(' ') || 'Type inconnu';
-        const cityName = property.city || '';
+          container.innerHTML = `
+            <div style="
+              background: #fff;
+              padding: 1px;
+              font-family: 'Maven Pro', sans-serif;
+              max-width: 480px;
+              width: 100%;
+              position: relative;
+              border-radius: 16px;
+            ">
+              <!-- Address -->
+              <div style="font-weight: 700; font-size: 16px;width:75%; margin-bottom: 10px; color: #1a1a1a;">
+                  ${address.toUpperCase() || ''} – ${cityName}
+              </div>
 
-        const priceFormatted = property.numericPrice?.toLocaleString('fr-FR') + ' €';
-        const pricePerSqm =
-          property.numericPrice && property.numericSurface
-            ? Math.round(property.numericPrice / property.numericSurface).toLocaleString('fr-FR') + ' €/m²'
-            : 'N/A';
+              <!-- Property Type, Rooms, Surface -->
+              <div style="font-size: 16px;width:70%; color: #333;">
+                <span style="color: ${getPropertyTypeColor(propertyTypeLabel)}; font-weight: 900; margin-bottom: 10px;">
+                  ${propertyTypeLabel}
+                </span>
+                  <span style="margin-top: 10px;">${rooms || 'N/A'} pièces – ${surface.toLocaleString('fr-FR') || 'N/A'} m²</span>
+              </div>
 
-        container.innerHTML = `
-      <div style="
-        background: #fff;
-        padding: 1px;
-        font-family: 'Maven Pro', sans-serif;
-        max-width: 480px;
-        width: 100%;
-        position: relative;
-        border-radius: 16px;
-      ">
-        <!-- Address -->
-        <div style="font-weight: 700; font-size: 16px;width:75%; margin-bottom: 10px; color: #1a1a1a;">
-            ${property.address?.toUpperCase() || ''} – ${cityName}
-        </div>
+              <!-- Price Box -->
+              <div style="
+                position: absolute;
+                top: 0px;
+                right: 0px;
+                border: 1px solid #e5e7eb;
+                padding: 10px 14px;
+                border-radius: 12px;
+                text-align: right;
+                min-width: 110px;
+              ">
+                <div style="color: #241c83; font-weight: 800; font-size: 18px;">${priceFormatted}</div>
+                <div style="color: #888; font-size: 14px;">${pricePerSqm}</div>
+              </div>
 
-        <!-- Property Type, Rooms, Surface -->
-        <div style="font-size: 16px;width:70%; color: #333;">
-          <span style="color: ${getPropertyTypeColor(propertyTypeLabel)}; font-weight: 900; margin-bottom: 10px;">
-            ${propertyTypeLabel}
-          </span>
-            <span style="margin-top: 10px;">${property.rooms || 'N/A'} pièces – ${property.surface || 'N/A'}</span>
-        </div>
+              <!-- Sold Date -->
+              <div style="
+                margin-top: 16px;
+                display: inline-block;
+                border: 1px solid #e5e7eb;
+                padding: 10px 14px;
+                border-radius: 12px;
+                font-size: 14px;
+                color: #444;
+              ">
+                  Vendu le <strong style="color: #000;">${formatFrenchDate(soldDate || '')}</strong>
+              </div>
+            </div>
+          `;
 
-        <!-- Price Box -->
-        <div style="
-          position: absolute;
-          top: 0px;
-          right: 0px;
-          border: 1px solid #e5e7eb;
-          padding: 10px 14px;
-          border-radius: 12px;
-          text-align: right;
-          min-width: 110px;
-        ">
-          <div style="color: #241c83; font-weight: 800; font-size: 18px;">${priceFormatted}</div>
-          <div style="color: #888; font-size: 14px;">${pricePerSqm}</div>
-        </div>
+          // Carousel navigation if more than one property
+          if (mutations.length > 1) {
+            const navDiv = document.createElement('div');
+            navDiv.className = 'flex items-center justify-center gap-2';
+            navDiv.innerHTML = `
+              <button class="prev-btn p-1 hover:text-blue-600">&lt;</button>
+              <span class="text-s px-4 text-blue-600 font-medium">${index + 1} / ${mutations.length}</span>
+              <button class="next-btn p-1 hover:text-blue-600">&gt;</button>
+            `;
+            container.appendChild(navDiv);
 
-        <!-- Sold Date -->
-        <div style="
-          margin-top: 16px;
-          display: inline-block;
-          border: 1px solid #e5e7eb;
-          padding: 10px 14px;
-          border-radius: 12px;
-          font-size: 14px;
-          color: #444;
-        ">
-            Vendu le <strong style="color: #000;">${formatFrenchDate(property.soldDate || '')}</strong>
-        </div>
-      </div>
-    `;
-
-        container.querySelector('.popup-button')?.addEventListener('click', e => {
-          e.stopPropagation();
-          handleAddressClick(properties);
-          hoverPopup.current?.remove();
-        });
+            navDiv.querySelector('.prev-btn').addEventListener('click', e => {
+              e.stopPropagation();
+              currentIndex = currentIndex > 0 ? currentIndex - 1 : mutations.length - 1;
+              renderProperty(currentIndex);
+            });
+            navDiv.querySelector('.next-btn').addEventListener('click', e => {
+              e.stopPropagation();
+              currentIndex = currentIndex < mutations.length - 1 ? currentIndex + 1 : 0;
+              renderProperty(currentIndex);
+            });
+          }
+        };
+        renderProperty(currentIndex);
       } else {
         const addressLine = properties?.address || '';
 
@@ -652,10 +705,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
       button.addEventListener('click', e => {
         e.stopPropagation();
-        handleAddressClick({
-          numero: feature.properties.numero,
-          nomVoie: feature.properties.nomVoie,
-        });
+        // handleAddressClick({
+        //   numero: feature.properties.numero,
+        //   nomVoie: feature.properties.nomVoie,
+        // });
         popup.current?.remove();
       });
 
@@ -835,6 +888,29 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
 
       // Add event handlers for each visible layer
       visibleLayers.forEach(({ id: layerId }) => {
+        let isMouseOverPopup = false;
+        let popupRemoveTimeout = null;
+
+        const mouseEnterPopup = () => {
+          isMouseOverPopup = true;
+          if (popupRemoveTimeout) {
+            clearTimeout(popupRemoveTimeout);
+            popupRemoveTimeout = null;
+          }
+        };
+        const mouseLeavePopup = () => {
+          isMouseOverPopup = false;
+          // Remove popup if mouse is not over the feature either
+          popupRemoveTimeout = setTimeout(() => {
+            if (!isMouseOverPopup) {
+              if (hoverPopup.current && !popup.current) {
+                hoverPopup.current.remove();
+                hoverPopup.current = null;
+              }
+            }
+          }, 100);
+        };
+
         const mouseEnterHandler = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
           if (!e.features?.length) return;
 
@@ -886,31 +962,38 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
             }).then(content => {
               if (hoverPopup.current) {
                 hoverPopup.current.setDOMContent(content);
+                // Add listeners to the popup DOM
+                content.addEventListener('mouseenter', mouseEnterPopup);
+                content.addEventListener('mouseleave', mouseLeavePopup);
               }
             });
           }
         };
 
         const mouseLeaveHandler = () => {
-          if (hoveredId.current) {
-            map.current.setFeatureState(
-              {
-                source: 'parcels-source',
-                sourceLayer: SOURCE_LAYER,
-                id: hoveredId.current,
-              },
-              { hover: false },
-            );
-            hoveredId.current = null;
-          }
+          setTimeout(() => {
+            if (!isMouseOverPopup) {
+              if (hoveredId.current) {
+                map.current.setFeatureState(
+                  {
+                    source: 'parcels-source',
+                    sourceLayer: SOURCE_LAYER,
+                    id: hoveredId.current,
+                  },
+                  { hover: false },
+                );
+                hoveredId.current = null;
+              }
 
-          map.current.getCanvas().style.cursor = '';
+              map.current.getCanvas().style.cursor = '';
 
-          // Only remove hover popup if there's no active address popup
-          if (hoverPopup.current && !popup.current) {
-            hoverPopup.current.remove();
-            hoverPopup.current = null;
-          }
+              // Only remove hover popup if there's no active address popup
+              if (hoverPopup.current && !popup.current) {
+                hoverPopup.current.remove();
+                hoverPopup.current = null;
+              }
+            }
+          }, 100); // small delay to allow mouse to move to popup
         };
 
         const clickHandler = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
@@ -943,22 +1026,22 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
               },
               { selected: true },
             );
-
-            if (e.features.length === 1) {
-              handleAddressClick({
-                numero: feature.properties?.numero,
-                nomVoie: feature.properties?.nomVoie,
-              });
-            } else {
-              popup.current = new mapboxgl.Popup({
-                offset: 25,
-                closeOnClick: true,
-                className: 'multi-address-popup',
-              })
-                .setLngLat(e.lngLat)
-                .setDOMContent(createPopupContent(e.features))
-                .addTo(map.current);
-            }
+            //
+            // if (e.features.length === 1) {
+            //   handleAddressClick({
+            //     numero: feature.properties?.numero,
+            //     nomVoie: feature.properties?.nomVoie,
+            //   });
+            // } else {
+            //   popup.current = new mapboxgl.Popup({
+            //     offset: 25,
+            //     closeOnClick: true,
+            //     className: 'multi-address-popup',
+            //   })
+            //     .setLngLat(e.lngLat)
+            //     .setDOMContent(createPopupContent(e.features))
+            //     .addTo(map.current);
+            // }
           }
         };
 
@@ -1111,6 +1194,64 @@ const PropertyMap: React.FC<PropertyMapProps> = ({ onMapMove, onPropertySelect, 
       });
     }
   }, [coordinates]);
+
+  // Highlight selected property on map when selectedProperty changes
+  useEffect(() => {
+    if (!map.current) return;
+    // Remove previous selection
+    if (selectedId.current) {
+      map.current.setFeatureState(
+        {
+          source: 'parcels-source',
+          sourceLayer: SOURCE_LAYER,
+          id: selectedId.current,
+        },
+        { selected: false },
+      );
+      selectedId.current = null;
+    }
+    if (selectedProperty && selectedProperty.id) {
+      // TODO: If property.id does not match feature.id, map accordingly
+      map.current.setFeatureState(
+        {
+          source: 'parcels-source',
+          sourceLayer: SOURCE_LAYER,
+          id: selectedProperty.id,
+        },
+        { selected: true },
+      );
+      selectedId.current = selectedProperty.id;
+    }
+  }, [selectedProperty]);
+
+  // Highlight hovered property on map when hoveredProperty changes
+  useEffect(() => {
+    if (!map.current) return;
+    // Remove previous hover highlight
+    if (hoveredId.current) {
+      map.current.setFeatureState(
+        {
+          source: 'parcels-source',
+          sourceLayer: SOURCE_LAYER,
+          id: hoveredId.current,
+        },
+        { hover: false },
+      );
+      hoveredId.current = null;
+    }
+    // Highlight new hovered property
+    if (hoveredProperty && hoveredProperty.id) {
+      map.current.setFeatureState(
+        {
+          source: 'parcels-source',
+          sourceLayer: SOURCE_LAYER,
+          id: hoveredProperty.id,
+        },
+        { hover: true },
+      );
+      hoveredId.current = hoveredProperty.id;
+    }
+  }, [hoveredProperty]);
 
   const propertyTypeIcons = [
     <svg key="building" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

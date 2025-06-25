@@ -26,3 +26,8 @@
   padding: 4px 8px !important;
   color: #0b54d2 !important;
 }
+
+.popup-title {
+  color: #0b54d2;
+  /* Or use color: blue; for a standard blue */
+}

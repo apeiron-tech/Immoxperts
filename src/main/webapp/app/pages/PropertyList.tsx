@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import axios from 'axios';
@@ -77,6 +77,37 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
   const [similarProperties, setSimilarProperties] = useState<Property[]>([]);
   const [mapCoordinates, setMapCoordinates] = useState<[number, number] | null>(null);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
+  type SortOption = 'date-desc' | 'date-asc' | 'price-desc' | 'price-asc' | 'sqm-desc' | 'sqm-asc';
+  const [sortOption, setSortOption] = useState<SortOption>('date-desc');
+  const [hoveredProperty, setHoveredProperty] = useState<Property | null>(null);
+
+  const sortedProperties = useMemo(() => {
+    const props = [...properties];
+    switch (sortOption) {
+      case 'date-desc':
+        return props.sort((a, b) => new Date(b.soldDate).getTime() - new Date(a.soldDate).getTime());
+      case 'date-asc':
+        return props.sort((a, b) => new Date(a.soldDate).getTime() - new Date(b.soldDate).getTime());
+      case 'price-desc':
+        return props.sort((a, b) => (b.numericPrice || 0) - (a.numericPrice || 0));
+      case 'price-asc':
+        return props.sort((a, b) => (a.numericPrice || 0) - (b.numericPrice || 0));
+      case 'sqm-desc':
+        return props.sort((a, b) => {
+          const sqmA = a.numericSurface ? (a.numericPrice || 0) / a.numericSurface : 0;
+          const sqmB = b.numericSurface ? (b.numericPrice || 0) / b.numericSurface : 0;
+          return sqmB - sqmA;
+        });
+      case 'sqm-asc':
+        return props.sort((a, b) => {
+          const sqmA = a.numericSurface ? (a.numericPrice || 0) / a.numericSurface : 0;
+          const sqmB = b.numericSurface ? (b.numericPrice || 0) / b.numericSurface : 0;
+          return sqmA - sqmB;
+        });
+      default:
+        return props;
+    }
+  }, [properties, sortOption]);
 
   const closeSidebar = (): void => {
     setSelectedProperty(null);
@@ -176,6 +207,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
             commune: communeName,
           },
         });
+        console.error(apiResponse);
 
         const formatted: Property[] = apiResponse.data.content.map((mutation: any) => ({
           id: parseInt(mutation.idmutation, 10),
@@ -185,13 +217,13 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
           numericSurface: mutation.surface || 0,
           price: `${mutation.valeurfonc?.toLocaleString('fr-FR')} €`,
           surface: `${mutation.surface?.toLocaleString('fr-FR')} m²`,
-          type: mutation.libtyploc,
-          soldDate: new Date(mutation.datemut).toLocaleDateString('fr-FR'),
+          type: mutation.libtyplocList[0],
+          soldDate: new Date(mutation.datemut).toISOString(),
           pricePerSqm:
             mutation.valeurfonc && mutation.surface
               ? `${Math.round(mutation.valeurfonc / mutation.surface).toLocaleString('fr-FR')} €/m²`
               : 'N/A',
-          rooms: mutation.rooms?.toString() || 'N/A',
+          rooms: mutation.nbpprincTotal ?? 'N/A',
           rawData: {
             terrain: mutation.terrain,
             mutationType: mutation.mutationType,
@@ -347,9 +379,55 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
               key="property-list"
             >
               <h2 className="text-sm font-semibold mb-3">Transactions récentes</h2>
+              {/* Dropdown filter for sorting - only show if more than 1 property */}
+              {sortedProperties.length > 1 && (
+                <div className="mb-3 flex items-center gap-2">
+                  <label htmlFor="sort-properties" className="text-xs font-medium text-gray-700">
+                    Trier par
+                  </label>
+                  <div className="relative w-56">
+                    <select
+                      id="sort-properties"
+                      className="appearance-none w-full pl-3 pr-8 py-2 rounded-lg border border-gray-300 bg-white text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition outline-none"
+                      value={sortOption}
+                      onChange={e => {
+                        const value = e.target.value;
+                        if (
+                          [
+                            'date-desc',
+                            'date-asc',
+                            'price-desc',
+                            'price-asc',
+                            'sqm-desc',
+                            'sqm-asc',
+                            'surface-desc',
+                            'surface-asc',
+                          ].includes(value)
+                        ) {
+                          setSortOption(value as SortOption);
+                        }
+                      }}
+                    >
+                      <option value="date-desc">Les plus récentes</option>
+                      <option value="date-asc">Les plus anciennes</option>
+                      <option value="price-desc">Prix le plus haut</option>
+                      <option value="price-asc">Prix le plus bas</option>
+                      <option value="sqm-desc">Prix/m² le plus haut</option>
+                      <option value="sqm-asc">Prix/m² le plus bas</option>
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-200px)] pr-1 custom-scroll">
-                {properties.map(property => (
-                  <PropertyCard key={property.id} property={property} onClick={() => setSelectedProperty(property)} />
+                {sortedProperties.map(property => (
+                  <div key={property.id} onMouseEnter={() => setHoveredProperty(property)} onMouseLeave={() => setHoveredProperty(null)}>
+                    <PropertyCard property={{ ...property, soldDate: new Date(property.soldDate).toLocaleDateString('fr-FR') }} />
+                  </div>
                 ))}
               </div>
             </motion.div>
@@ -365,6 +443,8 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
             onPropertySelect={handlePropertySelect}
             onAddressFound={handleAddressFound}
             searchParams={searchParams}
+            selectedProperty={selectedProperty}
+            hoveredProperty={hoveredProperty}
           />
         </div>
       </div>
