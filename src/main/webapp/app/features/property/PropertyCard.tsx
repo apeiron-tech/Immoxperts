@@ -41,6 +41,9 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
 
   // Format property type label (capitalize each word)
   const formatPropertyTypeLabel = (propertyType: string) => {
+    if (propertyType?.toLowerCase().includes('local industriel commercial ou assimile')) {
+      return 'Local';
+    }
     return (
       propertyType
         ?.toLowerCase()
@@ -65,9 +68,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
       {/* Property Details */}
       <div className="flex items-start justify-between ">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">
-            {(address || '').toUpperCase()} – {city}
-          </h2>
+          <h2 className="text-sm font-semibold text-gray-900">{address}</h2>
         </div>
         <div className="text-left text-top">
           <div className="text-x font-bold text-indigo-600">{price}</div>

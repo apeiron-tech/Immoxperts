@@ -84,7 +84,7 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
 
     @Query(
         value = """
-        SELECT * FROM mutation_search_mv
+        SELECT DISTINCT * FROM mutation_search_mv
         WHERE UPPER(commune) = UPPER(:commune)
           AND (:street IS NULL OR UPPER(voie) LIKE UPPER(CONCAT(:street, '%')))
         ORDER BY datemut DESC

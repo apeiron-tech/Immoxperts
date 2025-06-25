@@ -509,14 +509,17 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
       const data = await response.json();
       const mutations = data;
       const getPropertyTypeColor = type => {
+        // Use the same order and color as the stats panel
         const colorMap = {
-          appartement: '#4F46E5',
-          'local industriel commercial ou assimile': '#8B5CF6',
-          terrain: '#60A5FA',
-          'bien multiple': '#2563EB',
-          maison: '#1E3A8A',
+          Appartement: '#4F46E5', // bg-indigo-600
+          Maison: '#8B5CF6', // bg-violet-500
+          Local: '#60A5FA', // bg-blue-400
+          Terrain: '#2563EB', // bg-blue-600
+          'Bien Multiple': '#1E3A8A', // bg-blue-900
         };
-        return colorMap[type?.toLowerCase()?.trim()] || '#9CA3AF';
+        // Use getShortTypeName to normalize
+        const shortType = getShortTypeName(type);
+        return colorMap[shortType] || '#9CA3AF';
       };
 
       if (mutations && mutations.length > 0) {
@@ -1026,22 +1029,22 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
               },
               { selected: true },
             );
-            //
-            // if (e.features.length === 1) {
-            //   handleAddressClick({
-            //     numero: feature.properties?.numero,
-            //     nomVoie: feature.properties?.nomVoie,
-            //   });
-            // } else {
-            //   popup.current = new mapboxgl.Popup({
-            //     offset: 25,
-            //     closeOnClick: true,
-            //     className: 'multi-address-popup',
-            //   })
-            //     .setLngLat(e.lngLat)
-            //     .setDOMContent(createPopupContent(e.features))
-            //     .addTo(map.current);
-            // }
+
+            if (e.features.length === 1) {
+              handleAddressClick({
+                numero: feature.properties?.numero,
+                nomVoie: feature.properties?.nomVoie,
+              });
+            } else {
+              popup.current = new mapboxgl.Popup({
+                offset: 25,
+                closeOnClick: true,
+                className: 'multi-address-popup',
+              })
+                .setLngLat(e.lngLat)
+                .setDOMContent(createPopupContent(e.features))
+                .addTo(map.current);
+            }
           }
         };
 
