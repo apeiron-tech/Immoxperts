@@ -28,10 +28,10 @@
             GROUP BY a.commune, a.codepostal;
 
             -- Create indexes for better performance
-            CREATE INDEX idx_commune_search_mv_commune ON dvf.commune_search_mv(commune);
-            CREATE INDEX idx_commune_search_mv_codepostal ON dvf.commune_search_mv(codepostal);
-            CREATE INDEX idx_commune_search_mv_total_sales ON dvf.commune_search_mv(total_sales);
-            CREATE INDEX idx_commune_search_mv_avg_price ON dvf.commune_search_mv(avg_price);
+            CREATE INDEX IF NOT EXISTS idx_commune_search_mv_commune ON dvf.commune_search_mv(commune);
+            CREATE INDEX IF NOT EXISTS idx_commune_search_mv_codepostal ON dvf.commune_search_mv(codepostal);
+            CREATE INDEX IF NOT EXISTS idx_commune_search_mv_total_sales ON dvf.commune_search_mv(total_sales);
+            CREATE INDEX IF NOT EXISTS idx_commune_search_mv_avg_price ON dvf.commune_search_mv(avg_price);
         </sql>
         <rollback>
             DROP MATERIALIZED VIEW IF EXISTS dvf.commune_search_mv;
