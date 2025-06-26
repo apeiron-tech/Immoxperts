@@ -29,29 +29,21 @@
             CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_btq ON dvf.mutation_search_mv(btq);
             CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_typvoie ON dvf.mutation_search_mv(typvoie);
             CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_voie ON dvf.mutation_search_mv(voie);
-            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_commune ON dvf.mutation_search_mv(commune);
             CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_codepostal ON dvf.mutation_search_mv(codepostal);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_commune ON dvf.mutation_search_mv(commune);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_datemut ON dvf.mutation_search_mv(datemut DESC);
 
-            -- Add composite indexes for common search patterns
+            -- Composite indexes
             CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_commune_voie ON dvf.mutation_search_mv(commune, voie);
             CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_commune_datemut ON dvf.mutation_search_mv(commune, datemut DESC);
             CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_commune_voie_datemut ON dvf.mutation_search_mv(commune, voie, datemut DESC);
-
-            -- Create indexes for better performance
-            CREATE INDEX idx_mutation_search_mv_novoie ON mutation_search_mv(novoie);
-            CREATE INDEX idx_mutation_search_mv_btq ON mutation_search_mv(btq);
-            CREATE INDEX idx_mutation_search_mv_typvoie ON mutation_search_mv(typvoie);
-            CREATE INDEX idx_mutation_search_mv_voie ON mutation_search_mv(voie);
-            CREATE INDEX idx_mutation_search_mv_datemut ON mutation_search_mv(datemut DESC);
-
-            -- Composite indexes for common search patterns
-            CREATE INDEX idx_mutation_search_mv_novoie_btq ON mutation_search_mv(novoie, btq);
-            CREATE INDEX idx_mutation_search_mv_typvoie_voie ON mutation_search_mv(typvoie, voie);
-            CREATE INDEX idx_mutation_search_mv_novoie_typvoie ON mutation_search_mv(novoie, typvoie);
-            CREATE INDEX idx_mutation_search_mv_novoie_btq_typvoie ON mutation_search_mv(novoie, btq, typvoie);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_novoie_btq ON dvf.mutation_search_mv(novoie, btq);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_typvoie_voie ON dvf.mutation_search_mv(typvoie, voie);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_novoie_typvoie ON dvf.mutation_search_mv(novoie, typvoie);
+            CREATE INDEX IF NOT EXISTS idx_mutation_search_mv_novoie_btq_typvoie ON dvf.mutation_search_mv(novoie, btq, typvoie);
         </sql>
         <rollback>
-            DROP MATERIALIZED VIEW IF EXISTS mutation_search_mv;
+            DROP MATERIALIZED VIEW IF EXISTS dvf.mutation_search_mv;
         </rollback>
     </changeSet>
 </databaseChangeLog>
