@@ -424,8 +424,12 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
                 </div>
               )}
               <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-200px)] pr-1 custom-scroll">
-                {sortedProperties.map(property => (
-                  <div key={property.id} onMouseEnter={() => setHoveredProperty(property)} onMouseLeave={() => setHoveredProperty(null)}>
+                {sortedProperties.map((property, idx) => (
+                  <div
+                    key={Number.isFinite(property.id) ? property.id : `property-${idx}`}
+                    onMouseEnter={() => setHoveredProperty(property)}
+                    onMouseLeave={() => setHoveredProperty(null)}
+                  >
                     <PropertyCard property={{ ...property, soldDate: new Date(property.soldDate).toLocaleDateString('fr-FR') }} />
                   </div>
                 ))}
