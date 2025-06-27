@@ -47,9 +47,6 @@ const Header: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="hidden md:flex items-center space-x-2">
-          <button className="px-4 py-2 border border-[#7069F9] rounded-lg text-[#7069F9] font-medium hover:bg-[#f0f0ff] transition">
-            Se connecter
-          </button>
           <button className="px-4 py-2 rounded-lg text-white font-medium" style={{ backgroundColor: '#1E1E9C' }}>
             S’inscrire
           </button>

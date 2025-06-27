@@ -338,35 +338,35 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
   useEffect(() => {
     if (!map.current) return;
 
-    const fetchMutations = async (street: string, commune: string): Promise<void> => {
-      try {
-        const response = await axios.get(API_ENDPOINTS.mutations.byStreetAndCommune, {
-          params: {
-            street: encodeURIComponent(street),
-            commune: encodeURIComponent(commune),
-          },
-        });
-
-        const formatted = response.data.map((mutation: any) => ({
-          id: mutation.idmutation,
-          address: mutation.addresses?.[0] || 'Adresse inconnue',
-          city: commune,
-          price: `${mutation.valeurfonc?.toLocaleString('fr-FR')} €`,
-          surface: `${mutation.surface?.toLocaleString('fr-FR')} m²`,
-          type: mutation.libtyploc,
-          soldDate: new Date(mutation.datemut).toLocaleDateString('fr-FR'),
-          pricePerSqm:
-            mutation.valeurfonc && mutation.surface
-              ? `${Math.round(mutation.valeurfonc / mutation.surface).toLocaleString('fr-FR')} €/m²`
-              : 'N/A',
-        }));
-
-        onPropertiesFound?.(formatted);
-      } catch (mutationError) {
-        setError('Error fetching mutations');
-        onPropertiesFound?.([]);
-      }
-    };
+    // const fetchMutations = async (street: string, commune: string): Promise<void> => {
+    //   try {
+    //     const response = await axios.get(API_ENDPOINTS.mutations.byStreetAndCommune, {
+    //       params: {
+    //         street: encodeURIComponent(street),
+    //         commune: encodeURIComponent(commune),
+    //       },
+    //     });
+    //
+    //     const formatted = response.data.map((mutation: any) => ({
+    //       id: mutation.idmutation,
+    //       address: mutation.addresses?.[0] || 'Adresse inconnue',
+    //       city: commune,
+    //       price: `${mutation.valeurfonc?.toLocaleString('fr-FR')} €`,
+    //       surface: `${mutation.surface?.toLocaleString('fr-FR')} m²`,
+    //       type: mutation.libtyploc,
+    //       soldDate: new Date(mutation.datemut).toLocaleDateString('fr-FR'),
+    //       pricePerSqm:
+    //         mutation.valeurfonc && mutation.surface
+    //           ? `${Math.round(mutation.valeurfonc / mutation.surface).toLocaleString('fr-FR')} €/m²`
+    //           : 'N/A',
+    //     }));
+    //
+    //     onPropertiesFound?.(formatted);
+    //   } catch (mutationError) {
+    //     setError('Error fetching mutations');
+    //     onPropertiesFound?.([]);
+    //   }
+    // };
 
     const updateLocationName = async (): Promise<void> => {
       try {
@@ -415,7 +415,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
         );
       }
     });
-
     map.current.on('moveend', updateLocationName);
     map.current.on('zoomend', updateLocationName);
 
@@ -508,6 +507,8 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
       }
       const data = await response.json();
       const mutations = data;
+      console.error(mutations);
+
       const getPropertyTypeColor = type => {
         // Use the same order and color as the stats panel
         const colorMap = {
@@ -568,7 +569,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
             ">
               <!-- Address -->
               <div style="font-weight: 700; font-size: 16px;width:75%; margin-bottom: 10px; color: #1a1a1a;">
-                  ${address.toUpperCase() || ''} – ${cityName}
+                  ${address.toUpperCase() || ''}
               </div>
 
               <!-- Property Type, Rooms, Surface -->
@@ -1031,10 +1032,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
             );
 
             if (e.features.length === 1) {
-              handleAddressClick({
-                numero: feature.properties?.numero,
-                nomVoie: feature.properties?.nomVoie,
-              });
+              // handleAddressClick({
+              //   numero: feature.properties?.numero,
+              //   nomVoie: feature.properties?.nomVoie,
+              // });
             } else {
               popup.current = new mapboxgl.Popup({
                 offset: 25,
@@ -1358,7 +1359,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
       </button>
 
       {/* Map Controls */}
-      <div className="absolute top-16 left-4 flex flex-col gap-2 z-50">
+      <div className="fixed top-20 left-4 flex flex-col gap-2 z-40 sm:absolute sm:top-16 sm:left-4 sm:z-50">
         <div className="bg-white rounded-lg shadow-md flex flex-col">
           <button onClick={handleZoomIn} className="p-2 hover:bg-gray-100 rounded-t-lg flex items-center justify-center text-gray-700">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
