@@ -568,7 +568,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
             ">
               <!-- Address -->
               <div style="font-weight: 700; font-size: 16px;width:75%; margin-bottom: 10px; color: #1a1a1a;">
-                  ${address.toUpperCase() || ''} – ${cityName}
+                  ${address.toUpperCase() || ''}
               </div>
 
               <!-- Property Type, Rooms, Surface -->
@@ -1031,10 +1031,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
             );
 
             if (e.features.length === 1) {
-              handleAddressClick({
-                numero: feature.properties?.numero,
-                nomVoie: feature.properties?.nomVoie,
-              });
+              // handleAddressClick({
+              //   numero: feature.properties?.numero,
+              //   nomVoie: feature.properties?.nomVoie,
+              // });
             } else {
               popup.current = new mapboxgl.Popup({
                 offset: 25,

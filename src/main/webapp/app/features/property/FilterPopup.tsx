@@ -41,7 +41,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 10, maxValue = 80,
   return (
     <div className="relative mb-4" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
       <div className="h-2 bg-gray-200 rounded-full">
-        <div className="absolute h-2 bg-indigo-900 rounded-full" style={{ width: `${max - min}%`, left: `${min}%` }}></div>
+        <div className="absolute h-2 rounded-full" style={{ width: `${max - min}%`, left: `${min}%`, backgroundColor: '#43ce9b' }}></div>
         <div
           className="absolute w-4 h-4 bg-white border-2 border-indigo-500 rounded-full -mt-1 cursor-pointer"
           style={{ left: `${min}%` }}
