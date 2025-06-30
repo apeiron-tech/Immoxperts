@@ -21,6 +21,7 @@ interface PropertyCardProps {
 
 const PropertyCard: React.FC<PropertyCardProps> = ({ property, onClick }) => {
   const { address, city, price, pricePerSqm, type, surface, rooms, soldDate } = property;
+  console.error(property);
 
   // Helper to format the sold date in French style (DD/MM/YYYY)
   const formatFrenchDate = (dateString: string) => {
@@ -91,25 +92,14 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onClick }) => {
         margin: 'auto',
         boxSizing: 'border-box',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row', // main container is now horizontal
         overflow: 'hidden',
+        gap: 16,
       }}
       onClick={onClick}
     >
-      {/* Top Row: Address/Title and Price Box */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          width: '100%',
-          gap: 10,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}
-      >
+      {/* LEFT COLUMN */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         {/* Address/Title */}
         <div
           style={{
@@ -121,64 +111,60 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onClick }) => {
             textShadow: '0 1px 0rgb(243, 243, 250)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            flex: 1,
-            minWidth: 0,
+            whiteSpace: 'nowrap',
           }}
         >
           {(address || '').toUpperCase()}
         </div>
-        {/* Price Box */}
+        {/* Property Type, Rooms, Surface */}
         <div
           style={{
-            border: '1px solid #e5e7eb',
-            padding: '10px 14px',
-            borderRadius: 12,
-            textAlign: 'right',
-            minWidth: 110,
-            boxShadow: '0 1px 4px rgba(36,28,131,0.04)',
-            marginLeft: 8,
-            flexShrink: 0,
+            fontSize: 15,
+            color: '#333',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginTop: 8,
           }}
         >
-          <div style={{ color: '#241c83', fontWeight: 800, fontSize: 18, lineHeight: 1 }}>{priceFormatted}</div>
-          <div style={{ color: '#888', fontSize: 14 }}>{pricePerSqmFormatted}</div>
+          <span style={{ color: getPropertyTypeColor(propertyTypeLabel), fontWeight: 900, fontSize: 15 }}>{propertyTypeLabel}</span>
+          <span style={{ color: '#888', fontWeight: 500, fontSize: 14 }}>
+            {rooms || 'N/A'} pièces - {surface || 'N/A'}
+          </span>
+        </div>
+        {/* Sold Date */}
+        <div
+          style={{
+            marginTop: 8,
+            display: 'inline-block',
+            border: '1px solid #e5e7eb',
+            padding: '8px 14px',
+            borderRadius: 12,
+            fontSize: 14,
+            color: '#444',
+            background: '#fafbfc',
+            alignSelf: 'flex-start',
+          }}
+        >
+          Vendu le <strong style={{ color: '#000' }}>{soldDate}</strong>
         </div>
       </div>
-
-      {/* Property Type, Rooms, Surface */}
+      {/* RIGHT COLUMN: PRICE BOX */}
       <div
         style={{
-          fontSize: 15,
-          width: '100%',
-          color: '#333',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          flexWrap: 'wrap',
-          marginTop: 0,
-        }}
-      >
-        <span style={{ color: getPropertyTypeColor(propertyTypeLabel), fontWeight: 900, fontSize: 15 }}>{propertyTypeLabel}</span>
-        <span style={{ color: '#888', fontWeight: 500, fontSize: 14 }}>
-          {rooms || 'N/A'} pièces - {surface || 'N/A'}
-        </span>
-      </div>
-
-      {/* Sold Date */}
-      <div
-        style={{
-          marginTop: 8,
-          display: 'inline-block',
           border: '1px solid #e5e7eb',
-          padding: '8px 14px',
+          padding: '10px 14px',
           borderRadius: 12,
-          fontSize: 14,
-          color: '#444',
-          background: '#fafbfc',
-          alignSelf: 'flex-start',
+          textAlign: 'right',
+          minWidth: 110,
+          boxShadow: '0 1px 4px rgba(36,28,131,0.04)',
+          flexShrink: 0,
+          alignSelf: 'flex-start', // align top
         }}
       >
-        Vendu le <strong style={{ color: '#000' }}>{soldDate}</strong>
+        <div style={{ color: '#241c83', fontWeight: 800, fontSize: 18, lineHeight: 1 }}>{priceFormatted}</div>
+        <div style={{ color: '#888', fontSize: 14 }}>{pricePerSqmFormatted}</div>
       </div>
     </div>
   );

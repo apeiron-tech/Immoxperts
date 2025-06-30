@@ -1126,10 +1126,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
             );
 
             if (e.features.length === 1) {
-              handleAddressClick({
-                numero: feature.properties?.numero,
-                nomVoie: feature.properties?.nomVoie,
-              });
+              // handleAddressClick({
+              //   numero: feature.properties?.numero,
+              //   nomVoie: feature.properties?.nomVoie,
+              // });
             } else {
               popup.current = new mapboxgl.Popup({
                 offset: 25,
@@ -1399,7 +1399,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
       </button>
 
       {/* Map Controls */}
-      <div className="fixed top-20 left-4 flex flex-col gap-2 z-40 sm:absolute sm:top-16 sm:left-4 sm:z-50">
+      <div className="fixed top-20 left-4 flex flex-col gap-2 z-40 sm:absolute sm:top-16 sm:left-4 sm:z-40">
         <div className="bg-white rounded-lg shadow-md flex flex-col">
           <button onClick={handleZoomIn} className="p-2 hover:bg-gray-100 rounded-t-lg flex items-center justify-center text-gray-700">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
