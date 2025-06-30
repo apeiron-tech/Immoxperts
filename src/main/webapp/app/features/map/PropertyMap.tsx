@@ -521,7 +521,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
               <!-- Property Type, Rooms, Surface -->
               <div style="font-size: 16px;width:70%; color: #333;">
                 <span style="color: ${getPropertyTypeColor(propertyTypeLabel)}; font-weight: 900; margin-bottom: 10px;">
-                  ${propertyTypeLabel}
+                  ${getShortTypeName(propertyTypeLabel)}
                 </span>
                   <span style="margin-top: 10px;">${rooms || 'N/A'} pièces – ${surface.toLocaleString('fr-FR') || 'N/A'} m²</span>
               </div>
@@ -1434,7 +1434,20 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
         >
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-semibold text-gray-800">Statistiques Marché</h3>
-            <div className="text-sm font-medium text-gray-600">{currentCity}</div>
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-medium text-gray-600 mr-2">{currentCity}</div>
+              <div>
+                <select
+                  id="stats-scope"
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer min-w-[120px]"
+                  style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+                >
+                  <option value="commune">Commune</option>
+                  <option value="quartier">Quartier</option>
+                  <option value="zone">Zone affichée</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div className="h-px bg-gray-200 w-full mb-3" />

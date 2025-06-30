@@ -55,6 +55,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onClick }) => {
     };
     return names[typeBien] || typeBien.split(' ')[0];
   };
+
   // Format property type label (capitalize each word)
   const formatPropertyTypeLabel = (propertyType: string) => {
     return (
@@ -128,7 +129,9 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onClick }) => {
             marginTop: 8,
           }}
         >
-          <span style={{ color: getPropertyTypeColor(propertyTypeLabel), fontWeight: 900, fontSize: 15 }}>{propertyTypeLabel}</span>
+          <span style={{ color: getPropertyTypeColor(propertyTypeLabel), fontWeight: 900, fontSize: 15 }}>
+            {getShortTypeName(propertyTypeLabel)}
+          </span>
           <span style={{ color: '#888', fontWeight: 500, fontSize: 14 }}>
             {rooms || 'N/A'} pièces - {surface || 'N/A'}
           </span>
