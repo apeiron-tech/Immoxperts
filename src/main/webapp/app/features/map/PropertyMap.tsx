@@ -115,7 +115,13 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
     };
     return names[typeBien] || typeBien.split(' ')[0];
   };
+  const getActiveStats = () => {
+    // Ajouter une gestion explicite de "Bien Multiple"
+    const typeName = typeNames[activePropertyType]?.replace(/\./g, '').trim();
 
+    return propertyStats.find(stat => stat.typeBien.replace(/\./g, '').trim() === typeName) || { nombre: 0, prixMoyen: 0, prixM2Moyen: 0 };
+  };
+  const activeStats = getActiveStats();
   const abortControllerRef = useRef<AbortController | null>(null);
   const pendingRequestsRef = useRef<Map<string, { promise: Promise<any>; controller: AbortController }>>(new Map());
 
@@ -201,7 +207,38 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
         }
 
         const data = await response.json();
-        const formattedProperties: Property[] = data.map((mutation: any) => {
+
+        // Filter mutations by current city to ensure only properties from the exact commune are shown
+        const filteredData = data.filter(mutation => {
+          const rawAddress = mutation.addresses?.[0] || '';
+          const addressParts = rawAddress.split(' ');
+          const cityParts = addressParts.slice(-2);
+          const mutationCity = cityParts.join(' ').toLowerCase();
+          const currentCityLower = currentCity.toLowerCase();
+
+          // Normalize city names for better matching
+          const normalizeCityName = name => {
+            return name
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '') // Remove accents
+              .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+              .replace(/\s+/g, ' ') // Normalize spaces
+              .trim();
+          };
+
+          const normalizedMutationCity = normalizeCityName(mutationCity);
+          const normalizedCurrentCity = normalizeCityName(currentCityLower);
+
+          // Check if the mutation's city matches the current city
+          // Use exact match or partial match for better accuracy
+          return (
+            normalizedMutationCity === normalizedCurrentCity ||
+            normalizedMutationCity.includes(normalizedCurrentCity) ||
+            normalizedCurrentCity.includes(normalizedMutationCity)
+          );
+        });
+
+        const formattedProperties: Property[] = filteredData.map((mutation: any) => {
           const surface = mutation.surface || 1;
           const valeurfonc = mutation.valeurfonc || 0;
           const rawAddress = mutation.addresses?.[0] || '';
@@ -289,17 +326,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
     });
   }, []);
 
-  useEffect(() => {
-    const panelRef = document.querySelector('.sidebar-panel');
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (showStatsPanel && panelRef && !panelRef.contains(e.target as Node)) {
-        setShowStatsPanel(false);
-      }
-    };
-    document.addEventListener('click', handleOutsideClick);
-    return () => document.removeEventListener('click', handleOutsideClick);
-  }, [showStatsPanel]);
-
   const normalizeSearchParams = (str: string): string => {
     return typeof str === 'string'
       ? str
@@ -317,114 +343,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
   const isValidCoordinates = (coords: unknown): coords is [number, number] => {
     return Array.isArray(coords) && coords.length === 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number';
   };
-
-  useEffect(() => {
-    const coords = searchParams.coordinates;
-    if (coords && map.current && isValidCoordinates(coords)) {
-      const [mapLng, mapLat] = coords;
-      map.current.flyTo({
-        center: [mapLng, mapLat],
-        zoom: 17,
-      });
-    }
-  }, [searchParams.coordinates]);
-
-  useEffect(() => {
-    if (numero && nomVoie) {
-      handleAddressClick({ numero, nomVoie });
-    }
-  }, [numero, nomVoie]);
-
-  useEffect(() => {
-    if (!map.current) return;
-
-    // const fetchMutations = async (street: string, commune: string): Promise<void> => {
-    //   try {
-    //     const response = await axios.get(API_ENDPOINTS.mutations.byStreetAndCommune, {
-    //       params: {
-    //         street: encodeURIComponent(street),
-    //         commune: encodeURIComponent(commune),
-    //       },
-    //     });
-    //
-    //     const formatted = response.data.map((mutation: any) => ({
-    //       id: mutation.idmutation,
-    //       address: mutation.addresses?.[0] || 'Adresse inconnue',
-    //       city: commune,
-    //       price: `${mutation.valeurfonc?.toLocaleString('fr-FR')} €`,
-    //       surface: `${mutation.surface?.toLocaleString('fr-FR')} m²`,
-    //       type: mutation.libtyploc,
-    //       soldDate: new Date(mutation.datemut).toLocaleDateString('fr-FR'),
-    //       pricePerSqm:
-    //         mutation.valeurfonc && mutation.surface
-    //           ? `${Math.round(mutation.valeurfonc / mutation.surface).toLocaleString('fr-FR')} €/m²`
-    //           : 'N/A',
-    //     }));
-    //
-    //     onPropertiesFound?.(formatted);
-    //   } catch (mutationError) {
-    //     setError('Error fetching mutations');
-    //     onPropertiesFound?.([]);
-    //   }
-    // };
-
-    const updateLocationName = async (): Promise<void> => {
-      try {
-        const center = map.current?.getCenter();
-        if (!center) return;
-
-        const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${center.lng},${center.lat}.json?types=place,locality&language=fr&access_token=${mapboxgl.accessToken}`,
-        );
-
-        const data = await response.json();
-        const locationFeature = data.features[0];
-
-        if (locationFeature) {
-          const locationName = locationFeature.text_fr || locationFeature.text;
-          setCurrentCity(locationName);
-        }
-      } catch (geocodingError) {
-        setError('Erreur de géocodage');
-      }
-    };
-    map.current.on('click', LAYER_ID, e => {
-      if (e.features.length > 0) {
-        const feature = e.features[0];
-        const featureId = feature.id;
-
-        if (selectedId.current) {
-          map.current.setFeatureState(
-            {
-              source: 'parcels-source',
-              sourceLayer: SOURCE_LAYER,
-              id: selectedId.current,
-            },
-            { selected: false },
-          );
-        }
-
-        selectedId.current = featureId;
-        map.current.setFeatureState(
-          {
-            source: 'parcels-source',
-            sourceLayer: SOURCE_LAYER,
-            id: featureId,
-          },
-          { selected: true },
-        );
-      }
-    });
-    map.current.on('moveend', updateLocationName);
-    map.current.on('zoomend', updateLocationName);
-
-    return () => {
-      if (map.current) {
-        map.current.off('moveend', updateLocationName);
-        map.current.off('zoomend', updateLocationName);
-      }
-    };
-  }, [map.current]);
 
   const getMutationCacheKey = (properties: SearchParams): string => {
     const streetNumber = normalizeSearchParams(properties.numero?.toString() || '');
@@ -485,7 +403,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
 
     return `${dayFormatted}/${month}/${year}`;
   };
-  const createHoverPopupContent = async properties => {
+  const createHoverPopupContent = async (properties, cityName) => {
     const container = document.createElement('div');
     container.className = 'popup-container';
 
@@ -506,8 +424,36 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
         throw new Error(`Erreur API: ${response.status} - ${errorText}`);
       }
       const data = await response.json();
-      const mutations = data;
-      console.error(mutations);
+
+      // Filter mutations by current city to ensure only properties from the exact commune are shown
+      const mutations = data.filter(mutation => {
+        const rawAddress = mutation.addresses?.[0] || '';
+        const addressParts = rawAddress.split(' ');
+        const cityParts = addressParts.slice(-2);
+        const mutationCity = cityParts.join(' ').toLowerCase();
+        const currentCityLower = cityName.toLowerCase();
+
+        // Normalize city names for better matching
+        const normalizeCityName = name => {
+          return name
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove accents
+            .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+            .replace(/\s+/g, ' ') // Normalize spaces
+            .trim();
+        };
+
+        const normalizedMutationCity = normalizeCityName(mutationCity);
+        const normalizedCurrentCity = normalizeCityName(currentCityLower);
+
+        // Check if the mutation's city matches the current city
+        // Use exact match or partial match for better accuracy
+        return (
+          normalizedMutationCity === normalizedCurrentCity ||
+          normalizedMutationCity.includes(normalizedCurrentCity) ||
+          normalizedCurrentCity.includes(normalizedMutationCity)
+        );
+      });
 
       const getPropertyTypeColor = type => {
         // Use the same order and color as the stats panel
@@ -537,7 +483,7 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
           const streetNameParts = addressParts.filter(part => part !== propertyNumber && !/^\d{5}/.test(part));
           const cityParts = addressParts.slice(-2);
           const address = `${propertyNumber} ${streetNameParts.join(' ')}`;
-          const cityName = cityParts.join(' ');
+          const mutationCityName = cityParts.join(' ');
           const type = (mutation.libtyplocList?.[0] || 'Terrain')
             .replace(/\./g, '')
             .normalize('NFD')
@@ -612,23 +558,24 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
 
           // Carousel navigation if more than one property
           if (mutations.length > 1) {
+            const lastFiveMutations = mutations.slice(0, 5);
             const navDiv = document.createElement('div');
             navDiv.className = 'flex items-center justify-center gap-2';
             navDiv.innerHTML = `
               <button class="prev-btn p-1 hover:text-blue-600">&lt;</button>
-              <span class="text-s px-4 text-blue-600 font-medium">${index + 1} / ${mutations.length}</span>
+              <span class="text-s px-4 text-blue-600 font-medium">${index + 1} / ${lastFiveMutations.length}</span>
               <button class="next-btn p-1 hover:text-blue-600">&gt;</button>
             `;
             container.appendChild(navDiv);
 
             navDiv.querySelector('.prev-btn').addEventListener('click', e => {
               e.stopPropagation();
-              currentIndex = currentIndex > 0 ? currentIndex - 1 : mutations.length - 1;
+              currentIndex = currentIndex > 0 ? currentIndex - 1 : lastFiveMutations.length - 1;
               renderProperty(currentIndex);
             });
             navDiv.querySelector('.next-btn').addEventListener('click', e => {
               e.stopPropagation();
-              currentIndex = currentIndex < mutations.length - 1 ? currentIndex + 1 : 0;
+              currentIndex = currentIndex < lastFiveMutations.length - 1 ? currentIndex + 1 : 0;
               renderProperty(currentIndex);
             });
           }
@@ -638,12 +585,12 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
         const addressLine = properties?.address || '';
 
         let street = '';
-        let cityName = '';
+        let extractedCityName = '';
 
         if (addressLine.includes(' - ')) {
           const [rawStreet, rawCity] = addressLine.split(' - ');
           street = rawStreet || '';
-          cityName = rawCity?.split(' ')?.[1] || '';
+          extractedCityName = rawCity?.split(' ')?.[1] || '';
         }
 
         container.innerHTML = `
@@ -709,10 +656,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
 
       button.addEventListener('click', e => {
         e.stopPropagation();
-        // handleAddressClick({
-        //   numero: feature.properties.numero,
-        //   nomVoie: feature.properties.nomVoie,
-        // });
+        handleAddressClick({
+          numero: feature.properties.numero,
+          nomVoie: feature.properties.nomVoie,
+        });
         popup.current?.remove();
       });
 
@@ -724,6 +671,150 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
 
     return container;
   };
+  const toggleMapStyle = () => {
+    if (!map.current) return;
+
+    const newStyle = is3DView
+      ? 'mapbox://styles/saber5180/cmawpgdtd007301sc5ww48tds' // 2D style
+      : 'mapbox://styles/saber5180/cm9737hvv00en01qzefcd57b7'; // 3D style
+
+    map.current.setStyle(newStyle);
+    setIs3DView(!is3DView);
+  };
+
+  // Add zoom limit functions
+  const handleZoomIn = () => {
+    if (!map.current) return;
+    map.current.zoomIn();
+  };
+
+  const handleZoomOut = () => {
+    if (!map.current) return;
+    const currentZoom = map.current.getZoom();
+    map.current.zoomOut();
+  };
+
+  const propertyTypeIcons = [
+    <svg key="building" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+      <rect x="9" y="9" width="6" height="6"></rect>
+      <line x1="9" y1="1" x2="9" y2="4"></line>
+      <line x1="15" y1="1" x2="15" y2="4"></line>
+      <line x1="9" y1="20" x2="9" y2="23"></line>
+      <line x1="15" y1="20" x2="15" y2="23"></line>
+      <line x1="20" y1="9" x2="23" y2="9"></line>
+      <line x1="20" y1="14" x2="23" y2="14"></line>
+      <line x1="1" y1="9" x2="4" y2="9"></line>
+      <line x1="1" y1="14" x2="4" y2="14"></line>
+    </svg>,
+    <svg key="apartment" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+    </svg>,
+    <svg key="house" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+    </svg>,
+    <svg key="grid" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="7" height="7"></rect>
+      <rect x="14" y="3" width="7" height="7"></rect>
+      <rect x="14" y="14" width="7" height="7"></rect>
+      <rect x="3" y="14" width="7" height="7"></rect>
+    </svg>,
+  ];
+
+  // Toggle button for statistics panel
+  const toggleStatsPanel = () => {
+    setShowStatsPanel(prev => !prev);
+  };
+  useEffect(() => {
+    const panelRef = document.querySelector('.sidebar-panel');
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (showStatsPanel && panelRef && !panelRef.contains(e.target as Node)) {
+        setShowStatsPanel(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [showStatsPanel]);
+
+  useEffect(() => {
+    const coords = searchParams.coordinates;
+    if (coords && map.current && isValidCoordinates(coords)) {
+      const [mapLng, mapLat] = coords;
+      map.current.flyTo({
+        center: [mapLng, mapLat],
+        zoom: 17,
+      });
+    }
+  }, [searchParams.coordinates]);
+
+  useEffect(() => {
+    if (numero && nomVoie) {
+      handleAddressClick({ numero, nomVoie });
+    }
+  }, [numero, nomVoie]);
+
+  useEffect(() => {
+    if (!map.current) return;
+    const updateLocationName = async (): Promise<void> => {
+      try {
+        const center = map.current?.getCenter();
+        if (!center) return;
+
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${center.lng},${center.lat}.json?types=place,locality&language=fr&access_token=${mapboxgl.accessToken}`,
+        );
+
+        const data = await response.json();
+        const locationFeature = data.features[0];
+
+        if (locationFeature) {
+          const locationName = locationFeature.text_fr || locationFeature.text;
+          setCurrentCity(locationName);
+        }
+      } catch (geocodingError) {
+        setError('Erreur de géocodage');
+      }
+    };
+    map.current.on('click', LAYER_ID, e => {
+      if (e.features.length > 0) {
+        const feature = e.features[0];
+        const featureId = feature.id;
+
+        if (selectedId.current) {
+          map.current.setFeatureState(
+            {
+              source: 'parcels-source',
+              sourceLayer: SOURCE_LAYER,
+              id: selectedId.current,
+            },
+            { selected: false },
+          );
+        }
+
+        selectedId.current = featureId;
+        map.current.setFeatureState(
+          {
+            source: 'parcels-source',
+            sourceLayer: SOURCE_LAYER,
+            id: featureId,
+          },
+          { selected: true },
+        );
+      }
+    });
+    map.current.on('moveend', updateLocationName);
+    map.current.on('zoomend', updateLocationName);
+
+    return () => {
+      if (map.current) {
+        map.current.off('moveend', updateLocationName);
+        map.current.off('zoomend', updateLocationName);
+      }
+    };
+  }, [map.current]);
+
   useEffect(() => {
     if (!mapContainer.current) return;
 
@@ -960,10 +1051,13 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
             .addTo(map.current);
 
           if (feature.properties) {
-            createHoverPopupContent({
-              numero: feature.properties.numero,
-              nomVoie: feature.properties.nomVoie,
-            }).then(content => {
+            createHoverPopupContent(
+              {
+                numero: feature.properties.numero,
+                nomVoie: feature.properties.nomVoie,
+              },
+              currentCity,
+            ).then(content => {
               if (hoverPopup.current) {
                 hoverPopup.current.setDOMContent(content);
                 // Add listeners to the popup DOM
@@ -1032,10 +1126,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
             );
 
             if (e.features.length === 1) {
-              // handleAddressClick({
-              //   numero: feature.properties?.numero,
-              //   nomVoie: feature.properties?.nomVoie,
-              // });
+              handleAddressClick({
+                numero: feature.properties?.numero,
+                nomVoie: feature.properties?.nomVoie,
+              });
             } else {
               popup.current = new mapboxgl.Popup({
                 offset: 25,
@@ -1180,10 +1274,13 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
           .setLngLat(coordinates)
           .addTo(map.current);
 
-        createHoverPopupContent({
-          numero: searchParams.numero,
-          nomVoie: searchParams.nomVoie,
-        }).then(content => {
+        createHoverPopupContent(
+          {
+            numero: searchParams.numero,
+            nomVoie: searchParams.nomVoie,
+          },
+          currentCity,
+        ).then(content => {
           if (hoverPopup.current) {
             hoverPopup.current.setDOMContent(content);
           }
@@ -1257,40 +1354,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
     }
   }, [hoveredProperty]);
 
-  const propertyTypeIcons = [
-    <svg key="building" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-      <rect x="9" y="9" width="6" height="6"></rect>
-      <line x1="9" y1="1" x2="9" y2="4"></line>
-      <line x1="15" y1="1" x2="15" y2="4"></line>
-      <line x1="9" y1="20" x2="9" y2="23"></line>
-      <line x1="15" y1="20" x2="15" y2="23"></line>
-      <line x1="20" y1="9" x2="23" y2="9"></line>
-      <line x1="20" y1="14" x2="23" y2="14"></line>
-      <line x1="1" y1="9" x2="4" y2="9"></line>
-      <line x1="1" y1="14" x2="4" y2="14"></line>
-    </svg>,
-    <svg key="apartment" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-      <polyline points="9 22 9 12 15 12 15 22"></polyline>
-    </svg>,
-    <svg key="house" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-      <polyline points="9 22 9 12 15 12 15 22"></polyline>
-    </svg>,
-    <svg key="grid" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="7" height="7"></rect>
-      <rect x="14" y="3" width="7" height="7"></rect>
-      <rect x="14" y="14" width="7" height="7"></rect>
-      <rect x="3" y="14" width="7" height="7"></rect>
-    </svg>,
-  ];
-
-  // Toggle button for statistics panel
-  const toggleStatsPanel = () => {
-    setShowStatsPanel(prev => !prev);
-  };
-
   // Replace the existing useEffect for stats with this optimized version
   useEffect(() => {
     if (!currentCity) return;
@@ -1311,29 +1374,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
   useEffect(() => {
     mutationCache.current.clear();
   }, [currentCity]);
-
-  const toggleMapStyle = () => {
-    if (!map.current) return;
-
-    const newStyle = is3DView
-      ? 'mapbox://styles/saber5180/cmawpgdtd007301sc5ww48tds' // 2D style
-      : 'mapbox://styles/saber5180/cm9737hvv00en01qzefcd57b7'; // 3D style
-
-    map.current.setStyle(newStyle);
-    setIs3DView(!is3DView);
-  };
-
-  // Add zoom limit functions
-  const handleZoomIn = () => {
-    if (!map.current) return;
-    map.current.zoomIn();
-  };
-
-  const handleZoomOut = () => {
-    if (!map.current) return;
-    const currentZoom = map.current.getZoom();
-    map.current.zoomOut();
-  };
 
   return (
     <div className="relative h-screen w-screen">

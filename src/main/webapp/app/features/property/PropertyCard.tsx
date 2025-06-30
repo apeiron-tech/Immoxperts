@@ -105,6 +105,9 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onClick }) => {
           justifyContent: 'space-between',
           width: '100%',
           gap: 10,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
         {/* Address/Title */}
