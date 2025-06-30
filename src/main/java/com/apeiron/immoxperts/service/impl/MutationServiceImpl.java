@@ -214,6 +214,7 @@ public class MutationServiceImpl implements MutationService {
             return null;
         }
 
+        // Initialize the DTO with basic properties that don't require lazy loading
         MutationDTO dto = new MutationDTO();
         dto.setIdmutation(mutation.getIdmutation());
         dto.setDatemut(mutation.getDatemut());
@@ -222,102 +223,93 @@ public class MutationServiceImpl implements MutationService {
         dto.setCoddep(mutation.getCoddep());
         dto.setTerrain(mutation.getSterr());
 
-        List<String> libtyplocList = new ArrayList<>();
-        final int[] nbpprincTotal = { 0 }; // Using array as a mutable container
-        List<String> addresses = new ArrayList<>();
+        Set<String> libtyplocSet = new HashSet<>();
+        final int[] nbpprincTotal = { 0 };
+        Set<String> addresses = new HashSet<>();
 
-        if (mutation.getAdresseLocals() != null) {
-            // Use distinct() to avoid duplicates and handle nulls
-            mutation
-                .getAdresseLocals()
-                .stream()
-                .filter(Objects::nonNull)
-                .distinct()
-                .forEach(adresseLocal -> {
-                    if (adresseLocal.getLocal() != null) {
-                        String type = adresseLocal.getLocal().getLibtyploc();
-                        if (type != null && !type.trim().isEmpty()) {
-                            libtyplocList.add(type.trim().toUpperCase());
-                        }
-                        if (adresseLocal.getLocal().getNbpprinc() != null) {
-                            nbpprincTotal[0] += adresseLocal.getLocal().getNbpprinc();
-                        }
-                    }
-                });
-
-            addresses.addAll(
+        try {
+            // Safely process AdresseLocals
+            if (mutation.getAdresseLocals() != null) {
                 mutation
                     .getAdresseLocals()
                     .stream()
                     .filter(Objects::nonNull)
-                    .distinct()
-                    .map(al -> al.getAdresse() != null ? formatAddress(al.getAdresse()) : null)
-                    .filter(Objects::nonNull)
-                    .distinct() // Add distinct here to remove duplicate addresses
-                    .collect(Collectors.toList())
-            );
-        }
+                    .forEach(adresseLocal -> {
+                        if (adresseLocal.getLocal() != null) {
+                            String type = adresseLocal.getLocal().getLibtyploc();
+                            if (type != null && !type.trim().isEmpty()) {
+                                libtyplocSet.add(type.trim().toUpperCase());
+                            }
+                            if (adresseLocal.getLocal().getNbpprinc() != null) {
+                                nbpprincTotal[0] += adresseLocal.getLocal().getNbpprinc();
+                            }
+                        }
+                        if (adresseLocal.getAdresse() != null) {
+                            String formattedAddress = formatAddress(adresseLocal.getAdresse());
+                            if (formattedAddress != null && !formattedAddress.trim().isEmpty()) {
+                                addresses.add(formattedAddress);
+                            }
+                        }
+                    });
+            }
 
-        dto.setLibtyplocList(libtyplocList);
-
-        // Handle AdresseDispoparcs separately to avoid Hibernate's unique constraint
-        if (mutation.getAdresseDispoparcs() != null) {
-            try {
-                List<String> dispoparcAddresses = mutation
+            // Safely process AdresseDispoparcs
+            if (mutation.getAdresseDispoparcs() != null) {
+                mutation
                     .getAdresseDispoparcs()
                     .stream()
                     .filter(Objects::nonNull)
-                    .distinct()
-                    .map(ad -> ad.getAdresse() != null ? formatAddress(ad.getAdresse()) : null)
-                    .filter(Objects::nonNull)
-                    .distinct() // Add distinct here to remove duplicate addresses
-                    .collect(Collectors.toList());
-                addresses.addAll(dispoparcAddresses);
+                    .forEach(ad -> {
+                        if (ad.getAdresse() != null) {
+                            String formattedAddress = formatAddress(ad.getAdresse());
+                            if (formattedAddress != null && !formattedAddress.trim().isEmpty()) {
+                                addresses.add(formattedAddress);
+                            }
+                        }
+                    });
 
+                // Calculate terrain if needed
                 if (addresses.isEmpty() && mutation.getSterr() == null) {
-                    // Get unique IDs first
-                    List<Integer> uniqueIds = mutation
+                    Set<Integer> uniqueIds = mutation
                         .getAdresseDispoparcs()
                         .stream()
                         .filter(Objects::nonNull)
                         .map(AdresseDispoparc::getIddispopar)
                         .filter(Objects::nonNull)
-                        .distinct()
-                        .collect(Collectors.toList());
+                        .collect(Collectors.toSet());
 
                     if (!uniqueIds.isEmpty()) {
-                        BigDecimal dcntsolSum = dispositionParcelleRepository.sumDcntsolByIddispopars(uniqueIds);
-                        BigDecimal dcntagrSum = dispositionParcelleRepository.sumDcntagrclByIddispopars(uniqueIds);
+                        BigDecimal dcntsolSum = dispositionParcelleRepository.sumDcntsolByIddispopars(new ArrayList<>(uniqueIds));
+                        BigDecimal dcntagrSum = dispositionParcelleRepository.sumDcntagrclByIddispopars(new ArrayList<>(uniqueIds));
                         dto.setTerrain(dcntagrSum.add(dcntsolSum));
                     } else {
                         dto.setTerrain(BigDecimal.ZERO);
                     }
                 }
-            } catch (Exception e) {
-                LOG.warn("Error processing AdresseDispoparcs for mutation {}: {}", mutation.getIdmutation(), e.getMessage());
-                // Continue processing even if there's an error with AdresseDispoparcs
             }
+        } catch (Exception e) {
+            LOG.warn("Error processing related entities for mutation {}: {}", mutation.getIdmutation(), e.getMessage());
+            // Continue processing with what we have
         }
 
-        List<String> normalized = libtyplocList
-            .stream()
-            .filter(Objects::nonNull)
-            .map(s -> s.trim().toUpperCase())
-            .distinct()
-            .collect(Collectors.toList());
-
-        if (normalized.size() > 1) {
+        // Set the processed data
+        if (libtyplocSet.size() > 1) {
             dto.setLibtyplocList(Collections.singletonList("BIEN MULTIPLE"));
         } else {
-            dto.setLibtyplocList(normalized);
+            dto.setLibtyplocList(new ArrayList<>(libtyplocSet));
         }
 
         dto.setNbpprincTotal(nbpprincTotal[0]);
-        dto.setAddresses(addresses.stream().distinct().collect(Collectors.toList())); // Ensure addresses are unique
+        dto.setAddresses(new ArrayList<>(addresses));
 
-        // Surface
-        BigDecimal total = adresseLocalRepository.surfaceMutaion(mutation.getIdmutation().longValue());
-        dto.setSurface(total != null ? total : BigDecimal.ZERO);
+        // Get surface area
+        try {
+            BigDecimal total = adresseLocalRepository.surfaceMutaion(mutation.getIdmutation().longValue());
+            dto.setSurface(total != null ? total : BigDecimal.ZERO);
+        } catch (Exception e) {
+            LOG.warn("Error getting surface for mutation {}: {}", mutation.getIdmutation(), e.getMessage());
+            dto.setSurface(BigDecimal.ZERO);
+        }
 
         return dto;
     }
