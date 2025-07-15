@@ -17,11 +17,15 @@ interface Property {
 interface PropertyCardProps {
   property: Property;
   onClick?: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
-const PropertyCard: React.FC<PropertyCardProps> = ({ property, onClick }) => {
+const PropertyCard: React.FC<PropertyCardProps> = ({ property, onClick, onMouseEnter, onMouseLeave }) => {
   const { address, city, price, pricePerSqm, type, surface, rooms, soldDate } = property;
-  console.error(property);
+
+  // Add hover state
+  const [isHovered, setIsHovered] = React.useState(false);
 
   // Helper to format the sold date in French style (DD/MM/YYYY)
   const formatFrenchDate = (dateString: string) => {
@@ -77,7 +81,6 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onClick }) => {
       : pricePerSqm || 'N/A';
 
   const propertyTypeLabel = formatPropertyTypeLabel(type);
-
   return (
     <div
       style={{
@@ -88,16 +91,25 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, onClick }) => {
         width: '100%',
         borderRadius: 16,
         cursor: onClick ? 'pointer' : undefined,
-        boxShadow: '0 2px 12px rgba(36,28,131,0.08)',
-        border: '1px solid #e5e7eb',
+        boxShadow: isHovered ? '0 4px 20px rgba(36,28,131,0.18)' : '0 2px 12px rgba(36,28,131,0.08)',
+        border: isHovered ? '2px solid #4F46E5' : '1px solid #e5e7eb',
         margin: 'auto',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'row', // main container is now horizontal
         overflow: 'hidden',
         gap: 16,
+        transition: 'box-shadow 0.2s, border 0.2s', // smooth transition
       }}
       onClick={onClick}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        if (onMouseEnter) onMouseEnter();
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        if (onMouseLeave) onMouseLeave();
+      }}
     >
       {/* LEFT COLUMN */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>

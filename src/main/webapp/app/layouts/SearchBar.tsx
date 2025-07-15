@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import FilterPopup from '../features/property/FilterPopup';
 
@@ -23,6 +23,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<MapboxFeature[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -36,7 +37,10 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
           );
           const data = await response.json();
           setSuggestions(data.features);
-          setShowSuggestions(true);
+          // Only show suggestions if the input is focused (user typing)
+          if (document.activeElement === inputRef.current) {
+            setShowSuggestions(true);
+          }
         } catch (error) {
           console.error('Error fetching suggestions:', error);
         }
@@ -50,7 +54,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
     const numero = normalizeSearchParams(feature.properties.address || '');
     const nomVoie = normalizeSearchParams(feature.text || '');
     const coordinates = feature.center;
-
+    setSearchQuery(feature.place_name);
+    setShowSuggestions(false); // Close suggestions
+    setSuggestions([]); // Clear suggestions after selection
+    if (inputRef.current) {
+      inputRef.current.blur(); // Blur input to prevent reopening
+    }
     onSearch({
       numero: parseInt(numero, 10),
       nomVoie,
@@ -93,11 +102,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
             </svg>
           </div>
           <input
+            ref={inputRef}
             type="text"
             placeholder="Entrez une adresse en France"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            onFocus={() => setShowSuggestions(true)}
+            // Removed onFocus to prevent suggestions from reopening after selection
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           />
@@ -109,7 +119,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
                 <button
                   key={index}
                   className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                  onMouseDown={() => handleAddressSelect(feature)}
+                  onClick={() => handleAddressSelect(feature)} // Changed from onMouseDown to onClick
                 >
                   <div className="text-sm font-medium">{feature.place_name}</div>
                   <div className="text-xs text-gray-500">{feature.context?.map(ctx => ctx.text).join(', ')}</div>

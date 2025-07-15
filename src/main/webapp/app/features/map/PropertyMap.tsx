@@ -656,10 +656,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
 
       button.addEventListener('click', e => {
         e.stopPropagation();
-        handleAddressClick({
-          numero: feature.properties.numero,
-          nomVoie: feature.properties.nomVoie,
-        });
+        // handleAddressClick({
+        //   numero: feature.properties.numero,
+        //   nomVoie: feature.properties.nomVoie,
+        // });
         popup.current?.remove();
       });
 
@@ -1148,7 +1148,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
           if (e.features.length > 0) {
             const feature = e.features[0];
             const featureId = feature.id;
-
             if (hoveredId.current) {
               map.current.setFeatureState(
                 {
@@ -1243,11 +1242,43 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
         id: 'selected-point-layer',
         type: 'circle',
         source: 'selected-point',
+        minzoom: 16,
         paint: {
-          'circle-radius': 8,
+          'circle-radius': 5,
           'circle-color': '#EF4444',
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
+        },
+      });
+
+      // Add a cluster layer for lower zooms (optional, for visual feedback)
+      map.current.addLayer({
+        id: 'parcels-cluster-layer',
+        type: 'circle',
+        source: 'parcels-source',
+        filter: ['has', 'point_count'],
+        minzoom: 13.5,
+        maxzoom: 16,
+        paint: {
+          'circle-color': '#1976D2',
+          'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 50, 25],
+          'circle-opacity': 0.6,
+        },
+      });
+      map.current.addLayer({
+        id: 'parcels-cluster-count',
+        type: 'symbol',
+        source: 'parcels-source',
+        filter: ['has', 'point_count'],
+        minzoom: 13.5,
+        maxzoom: 16,
+        layout: {
+          'text-field': '{point_count_abbreviated}',
+          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+          'text-size': 12,
+        },
+        paint: {
+          'text-color': '#fff',
         },
       });
 
