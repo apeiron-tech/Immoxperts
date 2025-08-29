@@ -1,69 +1,516 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface RangeSliderProps {
   minValue?: number;
   maxValue?: number;
   onChange?: (min: number, max: number) => void;
+  step?: number;
+  type?: 'price' | 'surface' | 'pricePerSqm' | 'date';
 }
 
-const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 10, maxValue = 80, onChange }) => {
+const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100, onChange, step = 1, type = 'price' }) => {
   const [min, setMin] = useState<number>(minValue);
   const [max, setMax] = useState<number>(maxValue);
   const [dragging, setDragging] = useState<string | null>(null);
 
-  const handleMouseDown = (thumb: string): void => {
+  // Update local state when props change
+  useEffect(() => {
+    setMin(minValue);
+    setMax(maxValue);
+  }, [minValue, maxValue]);
+
+  const handleMouseDown = (thumb: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
     setDragging(thumb);
+
+    // Add global mouse event listeners
+    const handleGlobalMouseMove = (event: MouseEvent) => {
+      handleMouseMove(event, thumb);
+    };
+
+    const handleGlobalMouseUp = () => {
+      setDragging(null);
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>): void => {
-    if (!dragging) return;
+  const handleMouseMove = (e: MouseEvent, thumb: string) => {
+    const slider = document.querySelector('.range-slider-container');
+    if (!slider) return;
 
-    const bar = e.currentTarget.closest('.relative');
-    if (!bar) return;
+    const rect = slider.getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
 
-    const rect = bar.getBoundingClientRect();
-    let newPosition = ((e.clientX - rect.left) / rect.width) * 100;
-    newPosition = Math.max(0, Math.min(100, newPosition));
+    let newValue: number;
+    let currentStep: number;
 
-    if (dragging === 'min' && newPosition < max) {
-      setMin(newPosition);
-      onChange?.(newPosition, max);
-    } else if (dragging === 'max' && newPosition > min) {
-      setMax(newPosition);
-      onChange?.(min, newPosition);
+    if (isPriceSlider) {
+      // Convert percentage to actual price value
+      const priceRange = priceMaxValue - priceMinValue;
+      newValue = priceMinValue + (percentage / 100) * priceRange;
+      currentStep = priceStep;
+    } else if (isSurfaceSlider) {
+      // Convert percentage to actual surface value
+      const surfaceRange = surfaceMaxValue - surfaceMinValue;
+      newValue = surfaceMinValue + (percentage / 100) * surfaceRange;
+      currentStep = surfaceStep;
+    } else if (isPricePerSqmSlider) {
+      // Convert percentage to actual price per m² value
+      const pricePerSqmRange = pricePerSqmMaxValue - pricePerSqmMinValue;
+      newValue = pricePerSqmMinValue + (percentage / 100) * pricePerSqmRange;
+      currentStep = pricePerSqmStep;
+    } else if (isDateSlider) {
+      // Convert percentage to actual date value (months)
+      const dateRange = dateMaxValue - dateMinValue;
+      newValue = dateMinValue + (percentage / 100) * dateRange;
+      currentStep = dateStep;
+    } else {
+      // Convert percentage to actual value
+      const range = maxValue - minValue;
+      newValue = minValue + (percentage / 100) * range;
+      currentStep = step;
+    }
+
+    // Round to nearest step
+    const steppedValue = Math.round(newValue / currentStep) * currentStep;
+
+    if (thumb === 'min') {
+      // Ensure min doesn't go above max
+      const newMin = Math.min(steppedValue, max - currentStep);
+      if (newMin !== min) {
+        setMin(newMin);
+        onChange?.(newMin, max);
+      }
+    } else if (thumb === 'max') {
+      // Ensure max doesn't go below min
+      const newMax = Math.max(steppedValue, min + currentStep);
+      if (newMax !== max) {
+        setMax(newMax);
+        onChange?.(min, newMax);
+      }
     }
   };
 
-  const handleMouseUp = (): void => {
-    setDragging(null);
+  // Slider-specific logic
+  const isPriceSlider = type === 'price';
+  const isSurfaceSlider = type === 'surface';
+  const isPricePerSqmSlider = type === 'pricePerSqm';
+  const isDateSlider = type === 'date';
+
+  // Price-specific values
+  const priceMinValue = 0;
+  const priceMaxValue = 20000000; // 20M €
+  const priceStep = 25000; // 25k € steps
+
+  // Surface-specific values
+  const surfaceMinValue = 0;
+  const surfaceMaxValue = 400; // 400m²
+  const surfaceStep = 10; // 10m² steps
+
+  // Price per m² specific values
+  const pricePerSqmMinValue = 0;
+  const pricePerSqmMaxValue = 40000; // 40k €/m²
+  const pricePerSqmStep = 100; // 100€/m² steps
+
+  // Date-specific values (months since 2014)
+  const dateMinValue = 0; // January 2014
+  const dateMaxValue = 130; // December 2024 (10 years * 12 months + 12 months)
+  const dateStep = 1; // 1 month steps
+
+  // Calculate positions as percentages
+  const getMinPosition = () => {
+    if (isPriceSlider) {
+      return ((min - priceMinValue) / (priceMaxValue - priceMinValue)) * 100;
+    } else if (isSurfaceSlider) {
+      return ((min - surfaceMinValue) / (surfaceMaxValue - surfaceMinValue)) * 100;
+    } else if (isPricePerSqmSlider) {
+      return ((min - pricePerSqmMinValue) / (pricePerSqmMaxValue - pricePerSqmMinValue)) * 100;
+    } else if (isDateSlider) {
+      return ((min - dateMinValue) / (dateMaxValue - dateMinValue)) * 100;
+    }
+    return ((min - minValue) / (maxValue - minValue)) * 100;
+  };
+
+  const getMaxPosition = () => {
+    if (isPriceSlider) {
+      return ((max - priceMinValue) / (priceMaxValue - priceMinValue)) * 100;
+    } else if (isSurfaceSlider) {
+      return ((max - surfaceMinValue) / (surfaceMaxValue - surfaceMinValue)) * 100;
+    } else if (isPricePerSqmSlider) {
+      return ((max - pricePerSqmMinValue) / (pricePerSqmMaxValue - pricePerSqmMinValue)) * 100;
+    } else if (isDateSlider) {
+      return ((max - dateMinValue) / (dateMaxValue - dateMinValue)) * 100;
+    }
+    return ((max - minValue) / (maxValue - minValue)) * 100;
+  };
+
+  const minPosition = getMinPosition();
+  const maxPosition = getMaxPosition();
+  const connectWidth = maxPosition - minPosition;
+
+  // Generate text based on slider type and values
+  const getSliderText = () => {
+    if (isPriceSlider) {
+      const minPrice = Math.round(min);
+      const maxPrice = Math.round(max);
+
+      // Full range selected
+      if (minPrice === priceMinValue && maxPrice === priceMaxValue) {
+        return 'Toutes les valeurs';
+      }
+
+      // Only min selected (from min to max)
+      if (minPrice > priceMinValue && maxPrice === priceMaxValue) {
+        return `À partir de ${formatPrice(minPrice)}`;
+      }
+
+      // Only max selected (from min to max)
+      if (minPrice === priceMinValue && maxPrice < priceMaxValue) {
+        return `Jusqu'à ${formatPrice(maxPrice)}`;
+      }
+
+      // Range selected
+      return `De ${formatPrice(minPrice)} à ${formatPrice(maxPrice)}`;
+    } else if (isSurfaceSlider) {
+      const minSurface = Math.round(min);
+      const maxSurface = Math.round(max);
+
+      // Full range selected
+      if (minSurface === surfaceMinValue && maxSurface === surfaceMaxValue) {
+        return 'Toutes les valeurs';
+      }
+
+      // Only min selected (from min to max)
+      if (minSurface > surfaceMinValue && maxSurface === surfaceMaxValue) {
+        return `À partir de ${minSurface}m²`;
+      }
+
+      // Only max selected (from min to max)
+      if (minSurface === surfaceMinValue && maxSurface < surfaceMaxValue) {
+        return `Jusqu'à ${maxSurface}m²`;
+      }
+
+      // Range selected
+      return `De ${minSurface}m² à ${maxSurface}m²`;
+    } else if (isPricePerSqmSlider) {
+      const minPricePerSqm = Math.round(min);
+      const maxPricePerSqm = Math.round(max);
+
+      // Full range selected
+      if (minPricePerSqm === pricePerSqmMinValue && maxPricePerSqm === pricePerSqmMaxValue) {
+        return 'Toutes les valeurs';
+      }
+
+      // Only min selected (from min to max)
+      if (minPricePerSqm > pricePerSqmMinValue && maxPricePerSqm === pricePerSqmMaxValue) {
+        return `À partir de ${formatPricePerSqm(minPricePerSqm)}`;
+      }
+
+      // Only max selected (from min to max)
+      if (minPricePerSqm === pricePerSqmMinValue && maxPricePerSqm < pricePerSqmMaxValue) {
+        return `Jusqu'à ${formatPricePerSqm(maxPricePerSqm)}`;
+      }
+
+      // Range selected
+      return `De ${formatPricePerSqm(minPricePerSqm)} à ${formatPricePerSqm(maxPricePerSqm)}`;
+    } else if (isDateSlider) {
+      const minDate = Math.round(min);
+      const maxDate = Math.round(max);
+
+      // Full range selected
+      if (minDate === dateMinValue && maxDate === dateMaxValue) {
+        return 'Toutes les valeurs';
+      }
+
+      // Only min selected (from min to max)
+      if (minDate > dateMinValue && maxDate === dateMaxValue) {
+        return `À partir de ${formatDate(minDate)}`;
+      }
+
+      // Only max selected (from min to max)
+      if (minDate === dateMinValue && maxDate < dateMaxValue) {
+        return `Jusqu'à ${formatDate(maxDate)}`;
+      }
+
+      // Range selected
+      return `De ${formatDate(minDate)} à ${formatDate(maxDate)}`;
+    }
+    return null;
+  };
+
+  const formatPrice = (price: number) => {
+    return `${price.toLocaleString('fr-FR')} €`;
+  };
+
+  const formatPricePerSqm = (price: number) => {
+    return `${price.toLocaleString('fr-FR')}€/m²`;
+  };
+
+  const formatDate = (months: number) => {
+    const startDate = new Date(2014, 0, 1); // January 2014
+    const targetDate = new Date(startDate.getTime() + months * 30 * 24 * 60 * 60 * 1000);
+
+    const monthsNames = [
+      'janvier',
+      'février',
+      'mars',
+      'avril',
+      'mai',
+      'juin',
+      'juillet',
+      'août',
+      'septembre',
+      'octobre',
+      'novembre',
+      'décembre',
+    ];
+
+    const monthName = monthsNames[targetDate.getMonth()];
+    const year = targetDate.getFullYear();
+
+    return `${monthName} ${year}`;
   };
 
   return (
-    <div className="relative mb-4" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-      <div className="h-2 bg-gray-200 rounded-full">
-        <div className="absolute h-2 rounded-full" style={{ width: `${max - min}%`, left: `${min}%`, backgroundColor: '#43ce9b' }}></div>
-        <div
-          className="absolute w-4 h-4 bg-white border-2 border-indigo-500 rounded-full -mt-1 cursor-pointer"
-          style={{ left: `${min}%` }}
-          onMouseDown={() => handleMouseDown('min')}
-        ></div>
-        <div
-          className="absolute w-4 h-4 bg-white border-2 border-indigo-500 rounded-full -mt-1 cursor-pointer"
-          style={{ left: `${max}%` }}
-          onMouseDown={() => handleMouseDown('max')}
-        ></div>
-      </div>
+    <div className="range-slider-container relative w-full h-6 flex items-center mb-4">
+      {/* Track */}
+      <div className="absolute w-full h-1.5 bg-gray-300 rounded-full" style={{ top: '50%', transform: 'translateY(-50%)' }} />
+
+      {/* Connect (filled area between handles) */}
+      <div
+        className="absolute h-1.5 bg-blue-500 rounded-full"
+        style={{
+          left: `${minPosition}%`,
+          width: `${connectWidth}%`,
+          top: '50%',
+          transform: 'translateY(-50%)',
+        }}
+      />
+
+      {/* Min handle */}
+      <div
+        className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full cursor-pointer hover:shadow-lg transition-shadow z-10"
+        style={{
+          left: `${minPosition}%`,
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
+        onMouseDown={handleMouseDown('min')}
+      />
+
+      {/* Max handle */}
+      <div
+        className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full cursor-pointer hover:shadow-lg transition-shadow z-10"
+        style={{
+          left: `${maxPosition}%`,
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
+        onMouseDown={handleMouseDown('max')}
+      />
     </div>
   );
 };
 
+// Rest of your FilterPopup component with updated RangeSlider usage
+interface FilterState {
+  propertyTypes: {
+    maison: boolean;
+    terrain: boolean;
+    appartement: boolean;
+    biensMultiples: boolean;
+    localCommercial: boolean;
+  };
+  roomCounts: {
+    studio: boolean;
+    deuxPieces: boolean;
+    troisPieces: boolean;
+    quatrePieces: boolean;
+    cinqPiecesPlus: boolean;
+  };
+  priceRange: [number, number];
+  surfaceRange: [number, number];
+  pricePerSqmRange: [number, number];
+  dateRange: [number, number];
+}
+
 interface FilterPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onApply: () => void;
+  onApply: (filters: FilterState) => void;
+  currentFilters?: FilterState;
 }
 
-const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply }) => {
+const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, currentFilters }) => {
+  // Default filter state
+  const defaultFilters: FilterState = {
+    propertyTypes: {
+      maison: true,
+      terrain: true,
+      appartement: true,
+      biensMultiples: true,
+      localCommercial: true,
+    },
+    roomCounts: {
+      studio: true,
+      deuxPieces: true,
+      troisPieces: true,
+      quatrePieces: true,
+      cinqPiecesPlus: true,
+    },
+    priceRange: [0, 20000000], // 0 to 20M €
+    surfaceRange: [0, 400], // 0 to 400m²
+    pricePerSqmRange: [0, 40000], // 0 to 40k €/m²
+    dateRange: [0, 130], // January 2014 to December 2024 (months)
+  };
+
+  const [filters, setFilters] = useState<FilterState>(currentFilters || defaultFilters);
+
+  // Update local state when currentFilters prop changes
+  useEffect(() => {
+    if (currentFilters) {
+      setFilters(currentFilters);
+    }
+  }, [currentFilters]);
+
+  const handlePropertyTypeChange = (type: keyof FilterState['propertyTypes']) => {
+    setFilters(prev => ({
+      ...prev,
+      propertyTypes: {
+        ...prev.propertyTypes,
+        [type]: !prev.propertyTypes[type],
+      },
+    }));
+  };
+
+  const handleRoomCountChange = (room: keyof FilterState['roomCounts']) => {
+    setFilters(prev => ({
+      ...prev,
+      roomCounts: {
+        ...prev.roomCounts,
+        [room]: !prev.roomCounts[room],
+      },
+    }));
+  };
+
+  const handleRangeChange = (
+    rangeType: keyof Pick<FilterState, 'priceRange' | 'surfaceRange' | 'pricePerSqmRange' | 'dateRange'>,
+    min: number,
+    max: number,
+  ) => {
+    setFilters(prev => ({
+      ...prev,
+      [rangeType]: [min, max],
+    }));
+  };
+
+  // Formatting helpers
+  const formatPrice = (price: number) => {
+    return `${price.toLocaleString('fr-FR')} €`;
+  };
+
+  const formatPricePerSqm = (price: number) => {
+    return `${price.toLocaleString('fr-FR')}€/m²`;
+  };
+
+  const formatDate = (months: number) => {
+    const startDate = new Date(2014, 0, 1); // January 2014
+    const targetDate = new Date(startDate.getTime() + months * 30 * 24 * 60 * 60 * 1000);
+
+    const monthsNames = [
+      'janvier',
+      'février',
+      'mars',
+      'avril',
+      'mai',
+      'juin',
+      'juillet',
+      'août',
+      'septembre',
+      'octobre',
+      'novembre',
+      'décembre',
+    ];
+
+    const monthName = monthsNames[targetDate.getMonth()];
+    const year = targetDate.getFullYear();
+
+    return `${monthName} ${year}`;
+  };
+
+  // Generate text for each slider type
+  const getPriceText = () => {
+    const minPrice = Math.round(filters.priceRange[0]);
+    const maxPrice = Math.round(filters.priceRange[1]);
+    const priceMinValue = 0;
+    const priceMaxValue = 20000000;
+
+    if (minPrice === priceMinValue && maxPrice === priceMaxValue) {
+      return 'Toutes les valeurs';
+    } else if (minPrice > priceMinValue && maxPrice === priceMaxValue) {
+      return `À partir de ${formatPrice(minPrice)}`;
+    } else if (minPrice === priceMinValue && maxPrice < priceMaxValue) {
+      return `Jusqu'à ${formatPrice(maxPrice)}`;
+    } else {
+      return `De ${formatPrice(minPrice)} à ${formatPrice(maxPrice)}`;
+    }
+  };
+
+  const getSurfaceText = () => {
+    const minSurface = Math.round(filters.surfaceRange[0]);
+    const maxSurface = Math.round(filters.surfaceRange[1]);
+    const surfaceMinValue = 0;
+    const surfaceMaxValue = 400;
+
+    if (minSurface === surfaceMinValue && maxSurface === surfaceMaxValue) {
+      return 'Toutes les valeurs';
+    } else if (minSurface > surfaceMinValue && maxSurface === surfaceMaxValue) {
+      return `À partir de ${minSurface}m²`;
+    } else if (minSurface === surfaceMinValue && maxSurface < surfaceMaxValue) {
+      return `Jusqu'à ${maxSurface}m²`;
+    } else {
+      return `De ${minSurface}m² à ${maxSurface}m²`;
+    }
+  };
+
+  const getPricePerSqmText = () => {
+    const minPricePerSqm = Math.round(filters.pricePerSqmRange[0]);
+    const maxPricePerSqm = Math.round(filters.pricePerSqmRange[1]);
+    const pricePerSqmMinValue = 0;
+    const pricePerSqmMaxValue = 40000;
+
+    if (minPricePerSqm === pricePerSqmMinValue && maxPricePerSqm === pricePerSqmMaxValue) {
+      return 'Toutes les valeurs';
+    } else if (minPricePerSqm > pricePerSqmMinValue && maxPricePerSqm === pricePerSqmMaxValue) {
+      return `À partir de ${formatPricePerSqm(minPricePerSqm)}`;
+    } else if (minPricePerSqm === pricePerSqmMinValue && maxPricePerSqm < pricePerSqmMaxValue) {
+      return `Jusqu'à ${formatPricePerSqm(maxPricePerSqm)}`;
+    } else {
+      return `De ${formatPricePerSqm(minPricePerSqm)} à ${formatPricePerSqm(maxPricePerSqm)}`;
+    }
+  };
+
+  const getDateText = () => {
+    const minDate = Math.round(filters.dateRange[0]);
+    const maxDate = Math.round(filters.dateRange[1]);
+    const dateMinValue = 0;
+    const dateMaxValue = 130;
+
+    if (minDate === dateMinValue && maxDate === dateMaxValue) {
+      return 'Toutes les valeurs';
+    } else if (minDate > dateMinValue && maxDate === dateMaxValue) {
+      return `À partir de ${formatDate(minDate)}`;
+    } else if (minDate === dateMinValue && maxDate < dateMaxValue) {
+      return `Jusqu'à ${formatDate(maxDate)}`;
+    } else {
+      return `De ${formatDate(minDate)} à ${formatDate(maxDate)}`;
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -100,31 +547,61 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply }) =
                 <h3 className="text-xl font-bold mb-4">Type de bien</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center">
-                    <input type="checkbox" id="maison" className="w-5 h-5 rounded accent-indigo-900" defaultChecked />
+                    <input
+                      type="checkbox"
+                      id="maison"
+                      className="w-5 h-5 rounded accent-indigo-900"
+                      checked={filters.propertyTypes.maison}
+                      onChange={() => handlePropertyTypeChange('maison')}
+                    />
                     <label htmlFor="maison" className="ml-2 text-lg">
                       Maison
                     </label>
                   </div>
                   <div className="flex items-center">
-                    <input type="checkbox" id="terrain" className="w-5 h-5 rounded accent-indigo-900" />
+                    <input
+                      type="checkbox"
+                      id="terrain"
+                      className="w-5 h-5 rounded accent-indigo-900"
+                      checked={filters.propertyTypes.terrain}
+                      onChange={() => handlePropertyTypeChange('terrain')}
+                    />
                     <label htmlFor="terrain" className="ml-2 text-lg">
                       Terrain
                     </label>
                   </div>
                   <div className="flex items-center">
-                    <input type="checkbox" id="appartement" className="w-5 h-5 rounded accent-indigo-900" />
+                    <input
+                      type="checkbox"
+                      id="appartement"
+                      className="w-5 h-5 rounded accent-indigo-900"
+                      checked={filters.propertyTypes.appartement}
+                      onChange={() => handlePropertyTypeChange('appartement')}
+                    />
                     <label htmlFor="appartement" className="ml-2 text-lg">
                       Appartement
                     </label>
                   </div>
                   <div className="flex items-center">
-                    <input type="checkbox" id="biens-multiples" className="w-5 h-5 rounded accent-indigo-900" />
+                    <input
+                      type="checkbox"
+                      id="biens-multiples"
+                      className="w-5 h-5 rounded accent-indigo-900"
+                      checked={filters.propertyTypes.biensMultiples}
+                      onChange={() => handlePropertyTypeChange('biensMultiples')}
+                    />
                     <label htmlFor="biens-multiples" className="ml-2 text-lg">
                       Biens multiples
                     </label>
                   </div>
                   <div className="flex items-center">
-                    <input type="checkbox" id="local-commercial" className="w-5 h-5 rounded accent-indigo-900" />
+                    <input
+                      type="checkbox"
+                      id="local-commercial"
+                      className="w-5 h-5 rounded accent-indigo-900"
+                      checked={filters.propertyTypes.localCommercial}
+                      onChange={() => handlePropertyTypeChange('localCommercial')}
+                    />
                     <label htmlFor="local-commercial" className="ml-2 text-lg">
                       Local commercial
                     </label>
@@ -137,31 +614,61 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply }) =
                 <h3 className="text-xl font-bold mb-4">Nombre de pièces</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center">
-                    <input type="checkbox" id="studio" className="w-5 h-5 rounded accent-indigo-900" defaultChecked />
+                    <input
+                      type="checkbox"
+                      id="studio"
+                      className="w-5 h-5 rounded accent-indigo-900"
+                      checked={filters.roomCounts.studio}
+                      onChange={() => handleRoomCountChange('studio')}
+                    />
                     <label htmlFor="studio" className="ml-2 text-lg">
                       Studio
                     </label>
                   </div>
                   <div className="flex items-center">
-                    <input type="checkbox" id="2pieces" className="w-5 h-5 rounded accent-indigo-900" />
+                    <input
+                      type="checkbox"
+                      id="2pieces"
+                      className="w-5 h-5 rounded accent-indigo-900"
+                      checked={filters.roomCounts.deuxPieces}
+                      onChange={() => handleRoomCountChange('deuxPieces')}
+                    />
                     <label htmlFor="2pieces" className="ml-2 text-lg">
                       2 pièces
                     </label>
                   </div>
                   <div className="flex items-center">
-                    <input type="checkbox" id="3pieces" className="w-5 h-5 rounded accent-indigo-900" />
+                    <input
+                      type="checkbox"
+                      id="3pieces"
+                      className="w-5 h-5 rounded accent-indigo-900"
+                      checked={filters.roomCounts.troisPieces}
+                      onChange={() => handleRoomCountChange('troisPieces')}
+                    />
                     <label htmlFor="3pieces" className="ml-2 text-lg">
                       3 pièces
                     </label>
                   </div>
                   <div className="flex items-center">
-                    <input type="checkbox" id="4pieces" className="w-5 h-5 rounded accent-indigo-700" />
+                    <input
+                      type="checkbox"
+                      id="4pieces"
+                      className="w-5 h-5 rounded accent-indigo-900"
+                      checked={filters.roomCounts.quatrePieces}
+                      onChange={() => handleRoomCountChange('quatrePieces')}
+                    />
                     <label htmlFor="4pieces" className="ml-2 text-lg">
                       4 pièces
                     </label>
                   </div>
                   <div className="flex items-center">
-                    <input type="checkbox" id="5pieces" className="w-5 h-5 rounded accent-indigo-700" />
+                    <input
+                      type="checkbox"
+                      id="5pieces"
+                      className="w-5 h-5 rounded accent-indigo-900"
+                      checked={filters.roomCounts.cinqPiecesPlus}
+                      onChange={() => handleRoomCountChange('cinqPiecesPlus')}
+                    />
                     <label htmlFor="5pieces" className="ml-2 text-lg">
                       5 pièces et +
                     </label>
@@ -173,37 +680,55 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply }) =
             {/* Right Column */}
             <div className="md:w-1/2 md:pl-8 p-10">
               {/* Prix */}
-              <div className="mb-4 space-y-2">
+              <div className="mb-6 space-y-2">
                 <h3 className="text-xl font-bold">Prix</h3>
-                <p className="text-lg">
-                  À partir de <span className="font-bold">100 000 €</span>
-                </p>
-                <RangeSlider />
+                <p className="text-lg">{getPriceText()}</p>
+                <RangeSlider
+                  type="price"
+                  minValue={0}
+                  maxValue={20000000}
+                  step={25000}
+                  onChange={(min, max) => handleRangeChange('priceRange', min, max)}
+                />
               </div>
 
               {/* Surface */}
-              <div className="mb-4 space-y-2">
+              <div className="mb-6 space-y-2">
                 <h3 className="text-xl font-bold">Surface</h3>
-                <p className="text-lg text-gray-600">Toutes les valeurs</p>
-                <RangeSlider />
+                <p className="text-lg">{getSurfaceText()}</p>
+                <RangeSlider
+                  type="surface"
+                  minValue={0}
+                  maxValue={400}
+                  step={10}
+                  onChange={(min, max) => handleRangeChange('surfaceRange', min, max)}
+                />
               </div>
 
               {/* Prix m² */}
-              <div className="mb-4 space-y-2">
+              <div className="mb-6 space-y-2">
                 <h3 className="text-xl font-bold">Prix m²</h3>
-                <p className="text-lg">
-                  À partir de <span className="font-bold"></span>
-                </p>
-                <RangeSlider />
+                <p className="text-lg">{getPricePerSqmText()}</p>
+                <RangeSlider
+                  type="pricePerSqm"
+                  minValue={0}
+                  maxValue={40000}
+                  step={100}
+                  onChange={(min, max) => handleRangeChange('pricePerSqmRange', min, max)}
+                />
               </div>
 
               {/* Date de vente */}
-              <div className="mb-4 space-y-2">
+              <div className="mb-6 space-y-2">
                 <h3 className="text-xl font-bold">Date de vente</h3>
-                <p className="text-lg">
-                  À partir de <span className="font-bold"></span>
-                </p>
-                <RangeSlider />
+                <p className="text-lg">{getDateText()}</p>
+                <RangeSlider
+                  type="date"
+                  minValue={0}
+                  maxValue={130}
+                  step={1}
+                  onChange={(min, max) => handleRangeChange('dateRange', min, max)}
+                />
               </div>
             </div>
           </div>
@@ -214,7 +739,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply }) =
           <button onClick={onClose} className="px-8 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-lg">
             Annuler
           </button>
-          <button onClick={onApply} className="px-8 py-3 bg-indigo-900 text-white rounded-lg hover:bg-indigo-900 text-lg">
+          <button onClick={() => onApply(filters)} className="px-8 py-3 bg-indigo-900 text-white rounded-lg hover:bg-indigo-800 text-lg">
             Appliquer
           </button>
         </div>

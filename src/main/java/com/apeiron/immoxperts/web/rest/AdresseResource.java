@@ -4,7 +4,9 @@ import com.apeiron.immoxperts.domain.Adresse;
 import com.apeiron.immoxperts.repository.AdresseRepository;
 import com.apeiron.immoxperts.service.AdresseService;
 import com.apeiron.immoxperts.service.dto.AddressSearchDTO;
+import com.apeiron.immoxperts.service.dto.AddressSuggestionProjection;
 import com.apeiron.immoxperts.service.dto.AdresseDTO;
+import com.apeiron.immoxperts.service.impl.AdresseServiceImpl;
 import com.apeiron.immoxperts.web.rest.errors.BadRequestAlertException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -41,11 +43,13 @@ public class AdresseResource {
     @Value("${jhipster.clientApp.name}")
     private String applicationName;
 
+    private final AdresseServiceImpl adresseService1;
     private final AdresseService adresseService;
 
     private final AdresseRepository adresseRepository;
 
-    public AdresseResource(AdresseService adresseService, AdresseRepository adresseRepository) {
+    public AdresseResource(AdresseServiceImpl adresseService1, AdresseService adresseService, AdresseRepository adresseRepository) {
+        this.adresseService1 = adresseService1;
         this.adresseService = adresseService;
         this.adresseRepository = adresseRepository;
     }
@@ -191,5 +195,11 @@ public class AdresseResource {
         LOG.debug("REST request to search Adresses with criteria : {}", searchDTO);
         List<AdresseDTO> results = adresseService.searchAddresses(searchDTO);
         return ResponseEntity.ok().body(results);
+    }
+
+    @GetMapping("/suggestions")
+    public ResponseEntity<List<AddressSuggestionProjection>> getSuggestions(@RequestParam("q") String query) {
+        List<AddressSuggestionProjection> suggestions = adresseService1.getSuggestions(query);
+        return ResponseEntity.ok(suggestions);
     }
 }

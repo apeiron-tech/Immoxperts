@@ -3,6 +3,8 @@ package com.apeiron.immoxperts.repository;
 import com.apeiron.immoxperts.domain.Mutation;
 import com.apeiron.immoxperts.service.dto.CommuneStatsDTO;
 import com.apeiron.immoxperts.service.dto.MutationDTO;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -107,4 +109,53 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
         nativeQuery = true
     )
     long countMutationsByCommuneAndStreet(@Param("commune") String commune, @Param("street") String street);
+
+    @Query(
+        value = """
+        SELECT feature_json::text
+        FROM dvf.parcelles_mutations_aggregated_mv
+        WHERE point_geom && ST_MakeEnvelope(:west, :south, :east, :north, 4326)
+        AND (COALESCE(:propertyTypes, NULL) IS NULL OR type_groupe = ANY(CAST(:propertyTypes AS text[])))
+        AND (
+            COALESCE(:roomCounts, NULL) IS NULL
+            OR
+            CASE
+                WHEN type_groupe IN ('Terrain', 'Local Commercial', 'Bien Multiple') THEN true
+                ELSE nombre_pieces_principales = ANY(CAST(:roomCounts AS integer[]))
+            END
+        )
+        AND (COALESCE(:minPrice, NULL) IS NULL OR valeur_fonciere >= CAST(:minPrice AS numeric))
+        AND (COALESCE(:maxPrice, NULL) IS NULL OR valeur_fonciere <= CAST(:maxPrice AS numeric))
+        AND (COALESCE(:minSurfaceBatie, NULL) IS NULL OR surface_batie >= CAST(:minSurfaceBatie AS integer))
+        AND (COALESCE(:maxSurfaceBatie, NULL) IS NULL OR surface_batie <= CAST(:maxSurfaceBatie AS integer))
+        AND (COALESCE(:minSurfaceTerrain, NULL) IS NULL OR surface_terrain >= CAST(:minSurfaceTerrain AS integer))
+        AND (COALESCE(:maxSurfaceTerrain, NULL) IS NULL OR surface_terrain <= CAST(:maxSurfaceTerrain AS integer))
+        AND (COALESCE(:minPriceM2, NULL) IS NULL OR prix_m2 >= CAST(:minPriceM2 AS numeric))
+        AND (COALESCE(:maxPriceM2, NULL) IS NULL OR prix_m2 <= CAST(:maxPriceM2 AS numeric))
+        AND (COALESCE(:minDate, NULL) IS NULL OR date_mutation >= CAST(:minDate AS date))
+        AND (COALESCE(:maxDate, NULL) IS NULL OR date_mutation <= CAST(:maxDate AS date))
+        ORDER BY valeur_fonciere DESC
+        LIMIT CAST(:limit AS integer)
+        """,
+        nativeQuery = true
+    )
+    List<String> findAggregatedMutations(
+        @Param("west") Double west,
+        @Param("south") Double south,
+        @Param("east") Double east,
+        @Param("north") Double north,
+        @Param("propertyTypes") String[] propertyTypes,
+        @Param("roomCounts") Integer[] roomCounts,
+        @Param("minPrice") BigDecimal minPrice,
+        @Param("maxPrice") BigDecimal maxPrice,
+        @Param("minSurfaceBatie") Integer minSurfaceBatie,
+        @Param("maxSurfaceBatie") Integer maxSurfaceBatie,
+        @Param("minSurfaceTerrain") Integer minSurfaceTerrain,
+        @Param("maxSurfaceTerrain") Integer maxSurfaceTerrain,
+        @Param("minPriceM2") BigDecimal minPriceM2,
+        @Param("maxPriceM2") BigDecimal maxPriceM2,
+        @Param("minDate") LocalDate minDate,
+        @Param("maxDate") LocalDate maxDate,
+        @Param("limit") Integer limit
+    );
 }

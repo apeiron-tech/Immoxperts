@@ -4,6 +4,7 @@
   z-index: 100;
 }
 
+/* Base popup content styles */
 .mapboxgl-popup-content {
   padding: 12px 16px !important;
   border-radius: 4px !important;
@@ -12,6 +13,14 @@
   overflow-y: auto;
 }
 
+/* Specific styles for mutation hover popup - FIXED WIDTH */
+.mutation-hover-popup .mapboxgl-popup-content {
+  max-width: 450px !important;
+  width: 450px !important;
+  min-width: 450px !important;
+}
+
+/* Scrollbar styles */
 .mapboxgl-popup-content::-webkit-scrollbar {
   width: 6px;
 }

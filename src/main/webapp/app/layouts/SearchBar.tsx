@@ -1,28 +1,51 @@
 import React, { useState, useEffect, useRef } from 'react';
-import mapboxgl from 'mapbox-gl';
 import FilterPopup from '../features/property/FilterPopup';
 
-mapboxgl.accessToken = 'pk.eyJ1Ijoic2FiZXI1MTgwIiwiYSI6ImNtOGhqcWs4cTAybnEycXNiaHl6eWgwcjAifQ.8C8bv3cwz9skLXv-y6U3FA';
+interface FilterState {
+  propertyTypes: {
+    maison: boolean;
+    terrain: boolean;
+    appartement: boolean;
+    biensMultiples: boolean;
+    localCommercial: boolean;
+  };
+  roomCounts: {
+    studio: boolean;
+    deuxPieces: boolean;
+    troisPieces: boolean;
+    quatrePieces: boolean;
+    cinqPiecesPlus: boolean;
+  };
+  priceRange: [number, number];
+  surfaceRange: [number, number];
+  pricePerSqmRange: [number, number];
+  dateRange: [number, number];
+}
 
 interface SearchBarProps {
   onSearch: (searchParams: { numero: number; nomVoie: string; coordinates: [number, number]; context?: Array<{ text: string }> }) => void;
+  onFilterApply?: (filters: FilterState) => void;
+  currentFilters?: FilterState;
 }
 
-interface MapboxFeature {
-  properties: {
-    address?: string;
-  };
-  text: string;
-  center: [number, number];
-  context?: Array<{ text: string }>;
-  place_name: string;
+interface LocalAddressFeature {
+  commune: string;
+  codepostal: string;
+  idadresse: number;
+  numero: string;
+  nomVoie: string;
+  longitude: number;
+  typeVoie: string;
+  latitude: number;
+  adresseComplete: string;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
+const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentFilters }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
-  const [suggestions, setSuggestions] = useState<MapboxFeature[]>([]);
+  const [suggestions, setSuggestions] = useState<LocalAddressFeature[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Debounce search input
@@ -30,56 +53,54 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
     const handler = setTimeout(async () => {
       if (searchQuery.length > 2) {
         try {
-          const response = await fetch(
-            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-              searchQuery,
-            )}.json?access_token=${mapboxgl.accessToken}&country=FR&types=address&limit=5`,
-          );
+          setIsLoading(true);
+          const response = await fetch(`http://localhost:8080/api/adresses/suggestions?q=${encodeURIComponent(searchQuery)}`);
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
           const data = await response.json();
-          setSuggestions(data.features);
+          setSuggestions(data);
+
           // Only show suggestions if the input is focused (user typing)
           if (document.activeElement === inputRef.current) {
             setShowSuggestions(true);
           }
         } catch (error) {
-          console.error('Error fetching suggestions:', error);
+          console.error('Error fetching address suggestions:', error);
+          setSuggestions([]);
+        } finally {
+          setIsLoading(false);
         }
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
       }
     }, 300);
 
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const handleAddressSelect = (feature: MapboxFeature): void => {
-    const numero = normalizeSearchParams(feature.properties.address || '');
-    const nomVoie = normalizeSearchParams(feature.text || '');
-    const coordinates = feature.center;
-    setSearchQuery(feature.place_name);
+  const handleAddressSelect = (feature: LocalAddressFeature): void => {
+    const numero = parseInt(feature.numero, 10);
+    const nomVoie = feature.nomVoie;
+    const coordinates: [number, number] = [feature.longitude, feature.latitude];
+
+    setSearchQuery(feature.adresseComplete);
     setShowSuggestions(false); // Close suggestions
     setSuggestions([]); // Clear suggestions after selection
+
     if (inputRef.current) {
       inputRef.current.blur(); // Blur input to prevent reopening
     }
+
     onSearch({
-      numero: parseInt(numero, 10),
+      numero,
       nomVoie,
       coordinates,
-      context: feature.context,
+      context: [{ text: feature.commune }, { text: feature.codepostal }, { text: feature.typeVoie }],
     });
-  };
-
-  const normalizeSearchParams = (str: string): string => {
-    return typeof str === 'string'
-      ? str
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[œæ]/gi, 'oe')
-          .replace(/[ç]/gi, 'c')
-          .toUpperCase()
-          .replace(/[^A-Z0-9]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-      : '';
   };
 
   return (
@@ -107,24 +128,39 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
             placeholder="Entrez une adresse en France"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            // Removed onFocus to prevent suggestions from reopening after selection
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           />
 
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+            </div>
+          )}
+
           {/* Suggestions Dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
               {suggestions.map((feature, index) => (
                 <button
-                  key={index}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                  onClick={() => handleAddressSelect(feature)} // Changed from onMouseDown to onClick
+                  key={feature.idadresse}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-100 border-b border-gray-100 last:border-b-0 transition-colors"
+                  onClick={() => handleAddressSelect(feature)}
                 >
-                  <div className="text-sm font-medium">{feature.place_name}</div>
-                  <div className="text-xs text-gray-500">{feature.context?.map(ctx => ctx.text).join(', ')}</div>
+                  <div className="text-sm font-medium text-gray-900">{feature.adresseComplete}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {feature.commune} - {feature.codepostal}
+                  </div>
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* No results message */}
+          {showSuggestions && searchQuery.length > 2 && suggestions.length === 0 && !isLoading && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+              <div className="px-4 py-3 text-sm text-gray-500 text-center">Aucune adresse trouvée</div>
             </div>
           )}
         </div>
@@ -136,34 +172,31 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
           onClick={() => setIsFilterOpen(true)}
         >
           {/* Filter icon */}
-
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M3.26172 17.2446C3.26172 16.8304 3.59751 16.4946 4.01172 16.4946H10.4842C10.8985 16.4946 11.2342 16.8304 11.2342 17.2446C11.2342 17.6588 10.8985 17.9946 10.4842 17.9946H4.01172C3.59751 17.9946 3.26172 17.6588 3.26172 17.2446Z"
-                fill="#7069F9"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M14.6122 14.5885C15.2599 13.9409 16.2067 13.7737 17.2687 13.7737C18.3306 13.7737 19.2774 13.9409 19.9252 14.5885C20.573 15.2361 20.7405 16.183 20.7405 17.2455C20.7405 18.308 20.573 19.2548 19.9252 19.9024C19.2774 20.55 18.3306 20.7173 17.2687 20.7173C16.2067 20.7173 15.2599 20.55 14.6122 19.9024C13.9644 19.2548 13.7969 18.308 13.7969 17.2455C13.7969 16.183 13.9644 15.2361 14.6122 14.5885ZM15.6727 15.6493C15.4698 15.8521 15.2969 16.2662 15.2969 17.2455C15.2969 18.2248 15.4698 18.6388 15.6727 18.8416C15.8756 19.0445 16.2897 19.2173 17.2687 19.2173C18.2476 19.2173 18.6617 19.0445 18.8646 18.8416C19.0675 18.6388 19.2405 18.2248 19.2405 17.2455C19.2405 16.2662 19.0675 15.8521 18.8646 15.6493C18.6617 15.4465 18.2476 15.2737 17.2687 15.2737C16.2897 15.2737 15.8756 15.4465 15.6727 15.6493Z"
-                fill="#7069F9"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M12.7676 6.75594C12.7676 6.34172 13.1034 6.00594 13.5176 6.00594H19.9892C20.4034 6.00594 20.7392 6.34172 20.7392 6.75594C20.7392 7.17015 20.4034 7.50594 19.9892 7.50594H13.5176C13.1034 7.50594 12.7676 7.17015 12.7676 6.75594Z"
-                fill="#7069F9"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M4.07713 4.09797C4.72495 3.45031 5.67188 3.28281 6.7344 3.28281C7.79655 3.28281 8.74326 3.45034 9.39096 4.09804C10.0387 4.74574 10.2062 5.69245 10.2062 6.7546C10.2062 7.81709 10.0387 8.76392 9.39089 9.41156C8.74313 10.0592 7.79635 10.2264 6.7344 10.2264C5.67208 10.2264 4.72509 10.0592 4.0772 9.41163C3.42921 8.76398 3.26172 7.81708 3.26172 6.7546C3.26172 5.69245 3.42924 4.74568 4.07713 4.09797ZM5.13765 5.15877C4.93464 5.36172 4.76172 5.77584 4.76172 6.7546C4.76172 7.7339 4.93468 8.1479 5.13758 8.35069C5.34059 8.55359 5.75494 8.72639 6.7344 8.72639C7.71335 8.72639 8.12747 8.55362 8.33037 8.35076C8.53324 8.14795 8.70619 7.73389 8.70619 6.7546C8.70619 5.77585 8.53328 5.36167 8.3303 5.1587C8.12733 4.95572 7.71315 4.78281 6.7344 4.78281C5.75514 4.78281 5.34072 4.95575 5.13765 5.15877Z"
-                fill="#7069F9"
-              />
-            </svg>
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M3.26172 17.2446C3.26172 16.8304 3.59751 16.4946 4.01172 16.4946H10.4842C10.8985 16.4946 11.2342 16.8304 11.2342 17.2446C11.2342 17.6588 10.8985 17.9946 10.4842 17.9946H4.01172C3.59751 17.9946 3.26172 17.6588 3.26172 17.2446Z"
+              fill="#7069F9"
+            />
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M14.6122 14.5885C15.2599 13.9409 16.2067 13.7737 17.2687 13.7737C18.3306 13.7737 19.2774 13.9409 19.9252 14.5885C20.573 15.2361 20.7405 16.183 20.7405 17.2455C20.7405 18.308 20.573 19.2548 19.9252 19.9024C19.2774 20.55 18.3306 20.7173 17.2687 20.7173C16.2067 20.7173 15.2599 20.55 14.6122 19.9024C13.9644 19.2548 13.7969 18.308 13.7969 17.2455C13.7969 16.183 13.9644 15.2361 14.6122 14.5885ZM15.6727 15.6493C15.4698 15.8521 15.2969 16.2662 15.2969 17.2455C15.2969 18.2248 15.4698 18.6388 15.6727 18.8416C15.8756 19.0445 16.2897 19.2173 17.2687 19.2173C18.2476 19.2173 18.6617 19.0445 18.8646 18.8416C19.0675 18.6388 19.2405 18.2248 19.2405 17.2455C19.2405 16.2662 19.0675 15.8521 18.8646 15.6493C18.6617 15.4465 18.2476 15.2737 17.2687 15.2737C16.2897 15.2737 15.8756 15.4465 15.6727 15.6493Z"
+              fill="#7069F9"
+            />
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M12.7676 6.75594C12.7676 6.34172 13.1034 6.00594 13.5176 6.00594H19.9892C20.4034 6.00594 20.7392 6.34172 20.7392 6.75594C20.7392 7.17015 20.4034 7.50594 19.9892 7.50594H13.5176C13.1034 7.50594 12.7676 7.17015 12.7676 6.75594Z"
+              fill="#7069F9"
+            />
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M4.07713 4.09797C4.72495 3.45031 5.67188 3.28281 6.7344 3.28281C7.79655 3.28281 8.74326 3.45034 9.39096 4.09804C10.0387 4.74574 10.2062 5.69245 10.2062 6.7546C10.2062 7.81709 10.0387 8.76392 9.39089 9.41156C8.74313 10.0592 7.79635 10.2264 6.7344 10.2264C5.67208 10.2264 4.72509 10.0592 4.0772 9.41163C3.42921 8.76398 3.26172 7.81708 3.26172 6.7546C3.26172 5.69245 3.42924 4.74568 4.07713 4.09797ZM5.13765 5.15877C4.93464 5.36172 4.76172 5.77584 4.76172 6.7546C4.76172 7.7339 4.93468 8.1479 5.13758 8.35069C5.34059 8.55359 5.75494 8.72639 6.7344 8.72639C7.71335 8.72639 8.12747 8.55362 8.33037 8.35076C8.53324 8.14795 8.70619 7.73389 8.70619 6.7546C8.70619 5.77585 8.53328 5.36167 8.3303 5.1587C8.12733 4.95572 7.71315 4.78281 6.7344 4.78281C5.75514 4.78281 5.34072 4.95575 5.13765 5.15877Z"
+              fill="#7069F9"
+            />
           </svg>
           <span>Filtres</span>
         </button>
@@ -172,9 +205,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
           <FilterPopup
             isOpen={isFilterOpen}
             onClose={() => setIsFilterOpen(false)}
-            onApply={() => {
+            onApply={filters => {
               setIsFilterOpen(false);
+              onFilterApply?.(filters);
             }}
+            currentFilters={currentFilters}
           />
         )}
       </div>

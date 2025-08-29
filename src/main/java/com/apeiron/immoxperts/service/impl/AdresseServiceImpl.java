@@ -4,6 +4,7 @@ import com.apeiron.immoxperts.domain.Adresse;
 import com.apeiron.immoxperts.repository.AdresseRepository;
 import com.apeiron.immoxperts.service.AdresseService;
 import com.apeiron.immoxperts.service.dto.AddressSearchDTO;
+import com.apeiron.immoxperts.service.dto.AddressSuggestionProjection;
 import com.apeiron.immoxperts.service.dto.AdresseDTO;
 import com.apeiron.immoxperts.service.mapper.AdresseMapper;
 import java.util.List;
@@ -41,6 +42,18 @@ public class AdresseServiceImpl implements AdresseService {
         Adresse adresse = adresseMapper.toEntity(adresseDTO);
         adresse = adresseRepository.save(adresse);
         return adresseMapper.toDto(adresse);
+    }
+
+    public List<AddressSuggestionProjection> getSuggestions(String query) {
+        List<AddressSuggestionProjection> results = adresseRepository.findSuggestions(query);
+
+        // ✅ Éliminer les doublons par idadresse
+        return results
+            .stream()
+            .collect(Collectors.toMap(AddressSuggestionProjection::getIdadresse, result -> result, (existing, replacement) -> existing)) // Garder le premier
+            .values()
+            .stream()
+            .collect(Collectors.toList());
     }
 
     @Override

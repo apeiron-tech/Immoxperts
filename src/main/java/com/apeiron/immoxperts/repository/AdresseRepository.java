@@ -1,6 +1,7 @@
 package com.apeiron.immoxperts.repository;
 
 import com.apeiron.immoxperts.domain.Adresse;
+import com.apeiron.immoxperts.service.dto.AddressSuggestionProjection;
 import java.util.List;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
@@ -26,4 +27,33 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
 
     List<Adresse> findByNovoieAndVoieAndCodepostalAndCommune(Integer novoie, String voie, String codepostal, String commune);
     List<Adresse> findByVoieContainingIgnoreCase(String voie);
+
+    @Query(
+        value = """
+        SELECT
+            idadresse,
+            adresse_complete as adresseComplete,
+            numero,
+            nom_voie as nomVoie,
+            type_voie as typeVoie,
+            codepostal,
+            commune,
+            MIN(latitude) as latitude,
+            MIN(longitude) as longitude
+        FROM dvf.adresse_complete_geom_mv
+        WHERE
+            (UPPER(adresse_complete) LIKE UPPER(CONCAT('%', REPLACE(:q, ' ', '%'), '%'))
+            OR (
+                UPPER(nom_voie) LIKE UPPER(CONCAT('%', :q, '%'))
+                OR UPPER(type_voie) LIKE UPPER(CONCAT('%', :q, '%'))
+                OR UPPER(numero) LIKE UPPER(CONCAT('%', :q, '%'))
+                OR UPPER(commune) LIKE UPPER(CONCAT('%', :q, '%'))
+            ))
+        GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
+        ORDER BY commune, nom_voie, numero
+        LIMIT 20
+        """,
+        nativeQuery = true
+    )
+    List<AddressSuggestionProjection> findSuggestions(@Param("q") String q);
 }

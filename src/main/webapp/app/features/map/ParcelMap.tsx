@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import './styles/mapbox-popup.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-mapboxgl.accessToken = 'pk.eyJ1Ijoic2FiZXI1MTgwIiwiYSI6ImNtOGhqcWs4cTAybnEycXNiaHl6eWgwcjAifQ.8C8bv3cwz9skLXv-y6U3FA';
+mapboxgl.accessToken = 'pk.eyJ1IjoiaW1tb3hwZXJ0IiwiYSI6ImNtZXV3bGtyNzBiYmQybXNoMnE5NmUzYWsifQ.mGxg2EbZxRAQJ4sOapI63w';
 
 interface MapRef {
   current: mapboxgl.Map | null;
@@ -21,7 +21,7 @@ const AddressHighlighter: React.FC = () => {
   useEffect(() => {
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/saber5180/cm8uhol1600ih01sa3d3d2xjw',
+      style: 'mapbox://styles/immoxpert/cmck83rh6001501r1dlt1fy8k',
       center: [8.73692, 41.9281], // Coordonnées d'Ajaccio
       zoom: 16,
     });

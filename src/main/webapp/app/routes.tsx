@@ -25,6 +25,28 @@ import StreetStats from 'app/features/property/StreetStats';
 import PropertyList from 'app/pages/PropertyList';
 import SearchBar from 'app/layouts/SearchBar';
 
+// Filter state interface
+interface FilterState {
+  propertyTypes: {
+    maison: boolean;
+    terrain: boolean;
+    appartement: boolean;
+    biensMultiples: boolean;
+    localCommercial: boolean;
+  };
+  roomCounts: {
+    studio: boolean;
+    deuxPieces: boolean;
+    troisPieces: boolean;
+    quatrePieces: boolean;
+    cinqPiecesPlus: boolean;
+  };
+  priceRange: [number, number];
+  surfaceRange: [number, number];
+  pricePerSqmRange: [number, number];
+  dateRange: [number, number];
+}
+
 const loading = <div>loading ...</div>;
 
 // const Account = Loadable({
@@ -43,6 +65,28 @@ const AppRoutes = () => {
     nomVoie: null,
     coordinates: null,
   });
+
+  // Default filter state
+  const [filterState, setFilterState] = useState<FilterState>({
+    propertyTypes: {
+      maison: true,
+      terrain: true,
+      appartement: true,
+      biensMultiples: true,
+      localCommercial: true,
+    },
+    roomCounts: {
+      studio: true,
+      deuxPieces: true,
+      troisPieces: true,
+      quatrePieces: true,
+      cinqPiecesPlus: true,
+    },
+    priceRange: [0, 20000000], // 0 to 20M €
+    surfaceRange: [0, 400], // 0 to 400m²
+    pricePerSqmRange: [0, 40000], // 0 to 40k €/m²
+    dateRange: [0, 130], // January 2014 to December 2024 (months)
+  });
   return (
     <div className="view-routes">
       <ErrorBoundaryRoutes>
@@ -53,9 +97,9 @@ const AppRoutes = () => {
           path="/PrixImmobliers"
           element={
             <div className="flex flex-col h-full">
-              <SearchBar onSearch={setSearchParams} />
+              <SearchBar onSearch={setSearchParams} onFilterApply={setFilterState} currentFilters={filterState} />
               <div className="flex h-full shadow-lg border border-gray-200 rounded-lg overflow-hidden bg-white">
-                <PropertyList searchParams={searchParams} />
+                <PropertyList searchParams={searchParams} filterState={filterState} />
               </div>
             </div>
           }

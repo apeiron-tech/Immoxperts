@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-import axios from 'axios';
-import mapboxgl from 'mapbox-gl';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import PropertyMap from '../features/map/PropertyMap';
 import PropertyCard from 'app/features/property/PropertyCard';
-import PropertyMap from 'app/features/map/PropertyMap';
-import PropertyCardClick from 'app/features/property/PropertyCardClick';
-import { API_ENDPOINTS } from 'app/config/api.config';
+
+// ===================================================================
+// TYPE DEFINITIONS
+// ===================================================================
 
 interface Property {
   id: number;
@@ -20,6 +18,8 @@ interface Property {
   surface: string;
   rooms: string | number;
   soldDate: string;
+  terrain: string;
+  coordinates: [number, number];
   rawData: {
     terrain: any;
     mutationType: string;
@@ -27,60 +27,56 @@ interface Property {
   };
 }
 
-interface SearchParams {
-  [key: string]: string;
-}
-
-interface AddressInfo {
-  address: string;
-  city: string;
-}
-
-interface NormalizedAddress {
-  address: string;
-  city: string;
+interface FilterState {
+  propertyTypes: {
+    maison: boolean;
+    terrain: boolean;
+    appartement: boolean;
+    biensMultiples: boolean;
+    localCommercial: boolean;
+  };
+  roomCounts: {
+    studio: boolean;
+    deuxPieces: boolean;
+    troisPieces: boolean;
+    quatrePieces: boolean;
+    cinqPiecesPlus: boolean;
+  };
+  priceRange: [number, number];
+  surfaceRange: [number, number];
+  pricePerSqmRange: [number, number];
+  dateRange: [number, number];
 }
 
 interface PropertyListProps {
-  searchParams: SearchParams;
+  searchParams: {
+    coordinates?: [number, number];
+    address?: string;
+  };
+  filterState?: FilterState;
+  onFiltersChange?: (filters: FilterState | null) => void; // Add callback for filter changes
 }
 
-const sidebarVariants = {
-  hidden: { x: -300, opacity: 0 },
-  visible: {
-    x: 0,
-    opacity: 1,
-    transition: { type: 'spring', stiffness: 300, damping: 30 },
-  },
-  exit: {
-    x: -300,
-    opacity: 0,
-    transition: { ease: 'easeInOut', duration: 0.3 },
-  },
-};
+type SortOption = 'date-desc' | 'date-asc' | 'price-desc' | 'price-asc' | 'sqm-desc' | 'sqm-asc';
 
-const propertyCardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.1, duration: 0.5 },
-  }),
-};
+// ===================================================================
+// REACT COMPONENT
+// ===================================================================
 
-const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
+const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, onFiltersChange }) => {
+  // --- STATE MANAGEMENT ---
   const [properties, setProperties] = useState<Property[]>([]);
-  const [currentCity, setCurrentCity] = useState<string>('');
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [hoveredPropertyId, setHoveredPropertyId] = useState<number | null>(null);
   const [activeView, setActiveView] = useState<'map' | 'list'>('map');
-  const [currentAddress, setCurrentAddress] = useState<NormalizedAddress | null>(null);
-  const [similarProperties, setSimilarProperties] = useState<Property[]>([]);
-  const [mapCoordinates, setMapCoordinates] = useState<[number, number] | null>(null);
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
-  type SortOption = 'date-desc' | 'date-asc' | 'price-desc' | 'price-asc' | 'sqm-desc' | 'sqm-asc';
   const [sortOption, setSortOption] = useState<SortOption>('date-desc');
-  const [hoveredProperty, setHoveredProperty] = useState<Property | null>(null);
 
+  // **KEY ADDITION**: Store the currently active filters in this component
+  const [currentActiveFilters, setCurrentActiveFilters] = useState<FilterState | null>(null);
+  const [isLoadingProperties, setIsLoadingProperties] = useState(false);
+  const [dataVersion, setDataVersion] = useState(0); // Force re-render
+
+  // --- DERIVED STATE (MEMOIZED) ---
   const sortedProperties = useMemo(() => {
     const props = [...properties];
     switch (sortOption) {
@@ -89,366 +85,269 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams }) => {
       case 'date-asc':
         return props.sort((a, b) => new Date(a.soldDate).getTime() - new Date(b.soldDate).getTime());
       case 'price-desc':
-        return props.sort((a, b) => (b.numericPrice || 0) - (a.numericPrice || 0));
+        return props.sort((a, b) => b.numericPrice - a.numericPrice);
       case 'price-asc':
-        return props.sort((a, b) => (a.numericPrice || 0) - (b.numericPrice || 0));
+        return props.sort((a, b) => a.numericPrice - b.numericPrice);
       case 'sqm-desc':
-        return props.sort((a, b) => {
-          const sqmA = a.numericSurface ? (a.numericPrice || 0) / a.numericSurface : 0;
-          const sqmB = b.numericSurface ? (b.numericPrice || 0) / b.numericSurface : 0;
-          return sqmB - sqmA;
-        });
+        return props.sort((a, b) => b.numericPrice / b.numericSurface - a.numericPrice / a.numericSurface);
       case 'sqm-asc':
-        return props.sort((a, b) => {
-          const sqmA = a.numericSurface ? (a.numericPrice || 0) / a.numericSurface : 0;
-          const sqmB = b.numericSurface ? (b.numericPrice || 0) / b.numericSurface : 0;
-          return sqmA - sqmB;
-        });
+        return props.sort((a, b) => a.numericPrice / a.numericSurface - b.numericPrice / b.numericSurface);
       default:
         return props;
     }
   }, [properties, sortOption]);
 
-  const closeSidebar = (): void => {
-    setSelectedProperty(null);
-    if (window.innerWidth < 1024) setActiveView('map');
-  };
+  const hoveredProperty = useMemo(() => {
+    return properties.find(p => p.id === hoveredPropertyId) || null;
+  }, [hoveredPropertyId, properties]);
 
-  const normalizeFrenchCharacters = (str: string): string => {
-    return typeof str === 'string'
-      ? str
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/œ/g, 'oe')
-          .replace(/æ/g, 'ae')
-          .replace(/ç/g, 'c')
-          .replace(/[^a-zA-Z0-9]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-          .toUpperCase()
-      : '';
-  };
+  // --- FILTER STATE MANAGEMENT ---
 
-  const handlePropertySelect = (property: Property): void => {
-    setSelectedProperty(property);
-    if (window.innerWidth < 1024) setActiveView('list');
-  };
-
-  const handlePropertiesFound = (newProperties: Property[]): void => {
-    setProperties(newProperties);
-    setSimilarProperties(newProperties.slice(0, 5));
-    setCurrentAddress(null);
-    if (newProperties.length > 0 && window.innerWidth < 1024) {
-      setActiveView('list');
+  // Update active filters when filterState prop changes
+  useEffect(() => {
+    if (filterState) {
+      setCurrentActiveFilters(filterState);
+      // Notify parent component about the filter change
+      onFiltersChange?.(filterState);
     }
-  };
+  }, [filterState, onFiltersChange]);
 
-  const handleAddressFound = (addressInfo: AddressInfo): void => {
-    const normalizedAddress: NormalizedAddress = {
-      address: normalizeFrenchCharacters(addressInfo.address),
-      city: normalizeFrenchCharacters(addressInfo.city),
-    };
-    setCurrentAddress(normalizedAddress);
+  // Clear filters function (you can expose this via props if needed)
+  const clearFilters = useCallback(() => {
+    setCurrentActiveFilters(null);
+    onFiltersChange?.(null);
+  }, [onFiltersChange]);
+
+  // --- DATA FETCHING ---
+
+  // This function will be called by PropertyMap when it gets new mutation data
+  // This function will be called by PropertyMap when it gets new mutation data
+  const updatePropertiesFromMutations = useCallback((mutationData: any[]) => {
+    console.warn('PropertyList: Starting data update process...');
+
+    // Start loading state
+    setIsLoadingProperties(true);
+
+    // Force clear everything first
     setProperties([]);
     setSelectedProperty(null);
+    setHoveredPropertyId(null);
+
+    // Small delay to ensure state is cleared
+    setTimeout(() => {
+      console.warn('PropertyList: Processing', mutationData?.length || 0, 'mutation features');
+
+      if (!mutationData || mutationData.length === 0) {
+        console.warn('PropertyList: No data received, keeping list empty');
+        setIsLoadingProperties(false);
+        setDataVersion(prev => prev + 1);
+        return;
+      }
+
+      // Transform mutation data into our Property interface
+      const allProperties: Property[] = [];
+
+      mutationData.forEach((feature: any, featureIndex: number) => {
+        if (!feature?.properties?.adresses) {
+          console.warn(`Feature ${featureIndex} has no addresses, skipping`);
+          return;
+        }
+
+        try {
+          // Parse the addresses if they're stored as a JSON string
+          const addresses =
+            typeof feature.properties.adresses === 'string' ? JSON.parse(feature.properties.adresses) : feature.properties.adresses;
+
+          if (!Array.isArray(addresses)) {
+            console.warn(`Feature ${featureIndex} addresses is not an array, skipping`);
+            return;
+          }
+
+          addresses.forEach((address: any, addressIndex: number) => {
+            if (address.mutations && Array.isArray(address.mutations)) {
+              address.mutations.forEach((mutation: any, mutationIndex: number) => {
+                const uniqueId = `${feature.properties.idparcelle || featureIndex}-${addressIndex}-${mutationIndex}-${Date.now()}`;
+
+                const property: Property = {
+                  id:
+                    typeof uniqueId === 'string'
+                      ? Number(`${feature.properties.idparcelle || featureIndex}${addressIndex}${mutationIndex}${Date.now()}`)
+                      : uniqueId, // Ensure absolutely unique numeric ID
+                  address: address.adresse_complete || 'Adresse inconnue',
+                  city: address.commune || '',
+                  numericPrice: mutation.valeur || 0,
+                  numericSurface: mutation.sbati || 0,
+                  price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
+                  surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
+                  type: mutation.type_groupe || 'Type inconnu',
+                  soldDate: mutation.date ? new Date(mutation.date).toLocaleDateString('fr-FR') : '',
+                  pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
+                  rooms: mutation.nbpprinc || '',
+                  terrain: mutation.sterr ? `${mutation.sterr.toLocaleString('fr-FR')} m²` : '',
+                  coordinates: feature.geometry?.coordinates ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] : [0, 0],
+                  rawData: {
+                    terrain: mutation.sterr || 0,
+                    mutationType: mutation.id?.toString() || '',
+                    department: address.commune || '',
+                  },
+                };
+                allProperties.push(property);
+              });
+            }
+          });
+        } catch (error) {
+          console.error(`Error parsing addresses for feature ${featureIndex}:`, error);
+        }
+      });
+
+      // Limit to max 50 properties
+      const limitedProperties = allProperties.slice(0, 50);
+
+      console.warn('PropertyList: Setting NEW property list with', limitedProperties.length, 'properties');
+      console.warn('PropertyList: Sample properties:', limitedProperties.slice(0, 3));
+
+      // Set new properties and update version
+      setProperties(limitedProperties);
+      setDataVersion(prev => prev + 1);
+      setIsLoadingProperties(false);
+    }, 100); // 100ms delay to ensure clean state
+  }, []);
+
+  // --- EVENT HANDLERS ---
+  const handlePropertySelect = (property: Property) => {
+    setSelectedProperty(property);
     if (window.innerWidth < 1024) {
       setActiveView('list');
     }
   };
 
-  const streetTypePrefixes: string[] = [
-    'COURS',
-    'BOULEVARD',
-    'AVENUE',
-    'RUE',
-    'PLACE',
-    'PASSAGE',
-    'IMPASSE',
-    'ALLEE',
-    'CHEMIN',
-    'ROUTE',
-    'SQUARE',
-    'GALERIE',
-    'RESIDENCE',
-    'QUAI',
-    'QUARTIER',
-  ];
-
-  const removeStreetType = (streetName: string): string => {
-    const prefixRegex = new RegExp(`^(${streetTypePrefixes.join('|')})\\s+`, 'i');
-    return streetName.replace(prefixRegex, '');
+  const closeSidebar = () => {
+    setSelectedProperty(null);
   };
 
-  const handleMapMove = React.useCallback(async (coordinates: [number, number]): Promise<void> => {
-    setMapCoordinates(coordinates);
-    try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${coordinates[0]},${coordinates[1]}.json?types=address&language=fr&access_token=${mapboxgl.accessToken}`,
-      );
-
-      const data = await response.json();
-      let streetName = '';
-      let communeName = '';
-
-      const addressFeature = data.features.find((f: any) => f.place_type.includes('address'));
-      if (addressFeature) {
-        const rawStreet = addressFeature.text.replace(/^\d+[\s,]*/, '').trim();
-        streetName = removeStreetType(normalizeFrenchCharacters(rawStreet)).trim();
-        const communeContext = addressFeature.context?.find((c: any) => c.id.startsWith('place.'));
-        communeName = communeContext?.text ? normalizeFrenchCharacters(communeContext.text) : '';
-      }
-
-      setCurrentCity(communeName && streetName ? `${communeName}, ${streetName}` : communeName || streetName);
-
-      if (communeName && streetName) {
-        const apiResponse = await axios.get(API_ENDPOINTS.mutations.byStreetAndCommune, {
-          params: {
-            street: streetName,
-            commune: communeName,
-          },
-        });
-        const formatted: Property[] = apiResponse.data.content.map((mutation: any) => ({
-          id: parseInt(mutation.idmutation, 10),
-          address: mutation.addresses?.[0] || 'Adresse inconnue',
-          city: communeName,
-          numericPrice: mutation.valeurfonc || 0,
-          numericSurface: mutation.surface || 0,
-          price: `${mutation.valeurfonc?.toLocaleString('fr-FR')} €`,
-          surface: `${mutation.surface?.toLocaleString('fr-FR')} m²`,
-          type: mutation.libtyplocList[0],
-          soldDate: new Date(mutation.datemut).toISOString(),
-          pricePerSqm:
-            mutation.valeurfonc && mutation.surface
-              ? `${Math.round(mutation.valeurfonc / mutation.surface).toLocaleString('fr-FR')} €/m²`
-              : 'N/A',
-          rooms: mutation.nbpprincTotal ?? 'N/A',
-          rawData: {
-            terrain: mutation.terrain,
-            mutationType: mutation.mutationType,
-            department: mutation.department,
-          },
-        }));
-
-        setProperties(formatted);
-      }
-    } catch (error) {
-      console.error('Error handling map movement:', error);
-      setProperties([]);
-    }
-  }, []);
-
+  // --- RENDER ---
   return (
-    <div className="flex flex-col lg:flex-row w-full pb-1 h-full overflow-hidden">
-      {/* Mobile Toggle View */}
-      <div className="lg:hidden flex justify-center gap-2 py-2 bg-white shadow z-10">
+    <div className="flex flex-col lg:flex-row w-full h-screen bg-gray-50">
+      {/* --- Mobile View Toggle --- */}
+      <div className="lg:hidden flex justify-center gap-2 py-2 bg-white shadow-md z-20">
         <button
           onClick={() => setActiveView('map')}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${activeView === 'map' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}
+          className={`px-4 py-2 rounded text-sm font-medium ${
+            activeView === 'map' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+          }`}
         >
           Carte
         </button>
         <button
           onClick={() => setActiveView('list')}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${activeView === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'}`}
+          className={`px-4 py-2 rounded text-sm font-medium ${
+            activeView === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+          }`}
         >
-          Liste
+          Liste ({properties.length})
         </button>
       </div>
 
-      {/* Sidebar (List or Property) */}
-      <div className={`w-full lg:w-1/3 flex flex-col h-full ${activeView === 'map' && 'hidden lg:flex'}`}>
-        <AnimatePresence mode="wait">
-          {selectedProperty ? (
-            <motion.div
-              className="h-full w-full bg-white overflow-hidden border-r border-gray-200 rounded-lg"
-              variants={sidebarVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              key={`property-details-${selectedProperty.id}`}
-            >
-              <div className="w-full h-full overflow-y-auto custom-scroll">
-                <div className="p-4 space-y-4">
-                  <div className="pt-2">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2 p-2 w-full">
-                        <motion.div
-                          key={`similar-property-${currentIndex}-${similarProperties[currentIndex]?.id || 'none'}`}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <PropertyCardClick
-                            property={similarProperties[currentIndex]}
-                            onClick={() => handlePropertySelect(similarProperties[currentIndex])}
-                            compact
-                          />
-                        </motion.div>
-
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => setCurrentIndex(prev => (prev > 0 ? prev - 1 : similarProperties.length - 1))}
-                            className="p-1 hover:text-blue-600"
-                          >
-                            &lt;
-                          </button>
-                          <span className="text-s px-4 text-blue-600 font-medium">
-                            {currentIndex + 1} / {similarProperties.length}
-                          </span>
-                          <button
-                            onClick={() => setCurrentIndex(prev => (prev < similarProperties.length - 1 ? prev + 1 : 0))}
-                            className="p-1 hover:text-blue-600"
-                          >
-                            &gt;
-                          </button>
-                        </div>
-
-                        <div className="relative flex items-center py-2">
-                          <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-gray-200"></div>
-                          </div>
-                          <span className="relative bg-white pr-4 text-gray-900 font-semibold text-sm">En savoir plus</span>
-                        </div>
-
-                        <div className="flex flex-col gap-2 text-sm">
-                          <p>Générez une analyse à cette adresse pour obtenir :</p>
-                          <ul className="list-inside list-disc">
-                            <li>L'estimation de la valeur du bien</li>
-                            <li>L'analyse cadastrale</li>
-                            <li>Une présentation des ventes réalisées à proximité</li>
-                            <li>L'évolution des prix dans ce quartier</li>
-                            <li>Une analyse du quartier</li>
-                          </ul>
-                        </div>
-                      </div>
-                      <button onClick={closeSidebar} className="text-gray-400 hover:text-gray-700 text-3xl">
-                        &times;
-                      </button>
-                    </div>
-                  </div>
+      {/* --- List & Detail Panel --- */}
+      <div
+        className={`w-full lg:w-[400px] lg:flex-shrink-0 flex flex-col bg-white border-r border-gray-200 z-10 ${
+          activeView === 'map' ? 'hidden lg:flex' : 'flex'
+        }`}
+      >
+        {selectedProperty ? (
+          // --- Detail View ---
+          <div className="p-4 flex-1 overflow-y-auto">
+            <button onClick={closeSidebar} className="text-blue-600 hover:underline text-sm mb-4">
+              ← Retour à la liste
+            </button>
+            <h2 className="text-xl font-bold text-gray-800">{selectedProperty.address}</h2>
+            <p className="text-md text-gray-600">{selectedProperty.city}</p>
+            <div className="mt-4 grid grid-cols-2 gap-4 text-center">
+              <div className="bg-gray-100 p-3 rounded-lg">
+                <div className="text-sm text-gray-500">Prix de vente</div>
+                <div className="font-semibold text-lg">{selectedProperty.price}</div>
+              </div>
+              <div className="bg-gray-100 p-3 rounded-lg">
+                <div className="text-sm text-gray-500">Surface</div>
+                <div className="font-semibold text-lg">{selectedProperty.surface || 'Non spécifiée'}</div>
+              </div>
+              <div className="bg-gray-100 p-3 rounded-lg">
+                <div className="text-sm text-gray-500">Prix/m²</div>
+                <div className="font-semibold text-lg">{selectedProperty.pricePerSqm || 'Non spécifié'}</div>
+              </div>
+              <div className="bg-gray-100 p-3 rounded-lg">
+                <div className="text-sm text-gray-500">Pièces</div>
+                <div className="font-semibold text-lg">{selectedProperty.rooms || 'Non spécifié'}</div>
+              </div>
+            </div>
+            {selectedProperty.terrain && (
+              <div className="mt-4 text-center">
+                <div className="bg-gray-100 p-3 rounded-lg">
+                  <div className="text-sm text-gray-500">Terrain</div>
+                  <div className="font-semibold text-lg">{selectedProperty.terrain}</div>
                 </div>
               </div>
-            </motion.div>
-          ) : currentAddress ? (
-            <motion.div
-              className="h-full w-full bg-white overflow-hidden border-r border-gray-200 rounded-lg p-4 space-y-4"
-              variants={sidebarVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              key={`address-details-${currentAddress.address}`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h1 className="text-lg font-semibold text-gray-800">{currentAddress?.address}</h1>
-                  <p className="text-xs text-gray-500">{currentAddress?.city}</p>
-                </div>
-                <button onClick={() => setCurrentAddress(null)} className="text-gray-500 hover:text-gray-700 text-lg">
-                  &times;
-                </button>
+            )}
+            <p className="text-sm text-gray-500 mt-4">Vendu le: {selectedProperty.soldDate || 'Date non spécifiée'}</p>
+          </div>
+        ) : (
+          // --- List View ---
+          <>
+            <div className="p-4 border-b">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="font-semibold">Transactions à proximité</h2>
+                {/* **OPTIONAL**: Add filter indicator and clear button */}
+                {currentActiveFilters && (
+                  <button onClick={clearFilters} className="text-xs text-blue-600 hover:underline">
+                    Effacer filtres
+                  </button>
+                )}
               </div>
+              <select
+                value={sortOption}
+                onChange={e => setSortOption(e.target.value as SortOption)}
+                className="w-full border rounded-md px-2 py-1.5 text-sm bg-white"
+              >
+                <option value="date-desc">Plus récentes</option>
+                <option value="date-asc">Plus anciennes</option>
+                <option value="price-desc">Prix ↓</option>
+                <option value="price-asc">Prix ↑</option>
+                <option value="sqm-desc">€/m² ↓</option>
+                <option value="sqm-asc">€/m² ↑</option>
+              </select>
+            </div>
 
-              <div className="bg-blue-50 p-2 rounded-md text-sm">
-                <p className="text-gray-600">Aucune transaction récente</p>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Détails supplémentaires</h3>
-                <ul className="list-disc pl-4 space-y-1 text-xs text-gray-600">
-                  <li>Tendances de marché</li>
-                  <li>Analyse cadastrale</li>
-                  <li>Services proximité</li>
-                </ul>
-              </div>
-
-              <div className="bg-gray-50 p-2 rounded-md text-sm">
-                <p className="text-gray-600 mb-1">Estimation gratuite</p>
-                <button className="bg-blue-600 text-white px-3 py-1 rounded-md text-xs hover:bg-blue-700">Évaluer mon bien</button>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              className="h-full w-full bg-white overflow-hidden border-r border-gray-200 rounded-lg p-4"
-              variants={sidebarVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              key="property-list"
-            >
-              <h2 className="text-sm font-semibold mb-3">Transactions récentes</h2>
-              {/* Dropdown filter for sorting - only show if more than 1 property */}
-              {sortedProperties.length > 1 && (
-                <div className="mb-3 flex items-center gap-2">
-                  <label htmlFor="sort-properties" className="text-xs font-medium text-gray-700">
-                    Trier par
-                  </label>
-                  <div className="relative w-56">
-                    <select
-                      id="sort-properties"
-                      className="appearance-none w-full pl-3 pr-8 py-2 rounded-lg border border-gray-300 bg-white text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition outline-none"
-                      value={sortOption}
-                      onChange={e => {
-                        const value = e.target.value;
-                        if (
-                          [
-                            'date-desc',
-                            'date-asc',
-                            'price-desc',
-                            'price-asc',
-                            'sqm-desc',
-                            'sqm-asc',
-                            'surface-desc',
-                            'surface-asc',
-                          ].includes(value)
-                        ) {
-                          setSortOption(value as SortOption);
-                        }
-                      }}
-                    >
-                      <option value="date-desc">Les plus récentes</option>
-                      <option value="date-asc">Les plus anciennes</option>
-                      <option value="price-desc">Prix le plus haut</option>
-                      <option value="price-asc">Prix le plus bas</option>
-                      <option value="sqm-desc">Prix/m² le plus haut</option>
-                      <option value="sqm-asc">Prix/m² le plus bas</option>
-                    </select>
-                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </span>
-                  </div>
-                </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-2">
+              {sortedProperties.length > 0 ? (
+                sortedProperties.map(property => (
+                  <PropertyCard
+                    key={property.id}
+                    property={property}
+                    onClick={() => handlePropertySelect(property)}
+                    isHovered={hoveredPropertyId === property.id}
+                    onMouseEnter={() => setHoveredPropertyId(property.id)}
+                    onMouseLeave={() => setHoveredPropertyId(null)}
+                  />
+                ))
+              ) : (
+                <p className="p-4 text-center text-gray-500">Aucune transaction trouvée dans cette zone.</p>
               )}
-              <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-200px)] pr-1 custom-scroll">
-                {sortedProperties.map((property, idx) => (
-                  <div
-                    key={Number.isFinite(property.id) ? property.id : `property-${idx}`}
-                    onMouseEnter={() => setHoveredProperty(property)}
-                    onMouseLeave={() => setHoveredProperty(null)}
-                  >
-                    <PropertyCard property={{ ...property, soldDate: new Date(property.soldDate).toLocaleDateString('fr-FR') }} />
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </>
+        )}
       </div>
-      {/* Right Section (Map) */}
-      <div className={`w-full lg:w-3/4 h-screen relative ${activeView === 'list' ? 'hidden lg:block' : 'block'}`}>
-        <div className="h-full w-full">
-          <PropertyMap
-            onMapMove={handleMapMove}
-            onPropertiesFound={handlePropertiesFound}
-            onPropertySelect={handlePropertySelect}
-            onAddressFound={handleAddressFound}
-            searchParams={searchParams}
-            selectedProperty={selectedProperty}
-            hoveredProperty={hoveredProperty}
-          />
-        </div>
+
+      {/* --- Map Container --- */}
+      <div className={`flex-1 relative ${activeView === 'list' ? 'hidden lg:block' : 'block'}`}>
+        <PropertyMap
+          properties={properties}
+          onPropertySelect={handlePropertySelect}
+          searchParams={searchParams}
+          selectedProperty={selectedProperty}
+          hoveredProperty={hoveredProperty}
+          filterState={currentActiveFilters} // **KEY**: Pass the currently active filters
+          onDataUpdate={updatePropertiesFromMutations} // **NEW**: Callback to update PropertyCard data
+        />
       </div>
     </div>
   );

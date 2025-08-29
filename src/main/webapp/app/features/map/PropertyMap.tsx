@@ -1,13 +1,22 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import './styles/mapbox-popup.css';
 import axios from 'axios';
-import { TrendingUp } from 'lucide-react';
-import { API_ENDPOINTS } from 'app/config/api.config';
-import debounce from 'lodash/debounce';
+import './styles/mapbox-popup.css';
+// Add CSS import at the top (make sure this is included)
+import 'mapbox-gl/dist/mapbox-gl.css';
 
-mapboxgl.accessToken = 'pk.eyJ1Ijoic2FiZXI1MTgwIiwiYSI6ImNtOGhqcWs4cTAybnEycXNiaHl6eWgwcjAifQ.8C8bv3cwz9skLXv-y6U3FA';
+// Types definitions
+interface Feature {
+  type: 'Feature';
+  geometry: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+  properties: {
+    [key: string]: any;
+  };
+  id?: string | number;
+}
 
 interface Property {
   id: number;
@@ -21,6 +30,7 @@ interface Property {
   surface: string;
   rooms: string | number;
   soldDate: string;
+  coordinates: [number, number];
   rawData: {
     terrain: any;
     mutationType: string;
@@ -28,487 +38,683 @@ interface Property {
   };
 }
 
-interface SearchParams {
-  numero?: string;
-  nomVoie?: string;
-  coordinates?: [number, number];
-  address?: string;
+interface FilterState {
+  propertyTypes: {
+    maison: boolean;
+    terrain: boolean;
+    appartement: boolean;
+    biensMultiples: boolean;
+    localCommercial: boolean;
+  };
+  roomCounts: {
+    studio: boolean;
+    deuxPieces: boolean;
+    troisPieces: boolean;
+    quatrePieces: boolean;
+    cinqPiecesPlus: boolean;
+  };
+  priceRange: [number, number];
+  surfaceRange: [number, number];
+  pricePerSqmRange: [number, number];
+  dateRange: [number, number];
 }
 
-interface AddressInfo {
-  address: string;
-  city: string;
-}
-
-interface PropertyMapProps {
+interface MapPageProps {
+  selectedFeature?: Feature | null;
+  properties?: Property[];
   onMapMove?: (coordinates: [number, number]) => void;
   onPropertySelect?: (property: Property) => void;
-  onPropertiesFound?: (properties: Property[]) => void;
-  onAddressFound?: (addressInfo: AddressInfo) => void;
-  searchParams: {
-    address?: string;
+  searchParams?: {
     coordinates?: [number, number];
-    numero?: string;
-    nomVoie?: string;
-    [key: string]: string | [number, number] | undefined;
+    address?: string;
   };
   selectedProperty?: Property | null;
   hoveredProperty?: Property | null;
+  filterState?: FilterState;
+  onDataUpdate?: (mutationData: any[]) => void; // **NEW**: Callback to update PropertyCard data
 }
 
-interface PropertyStats {
-  typeBien: string;
-  nombre: number;
-  prixMoyen: number;
-  prixM2Moyen: number;
+interface AddressProperties {
+  id: string | number;
+  numero: string;
+  nomVoie: string;
+  codeCommune: string;
 }
 
-const PropertyMap: React.FC<PropertyMapProps> = ({
+interface ParcelProperties {
+  id: string | number;
+  commune: string;
+  contenance: number;
+  numero: string;
+}
+
+// Type guard to check if geometry is a Point
+interface PointGeometry {
+  type: 'Point';
+  coordinates: [number, number];
+}
+
+function isPointGeometry(geometry: any): geometry is PointGeometry {
+  return geometry && geometry.type === 'Point' && Array.isArray(geometry.coordinates);
+}
+
+// Set access token
+mapboxgl.accessToken = 'pk.eyJ1IjoiaW1tb3hwZXJ0IiwiYSI6ImNtZXV3bGtyNzBiYmQybXNoMnE5NmUzYWsifQ.mGxg2EbZxRAQJ4sOapI63w';
+
+// Debounce utility
+function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: ReturnType<typeof setTimeout>;
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Helper functions for stats panel
+const formatNumber = (num: number) => {
+  return new Intl.NumberFormat('fr-FR').format(num);
+};
+
+const getStatsShortTypeName = (type: string) => {
+  const shortNames = {
+    Appartement: 'Appartement',
+    Maison: 'Maison',
+    Terrain: 'Terrain',
+    'Local Commercial': 'Local',
+    'Bien Multiple': 'Bien Multiple',
+  };
+  return shortNames[type] || type;
+};
+
+const PropertyMap: React.FC<MapPageProps> = ({
+  selectedFeature,
+  properties,
   onMapMove,
   onPropertySelect,
-  onPropertiesFound,
-  onAddressFound,
   searchParams,
   selectedProperty,
   hoveredProperty,
+  filterState,
+  onDataUpdate,
 }) => {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const popup = useRef<mapboxgl.Popup | null>(null);
-  const hoverPopup = useRef<mapboxgl.Popup | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [activeLayers, setActiveLayers] = useState<string[]>([]);
-  const [showStatsPanel, setShowStatsPanel] = useState<boolean>(false);
-  const [currentCity, setCurrentCity] = useState<string>('');
-  const [is3DView, setIs3DView] = useState<boolean>(false);
-  const { numero, nomVoie, coordinates } = searchParams;
-  const [similarProperties, setSimilarProperties] = useState<Property[]>([]);
-  const mutationCache = useRef<Map<string, Property[]>>(new Map());
-  const [propertyStats, setPropertyStats] = useState<PropertyStats[]>([]);
-  const [activePropertyType, setActivePropertyType] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const statsCache = useRef<Map<string, { data: PropertyStats[]; timestamp: number }>>(new Map());
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache duration
+  const mapContainer = useRef<HTMLDivElement | null>(null);
 
-  const hoveredId = useRef<string | number | null>(null);
-  const selectedId = useRef<string | number | null>(null);
+  // Stats panel state
+  const [showStatsPanel, setShowStatsPanel] = useState(false);
+  const [activePropertyType, setActivePropertyType] = useState(0);
+  const [propertyStats, setPropertyStats] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [statsError, setStatsError] = useState('');
+  const [currentCity, setCurrentCity] = useState('AJACCIO');
+  const [selectedAddress, setSelectedAddress] = useState<[number, number] | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const [mapLoaded, setMapLoaded] = useState<boolean>(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [debugging, setDebugging] = useState<boolean>(true); // Enable debugging
+  const hoveredSelectedId = useRef<string | number | null>(null);
+  const [currentActiveFilters, setCurrentActiveFilters] = useState<FilterState | null>(null);
+  // Save filter parameters locally so they persist between map moves
+  const [savedFilterParams, setSavedFilterParams] = useState<any>(null);
 
-  const TILESET_ID = 'saber5180.0h0q6jw3';
-  const SOURCE_LAYER = 'cadastre-2A2-Parcelles-2s9utu';
-  const LAYER_ID = 'parcels-interactive-layer';
-
-  const typeNames: string[] = ['Appartement', 'Maison', 'Local', 'Terrain', 'Bien Multiple'];
-
-  // Formatter les nombres pour l'affichage
-  const formatNumber = (num: number): string => {
-    return new Intl.NumberFormat('fr-FR').format(num);
-  };
-
-  const getShortTypeName = typeBien => {
-    const names = {
-      Appartement: 'Appartement',
-      Maison: 'Maison',
-      'Local industriel. commercial ou assimilé': 'Local',
-      Terrain: 'Terrain',
-      'Bien Multiple': 'Bien Multiple',
-    };
-    return names[typeBien] || typeBien.split(' ')[0];
-  };
-  const getActiveStats = () => {
-    // Ajouter une gestion explicite de "Bien Multiple"
-    const typeName = typeNames[activePropertyType]?.replace(/\./g, '').trim();
-
-    return propertyStats.find(stat => stat.typeBien.replace(/\./g, '').trim() === typeName) || { nombre: 0, prixMoyen: 0, prixM2Moyen: 0 };
-  };
-  const activeStats = getActiveStats();
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const pendingRequestsRef = useRef<Map<string, { promise: Promise<any>; controller: AbortController }>>(new Map());
-
-  // Cancel all pending requests
-  const cancelPendingRequests = useCallback(() => {
-    pendingRequestsRef.current.forEach(({ controller }) => {
-      controller.abort();
-    });
-    pendingRequestsRef.current.clear();
-  }, []);
-
-  // Create a new abort controller for each request
-  const createAbortController = useCallback(() => {
-    const controller = new AbortController();
-    return controller;
-  }, []);
-
-  // Create a unique key for each request
-  const createRequestKey = (type: 'address' | 'stats', params: any): string => {
-    if (type === 'address') {
-      const { numero: addressNumero, nomVoie: addressNomVoie } = params;
-      return `address_${addressNumero}_${addressNomVoie}`;
+  // Debug logging
+  const debugLog = (message: string, data?: any) => {
+    if (debugging) {
+      console.warn(`[MapboxDebug] ${message}`, data || '');
     }
-    return `stats_${params}`;
   };
 
-  // Deduplicate requests
-  const deduplicateRequest = async <T,>(
-    type: 'address' | 'stats',
-    params: any,
-    requestFn: (controller: AbortController) => Promise<T>,
-  ): Promise<T> => {
-    const requestKey = createRequestKey(type, params);
-
-    // Check if there's already a pending request
-    const existingRequest = pendingRequestsRef.current.get(requestKey);
-    if (existingRequest) {
-      return existingRequest.promise;
-    }
-
-    // Create new request
-    const controller = createAbortController();
-    const promise = requestFn(controller);
-
-    pendingRequestsRef.current.set(requestKey, { promise, controller });
-
+  // Function to check WebGL support
+  const checkWebGLSupport = () => {
     try {
-      const result = await promise;
-      return result;
-    } finally {
-      pendingRequestsRef.current.delete(requestKey);
-    }
-  };
-
-  // Optimized fetchAddressData with deduplication
-  const fetchAddressData = async (properties: SearchParams): Promise<Property[]> => {
-    return deduplicateRequest('address', properties, async controller => {
-      try {
-        const streetNumber = normalizeSearchParams(properties.numero?.toString() || '');
-        const streetName = normalizeSearchParams(properties.nomVoie || '');
-
-        if (!streetNumber || !streetName) {
-          throw new Error("Données d'adresse incomplètes");
-        }
-
-        const cacheKey = getMutationCacheKey(properties);
-        const cachedData = mutationCache.current.get(cacheKey);
-
-        if (cachedData) {
-          return cachedData;
-        }
-
-        const novoie = streetNumber.replace(/\D/g, '');
-        const voie = streetName;
-
-        const response = await fetch(`${API_ENDPOINTS.mutations.search}?novoie=${novoie}&voie=${encodeURIComponent(voie)}`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Erreur API: ${response.status} - ${errorText}`);
-        }
-
-        const data = await response.json();
-
-        // Filter mutations by current city to ensure only properties from the exact commune are shown
-        const filteredData = data.filter(mutation => {
-          const rawAddress = mutation.addresses?.[0] || '';
-          const addressParts = rawAddress.split(' ');
-          const cityParts = addressParts.slice(-2);
-          const mutationCity = cityParts.join(' ').toLowerCase();
-          const currentCityLower = currentCity.toLowerCase();
-
-          // Normalize city names for better matching
-          const normalizeCityName = name => {
-            return name
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '') // Remove accents
-              .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-              .replace(/\s+/g, ' ') // Normalize spaces
-              .trim();
-          };
-
-          const normalizedMutationCity = normalizeCityName(mutationCity);
-          const normalizedCurrentCity = normalizeCityName(currentCityLower);
-
-          // Check if the mutation's city matches the current city
-          // Use exact match or partial match for better accuracy
-          return (
-            normalizedMutationCity === normalizedCurrentCity ||
-            normalizedMutationCity.includes(normalizedCurrentCity) ||
-            normalizedCurrentCity.includes(normalizedMutationCity)
-          );
-        });
-
-        const formattedProperties: Property[] = filteredData.map((mutation: any) => {
-          const surface = mutation.surface || 1;
-          const valeurfonc = mutation.valeurfonc || 0;
-          const rawAddress = mutation.addresses?.[0] || '';
-
-          const addressParts = rawAddress.split(' ');
-          const propertyNumber = addressParts.find(part => /^\d+/.test(part)) || '';
-          const streetNameParts = addressParts.filter(part => part !== propertyNumber && !/^\d{5}/.test(part));
-          const cityParts = addressParts.slice(-2);
-
-          return {
-            id: mutation.idmutation || Date.now(),
-            address: `${propertyNumber} ${streetNameParts.join(' ')}`,
-            city: cityParts.join(' '),
-            numericPrice: valeurfonc,
-            numericSurface: surface,
-            price: `${Math.round(valeurfonc).toLocaleString('fr-FR')}€`,
-            pricePerSqm: `${Math.round(valeurfonc / surface).toLocaleString('fr-FR')} €`,
-            type: (mutation.libtyplocList?.[0] || 'Terrain')
-              .replace(/\./g, '')
-              .normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, ''),
-            surface: `${surface.toLocaleString('fr-FR')} m²`,
-            rooms: mutation.nbpprincTotal ?? 'N/A',
-            soldDate: new Date(mutation.datemut).toLocaleDateString('fr-FR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            }),
-            rawData: {
-              terrain: mutation.terrain,
-              mutationType: mutation.idnatmut,
-              department: mutation.coddep,
-            },
-          };
-        });
-
-        mutationCache.current.set(cacheKey, formattedProperties);
-        return formattedProperties;
-      } catch (fetchError) {
-        if (fetchError.name === 'AbortError') {
-          return [];
-        }
-        console.error('Erreur:', fetchError);
-        return [];
-      }
-    });
-  };
-
-  // Optimized stats fetching with deduplication
-  const fetchPropertyStats = useCallback(async (city: string) => {
-    return deduplicateRequest('stats', city, async controller => {
-      const now = Date.now();
-      const cachedStats = statsCache.current.get(city);
-
-      if (cachedStats && now - cachedStats.timestamp < CACHE_DURATION) {
-        setPropertyStats(cachedStats.data);
-        return cachedStats.data;
-      }
-
-      try {
-        setIsLoading(true);
-
-        const response = await axios.get(`${API_ENDPOINTS.mutations.statistics}/${city.toLowerCase()}`, {
-          signal: controller.signal,
-        });
-
-        const stats = response.data;
-        statsCache.current.set(city, {
-          data: stats,
-          timestamp: now,
-        });
-
-        setPropertyStats(stats);
-        return stats;
-      } catch (err) {
-        if (axios.isCancel(err)) {
-          return null;
-        }
-        console.error('Erreur:', err);
-        setError('Erreur de chargement');
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    });
-  }, []);
-
-  const normalizeSearchParams = (str: string): string => {
-    return typeof str === 'string'
-      ? str
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[œæ]/gi, 'oe')
-          .replace(/[ç]/gi, 'c')
-          .toUpperCase()
-          .replace(/[^A-Z0-9]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-      : '';
-  };
-
-  const isValidCoordinates = (coords: unknown): coords is [number, number] => {
-    return Array.isArray(coords) && coords.length === 2 && typeof coords[0] === 'number' && typeof coords[1] === 'number';
-  };
-
-  const getMutationCacheKey = (properties: SearchParams): string => {
-    const streetNumber = normalizeSearchParams(properties.numero?.toString() || '');
-    const streetName = normalizeSearchParams(properties.nomVoie || '');
-    return `${streetNumber}-${streetName}-${currentCity}`;
-  };
-
-  // Update the handleAddressClick to use the optimized fetchAddressData
-  const handleAddressClick = async (properties: SearchParams): Promise<void> => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const cacheKey = getMutationCacheKey(properties);
-      let formattedProperties = mutationCache.current.get(cacheKey);
-
-      if (!formattedProperties) {
-        formattedProperties = await fetchAddressData(properties);
-      }
-
-      if (formattedProperties.length > 0) {
-        onPropertySelect?.(formattedProperties[0]);
-        onPropertiesFound?.(formattedProperties);
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        debugLog('WebGL is supported');
+        return true;
       } else {
-        onAddressFound?.({
-          address: `${properties.numero} ${properties.nomVoie}`,
-          city: currentCity,
-        });
+        debugLog('WebGL is NOT supported');
+        setMapError('WebGL is not supported in this browser');
+        return false;
       }
-    } catch (addressError) {
-      console.error('Erreur:', addressError);
-      setError(addressError instanceof Error ? addressError.message : 'Une erreur est survenue');
-      onPropertiesFound?.([]);
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      debugLog('Error checking WebGL support:', e);
+      setMapError('Error checking WebGL support');
+      return false;
     }
   };
 
-  const formatFrenchDate = (dateStr: string): string => {
-    const months: Record<string, string> = {
-      janvier: '01',
-      février: '02',
-      mars: '03',
-      avril: '04',
-      mai: '05',
-      juin: '06',
-      juillet: '07',
-      août: '08',
-      septembre: '09',
-      octobre: '10',
-      novembre: '11',
-      décembre: '12',
+  // Helper function to convert filter state to API parameters
+  const convertFilterStateToParams = (currentFilterState: FilterState) => {
+    // Convert property types to API format
+    const propertyTypeMap = {
+      appartement: '0', // Appartement
+      maison: '1', // Maison
+      biensMultiples: '2', // Bien Multiple
+      terrain: '4', // Terrain
+      localCommercial: '5', // Local Commercial
     };
 
-    const [day, monthName, year] = dateStr.split(' ');
-    const dayFormatted = day.padStart(2, '0');
-    const month = months[monthName.toLowerCase()] || '01';
+    const selectedPropertyTypes = Object.entries(currentFilterState.propertyTypes)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([type, _]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+      .filter(Boolean);
 
-    return `${dayFormatted}/${month}/${year}`;
+    // Convert room counts to API format
+    const roomCountMap = {
+      studio: '1',
+      deuxPieces: '2',
+      troisPieces: '3',
+      quatrePieces: '4',
+      cinqPiecesPlus: '5,6,7,8,9,10',
+    };
+
+    const selectedRoomCounts = Object.entries(currentFilterState.roomCounts)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([room, _]) => roomCountMap[room as keyof typeof roomCountMap])
+      .filter(Boolean)
+      .join(',');
+
+    // Convert date range from months to actual dates
+    const startDate = new Date(2014, 0, 1); // January 2014
+    const minDate = new Date(startDate.getTime() + currentFilterState.dateRange[0] * 30 * 24 * 60 * 60 * 1000);
+    const maxDate = new Date(startDate.getTime() + currentFilterState.dateRange[1] * 30 * 24 * 60 * 60 * 1000);
+
+    return {
+      propertyType: selectedPropertyTypes.length > 0 ? selectedPropertyTypes.join(',') : '0,1,2,4,5',
+      roomCount: selectedRoomCounts || '1,2,3,4,5,6,7,8,9,10',
+      minSellPrice: currentFilterState.priceRange[0].toString(),
+      maxSellPrice: currentFilterState.priceRange[1].toString(),
+      minSurface: currentFilterState.surfaceRange[0].toString(),
+      maxSurface: currentFilterState.surfaceRange[1].toString(),
+      minSurfaceLand: currentFilterState.surfaceRange[0].toString(), // Using surface range for land too
+      maxSurfaceLand: currentFilterState.surfaceRange[1].toString(),
+      minSquareMeterPrice: currentFilterState.pricePerSqmRange[0].toString(),
+      maxSquareMeterPrice: currentFilterState.pricePerSqmRange[1].toString(),
+      minDate: minDate.toISOString().split('T')[0],
+      maxDate: maxDate.toISOString().split('T')[0],
+    };
   };
-  const createHoverPopupContent = async (properties, cityName) => {
-    const container = document.createElement('div');
-    container.className = 'popup-container';
 
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.className = 'flex items-center justify-center';
-    loadingIndicator.innerHTML = '';
-    container.appendChild(loadingIndicator);
+  // Load initial data with default parameters (no filters)
+  const loadInitialData = async () => {
+    if (!mapRef.current || !mapRef.current.isStyleLoaded()) {
+      debugLog('Map not ready for initial data loading');
+      return;
+    }
 
     try {
-      // Fetch the raw data from the API
-      const streetNumber = normalizeSearchParams(properties.numero?.toString() || '');
-      const streetName = normalizeSearchParams(properties.nomVoie || '');
-      const novoie = streetNumber.replace(/\D/g, '');
-      const voie = streetName;
-      const response = await fetch(`${API_ENDPOINTS.mutations.search}?novoie=${novoie}&voie=${encodeURIComponent(voie)}`);
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Erreur API: ${response.status} - ${errorText}`);
-      }
-      const data = await response.json();
+      const b = mapRef.current.getBounds();
+      const bounds = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      debugLog('Loading initial data with current map bounds:', bounds);
 
-      // Filter mutations by current city to ensure only properties from the exact commune are shown
-      const mutations = data.filter(mutation => {
-        const rawAddress = mutation.addresses?.[0] || '';
-        const addressParts = rawAddress.split(' ');
-        const cityParts = addressParts.slice(-2);
-        const mutationCity = cityParts.join(' ').toLowerCase();
-        const currentCityLower = cityName.toLowerCase();
-
-        // Normalize city names for better matching
-        const normalizeCityName = name => {
-          return name
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') // Remove accents
-            .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-            .replace(/\s+/g, ' ') // Normalize spaces
-            .trim();
-        };
-
-        const normalizedMutationCity = normalizeCityName(mutationCity);
-        const normalizedCurrentCity = normalizeCityName(currentCityLower);
-
-        // Check if the mutation's city matches the current city
-        // Use exact match or partial match for better accuracy
-        return (
-          normalizedMutationCity === normalizedCurrentCity ||
-          normalizedMutationCity.includes(normalizedCurrentCity) ||
-          normalizedCurrentCity.includes(normalizedMutationCity)
-        );
+      const params = new URLSearchParams({
+        bounds: bounds.join(','),
+        propertyType: '0,1,2,4,5', // All property types
+        roomCount: '1,2,3,4,5,6,7,8,9,10', // All room counts
+        minSellPrice: '0',
+        maxSellPrice: '20000000',
+        minSurface: '0',
+        maxSurface: '400',
+        minSurfaceLand: '0',
+        maxSurfaceLand: '400',
+        minSquareMeterPrice: '0',
+        maxSquareMeterPrice: '40000',
+        minDate: '2013-12-31',
+        maxDate: new Date().toISOString().split('T')[0],
+        limit: '500',
       });
 
-      const getPropertyTypeColor = type => {
-        // Use the same order and color as the stats panel
-        const colorMap = {
-          Appartement: '#4F46E5', // bg-indigo-600
-          Maison: '#8B5CF6', // bg-violet-500
-          Local: '#60A5FA', // bg-blue-400
-          Terrain: '#2563EB', // bg-blue-600
-          'Bien Multiple': '#1E3A8A', // bg-blue-900
-        };
-        // Use getShortTypeName to normalize
-        const shortType = getShortTypeName(type);
-        return colorMap[shortType] || '#9CA3AF';
+      const apiUrl = `http://localhost:8080/api/mutations/search?${params.toString()}`;
+      debugLog('Calling initial API:', apiUrl);
+
+      const { data } = await axios.get(apiUrl);
+      debugLog('Initial API response data:', data);
+      debugLog('Number of features in response:', data.features?.length || 0);
+
+      // Transform the data to GeoJSON format for Mapbox
+      const geojsonData = {
+        type: 'FeatureCollection' as const,
+        features: (data.features || []).map((feature: any, index: number) => ({
+          ...feature,
+          id: feature.properties?.idparcelle || `mutation-${index}`,
+        })),
       };
 
-      if (mutations && mutations.length > 0) {
-        let currentIndex = 0;
-        const renderProperty = index => {
-          const mutation = mutations[index];
-          if (!mutation) return;
+      debugLog('Initial GeoJSON data created with features:', geojsonData.features.length);
 
-          const surface = mutation.surface || 1;
-          const valeurfonc = mutation.valeurfonc || 0;
-          const rawAddress = mutation.addresses?.[0] || '';
-          const addressParts = rawAddress.split(' ');
-          const propertyNumber = addressParts.find(part => /^\d+/.test(part)) || '';
-          const streetNameParts = addressParts.filter(part => part !== propertyNumber && !/^\d{5}/.test(part));
-          const cityParts = addressParts.slice(-2);
-          const address = `${propertyNumber} ${streetNameParts.join(' ')}`;
-          const mutationCityName = cityParts.join(' ');
-          const type = (mutation.libtyplocList?.[0] || 'Terrain')
-            .replace(/\./g, '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '');
-          const propertyTypeLabel =
-            type
-              ?.toLowerCase()
-              ?.split(' ')
-              ?.map(word => word.charAt(0).toUpperCase() + word.slice(1))
-              ?.join(' ') || 'Type inconnu';
-          const priceFormatted = valeurfonc?.toLocaleString('fr-FR') + ' €';
-          const pricePerSqm = valeurfonc && surface ? Math.round(valeurfonc / surface).toLocaleString('fr-FR') + ' €/m²' : 'N/A';
-          const rooms = mutation.nbpprincTotal ?? 'N/A';
-          const soldDate = new Date(mutation.datemut).toLocaleDateString('fr-FR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
+      const source = mapRef.current.getSource('mutations-live');
+      if (source && 'setData' in source) {
+        source.setData(geojsonData);
+        debugLog(`Updated mutations source with ${geojsonData.features.length} initial features`);
+
+        // **NEW**: Notify PropertyList about new data
+        if (onDataUpdate) {
+          onDataUpdate(geojsonData.features);
+        }
+      }
+    } catch (e) {
+      debugLog('Failed to load initial data:', e);
+      console.error('Échec du chargement des données initiales:', e);
+    }
+  };
+
+  // Load mutations data from the new API
+  const loadMutationsData = async () => {
+    if (!mapRef.current || !mapRef.current.isStyleLoaded()) {
+      debugLog('Map not ready for mutations loading');
+      return;
+    }
+
+    try {
+      const b = mapRef.current.getBounds();
+      const bounds = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      debugLog('Loading mutations for bounds:', bounds);
+
+      // Determine which filters to use - prioritize current active filters
+      let filtersToUse;
+      let filterParams;
+
+      if (filterState) {
+        // New filters from parent component - use these and update active filters
+        filtersToUse = filterState;
+        setCurrentActiveFilters(filterState);
+        debugLog('Using new filter state from parent:', filterState);
+        filterParams = convertFilterStateToParams(filtersToUse);
+      } else if (currentActiveFilters) {
+        // Use previously set active filters
+        filtersToUse = currentActiveFilters;
+        debugLog('Using current active filters:', currentActiveFilters);
+        filterParams = convertFilterStateToParams(filtersToUse);
+      } else {
+        // No filters available - use default parameters
+        debugLog('No filter parameters available - using default parameters');
+        filterParams = {
+          bounds: bounds.join(','),
+          limit: '500',
+        };
+      }
+      debugLog('Using filter parameters:', filterParams);
+
+      // Build the API URL with current bounds and filter parameters
+      const params = new URLSearchParams({
+        bounds: bounds.join(','),
+        ...filterParams,
+      });
+
+      const apiUrl = `http://localhost:8080/api/mutations/search?${params.toString()}`;
+      debugLog('Calling API:', apiUrl);
+
+      const { data } = await axios.get(apiUrl);
+      debugLog('API response data:', data);
+      debugLog('Number of features in response:', data.features?.length || 0);
+
+      // Transform the data to GeoJSON format for Mapbox
+      const geojsonData = {
+        type: 'FeatureCollection' as const,
+        features: (data.features || []).map((feature: any, index: number) => ({
+          ...feature,
+          id: feature.properties?.idparcelle || `mutation-${index}`,
+        })),
+      };
+
+      debugLog('GeoJSON data created with features:', geojsonData.features.length);
+
+      const source = mapRef.current.getSource('mutations-live');
+      if (source && 'setData' in source) {
+        source.setData(geojsonData);
+        debugLog(`Updated mutations source with ${geojsonData.features.length} features`);
+
+        // **NEW**: Notify PropertyList about new data
+        if (onDataUpdate) {
+          onDataUpdate(geojsonData.features);
+        }
+      }
+    } catch (e) {
+      debugLog('Failed to load mutations:', e);
+      console.error('Échec du chargement des mutations:', e);
+    }
+  };
+
+  // Map initialization with extensive error handling
+  useEffect(() => {
+    if (mapRef.current) {
+      debugLog('Map already initialized, skipping');
+      return;
+    }
+
+    if (!mapContainer.current) {
+      debugLog('Map container not found');
+      setMapError('Map container not found');
+      return;
+    }
+
+    // Check WebGL support before initializing
+    if (!checkWebGLSupport()) {
+      return;
+    }
+
+    debugLog('Initializing Mapbox map...');
+
+    try {
+      mapRef.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/immoxpert/cmck83rh6001501r1dlt1fy8k',
+        center: [8.73692, 41.9281], // Corsica center
+        zoom: 12,
+        minZoom: 13, // Limit zoom out to exactly 1km (zoom level 13 = ~1km scale)
+        maxZoom: 18,
+        antialias: true, // Enable antialiasing for better performance
+      });
+
+      const map = mapRef.current;
+      debugLog('Map instance created');
+
+      // Enhanced error handling
+      map.on('error', (e: mapboxgl.ErrorEvent) => {
+        debugLog('Mapbox error occurred:', e.error);
+        console.error('Erreur Mapbox:', e.error);
+        setMapError(`Mapbox error: ${e.error.message || 'Unknown error'}`);
+      });
+
+      // Style loading events
+      map.on('styledata', () => {
+        debugLog('Style data loaded');
+      });
+
+      map.on('sourcedataloading', e => {
+        debugLog('Source data loading:', e.sourceId);
+      });
+
+      map.on('sourcedata', e => {
+        debugLog('Source data loaded:', e.sourceId);
+      });
+
+      // Main load event with comprehensive setup
+      map.on('load', () => {
+        debugLog('Map loaded successfully!');
+        setMapLoaded(true);
+        setMapError(null);
+
+        try {
+          // ===================================================================
+          // SECTION 1: CADASTRAL PARCELS LAYER
+          // ===================================================================
+          debugLog('Adding parcels source...');
+
+          map.addSource('parcelles-source', {
+            type: 'vector',
+            url: 'mapbox://immoxpert.parcelles-finales',
+            promoteId: 'id',
           });
 
-          container.innerHTML = `
+          debugLog('Adding parcels layer...');
+          map.addLayer({
+            id: 'parcelles-layer',
+            type: 'fill',
+            source: 'parcelles-source',
+            'source-layer': 'parcelles_pour_mapbox_final',
+            paint: {
+              'fill-color': '#6e599f',
+              'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.5, 0.2],
+              'fill-outline-color': 'rgba(0, 0, 0, 0.5)',
+            },
+          });
+
+          // Parcel interactivity
+          let hoveredParcelId: string | number | null = null;
+
+          map.on('mousemove', 'parcelles-layer', (e: mapboxgl.MapMouseEvent) => {
+            map.getCanvas().style.cursor = 'pointer';
+            if (e.features && e.features.length > 0) {
+              if (hoveredParcelId !== null) {
+                map.setFeatureState(
+                  {
+                    source: 'parcelles-source',
+                    sourceLayer: 'parcelles_pour_mapbox_final',
+                    id: hoveredParcelId,
+                  },
+                  { hover: false },
+                );
+              }
+              hoveredParcelId = e.features[0].id!;
+              map.setFeatureState(
+                {
+                  source: 'parcelles-source',
+                  sourceLayer: 'parcelles_pour_mapbox_final',
+                  id: hoveredParcelId,
+                },
+                { hover: true },
+              );
+            }
+          });
+
+          map.on('mouseleave', 'parcelles-layer', () => {
+            map.getCanvas().style.cursor = '';
+            if (hoveredParcelId !== null) {
+              map.setFeatureState(
+                {
+                  source: 'parcelles-source',
+                  sourceLayer: 'parcelles_pour_mapbox_final',
+                  id: hoveredParcelId,
+                },
+                { hover: false },
+              );
+            }
+            hoveredParcelId = null;
+          });
+
+          // ===================================================================
+          // SECTION 2: MUTATIONS LAYER (Blue Points)
+          // ===================================================================
+          debugLog('Adding mutations source...');
+
+          map.addSource('mutations-live', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] },
+            promoteId: 'id',
+          });
+
+          // Add mutation point layers
+
+          map.addLayer({
+            id: 'mutation-point-shadow',
+            type: 'circle',
+            source: 'mutations-live',
+            paint: {
+              'circle-radius': 25,
+              'circle-color': 'rgba(255, 0, 0, 0.4)', // Red shadow
+              'circle-blur': 2,
+              'circle-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0],
+            },
+          });
+
+          map.addLayer({
+            id: 'mutation-point',
+            type: 'circle',
+            source: 'mutations-live',
+            paint: {
+              'circle-color': ['case', ['boolean', ['feature-state', 'hover'], false], '#ff0000', '#3b82f6'],
+              'circle-radius': ['case', ['boolean', ['feature-state', 'hover'], false], 15, 6],
+              'circle-stroke-width': ['case', ['boolean', ['feature-state', 'hover'], false], 5, 2],
+              'circle-stroke-color': '#fff',
+              'circle-stroke-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0.8],
+            },
+          });
+
+          // ===================================================================
+          // SECTION 4: SELECTED ADDRESS RED MARKER
+          // ===================================================================
+          debugLog('Adding selected address marker source...');
+
+          map.addSource('selected-address-marker', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] },
+          });
+
+          map.addLayer({
+            id: 'selected-address-marker',
+            type: 'circle',
+            source: 'selected-address-marker',
+            paint: {
+              'circle-color': '#ff0000', // Red color
+              'circle-radius': 8,
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#fff',
+              'circle-stroke-opacity': 0.8,
+            },
+          });
+
+          debugLog('Mutation layers added to map');
+
+          // ===================================================================
+          // SECTION 3: MUTATION POINT INTERACTIVITY - FIXED VERSION
+          // ===================================================================
+
+          // Mutation point interactivity with hover popup - CLEANED UP VERSION
+          let hoverPopup = null;
+
+          // Simple hover detection - try a different approach
+          let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
+          let hoveredFeatureId: string | null = null;
+
+          // Handle mouse enter for hover effects
+          map.on('mouseenter', 'mutation-point', e => {
+            if (e.features && e.features.length > 0) {
+              const feature = e.features[0];
+              if (feature.id) {
+                hoveredFeatureId = feature.id as string;
+                map.setFeatureState({ source: 'mutations-live', id: feature.id }, { hover: true });
+              }
+            }
+          });
+
+          // Handle mouse leave for hover effects
+          map.on('mouseleave', 'mutation-point', e => {
+            if (hoveredFeatureId) {
+              map.setFeatureState({ source: 'mutations-live', id: hoveredFeatureId }, { hover: false });
+              hoveredFeatureId = null;
+            }
+          });
+
+          map.on('mousemove', e => {
+            // Clear any existing timeout
+            if (hoverTimeout) {
+              clearTimeout(hoverTimeout);
+              hoverTimeout = null;
+            }
+
+            // Set a small delay to avoid too many queries
+            hoverTimeout = setTimeout(() => {
+              const features = map.queryRenderedFeatures(e.point, { layers: ['mutation-point'] });
+
+              debugLog('Mouse moved, features found:', features.length);
+
+              if (features.length > 0) {
+                const feature = features[0];
+                debugLog('Feature found:', feature);
+
+                // Remove existing popup
+                if (hoverPopup) {
+                  hoverPopup.remove();
+                  hoverPopup = null;
+                }
+
+                // Create mutation data popup
+                if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
+                  try {
+                    const addresses = JSON.parse(feature.properties.adresses);
+
+                    if (addresses && addresses.length > 0) {
+                      const firstAddress = addresses[0];
+                      const mutations = firstAddress.mutations || [];
+
+                      // Helper functions for your styling
+                      const getPropertyTypeColor = type => {
+                        const colors = {
+                          Appartement: '#6929CF',
+                          Maison: '#121852',
+                          Terrain: '#2971CF',
+                          Local: '#862CC7',
+                          'Bien Multiple': '#381EB0',
+                        };
+                        const shortType = getShortTypeName(type);
+                        return colors[shortType] || '#9CA3AF';
+                      };
+
+                      const getShortTypeName = type => {
+                        const shortNames = {
+                          Appartement: 'Appartement',
+                          Maison: 'Maison',
+                          Terrain: 'Terrain',
+                          'Local Commercial': 'Local',
+                          'Bien Multiple': 'Bien Multiple',
+                        };
+                        return shortNames[type];
+                      };
+
+                      const formatFrenchDate = dateString => {
+                        if (!dateString) return 'N/A';
+                        const date = new Date(dateString);
+                        return date.toLocaleDateString('fr-FR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                        });
+                      };
+
+                      const formatPrice = price => {
+                        return new Intl.NumberFormat('fr-FR', {
+                          style: 'currency',
+                          currency: 'EUR',
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }).format(price);
+                      };
+
+                      const formatPricePerSqm = (price, surface) => {
+                        if (!surface || surface === 0) return 'N/A';
+                        const pricePerSqm = Math.round(price / surface);
+                        return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+                      };
+
+                      // Get the first mutation for display
+                      const firstMutation = mutations.length > 0 ? mutations[0] : null;
+
+                      if (firstMutation) {
+                        // Create a function to render mutation data
+                        const lastFiveMutations = mutations.slice(0, 5);
+                        let currentIndex = 0;
+
+                        const renderMutation = index => {
+                          const mutation = lastFiveMutations[index];
+                          const address = firstAddress.adresse_complete || '';
+                          const propertyTypeLabel = mutation.type_groupe || 'Default';
+                          const rooms = mutation.nbpprinc || 0;
+                          const surface = mutation.sbati || 0;
+                          const terrain = mutation.sterr || 0;
+                          const price = mutation.valeur || 0;
+                          const soldDate = mutation.date || '';
+                          const priceFormatted = formatPrice(price);
+                          const pricePerSqm = formatPricePerSqm(price, surface);
+
+                          // Build the details string, only showing non-zero values
+                          const details = [];
+                          if (rooms > 0) details.push(`${rooms} pièces`);
+                          if (surface > 0) details.push(`${surface.toLocaleString('fr-FR')} m²`);
+                          if (terrain > 0) details.push(`Terrain ${terrain.toLocaleString('fr-FR')} m²`);
+
+                          const detailsText = details.length > 0 ? details.join(' – ') : 'N/A';
+
+                          return `
             <div style="
               background: #fff;
               padding: 1px;
               font-family: 'Maven Pro', sans-serif;
-              max-width: 480px;
+              max-width: 450px;
               width: 100%;
               position: relative;
               border-radius: 16px;
@@ -518,12 +724,12 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
                   ${address.toUpperCase() || ''}
               </div>
 
-              <!-- Property Type, Rooms, Surface -->
+              <!-- Property Type, Rooms, Surface, Terrain -->
               <div style="font-size: 16px;width:70%; color: #333;">
                 <span style="color: ${getPropertyTypeColor(propertyTypeLabel)}; font-weight: 900; margin-bottom: 10px;">
                   ${getShortTypeName(propertyTypeLabel)}
                 </span>
-                  <span style="margin-top: 10px;">${rooms || 'N/A'} pièces – ${surface.toLocaleString('fr-FR') || 'N/A'} m²</span>
+                  <span style="margin-top: 10px;">${detailsText}</span>
               </div>
 
               <!-- Price Box -->
@@ -553,862 +759,618 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
               ">
                   Vendu le <strong style="color: #000;">${formatFrenchDate(soldDate || '')}</strong>
               </div>
+              
+              ${
+                lastFiveMutations.length > 1
+                  ? `
+              <!-- Navigation -->
+              <div style="
+                margin-top: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                padding: 4px;
+                
+              ">
+                <button class="prev-btn" style="
+                  padding: 4px 8px;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 6px;
+                  background: white;
+                  color: #666;
+                  cursor: pointer;
+                  font-size: 12px;
+                  hover:background: #f9fafb;
+                ">&lt;</button>
+                <span style="
+                  font-size: 12px;
+                  color: #3b82f6;
+                  font-weight: 500;
+                  padding: 0 12px;
+                ">${index + 1} / ${lastFiveMutations.length}</span>
+                <button class="next-btn" style="
+                  padding: 4px 8px;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 6px;
+                  background: white;
+                  color: #666;
+                  cursor: pointer;
+                  font-size: 12px;
+                  hover:background: #f9fafb;
+                ">&gt;</button>
+              </div>
+              `
+                  : ''
+              }
             </div>
           `;
+                        };
 
-          // Carousel navigation if more than one property
-          if (mutations.length > 1) {
-            const lastFiveMutations = mutations.slice(0, 5);
-            const navDiv = document.createElement('div');
-            navDiv.className = 'flex items-center justify-center gap-2';
-            navDiv.innerHTML = `
-              <button class="prev-btn p-1 hover:text-blue-600">&lt;</button>
-              <span class="text-s px-4 text-blue-600 font-medium">${index + 1} / ${lastFiveMutations.length}</span>
-              <button class="next-btn p-1 hover:text-blue-600">&gt;</button>
+                        const popupContent = renderMutation(currentIndex);
+
+                        hoverPopup = new mapboxgl.Popup({
+                          closeButton: false,
+                          closeOnClick: false,
+                          maxWidth: '450px',
+                          offset: [0, -5],
+                          className: 'mutation-hover-popup',
+                        })
+                          .setLngLat(feature.geometry.coordinates)
+                          .setHTML(popupContent)
+                          .addTo(map);
+
+                        // Function to add navigation event listeners
+                        const addNavigationListeners = () => {
+                          setTimeout(() => {
+                            const popupElement = hoverPopup.getElement();
+                            const prevBtn = popupElement.querySelector('.prev-btn');
+                            const nextBtn = popupElement.querySelector('.next-btn');
+
+                            if (prevBtn) {
+                              prevBtn.addEventListener('click', event => {
+                                event.stopPropagation();
+                                currentIndex = currentIndex > 0 ? currentIndex - 1 : lastFiveMutations.length - 1;
+                                hoverPopup.setHTML(renderMutation(currentIndex));
+                                addNavigationListeners(); // Re-add listeners after HTML update
+                              });
+                            }
+
+                            if (nextBtn) {
+                              nextBtn.addEventListener('click', event => {
+                                event.stopPropagation();
+                                currentIndex = currentIndex < lastFiveMutations.length - 1 ? currentIndex + 1 : 0;
+                                hoverPopup.setHTML(renderMutation(currentIndex));
+                                addNavigationListeners(); // Re-add listeners after HTML update
+                              });
+                            }
+                          }, 100);
+                        };
+
+                        // Add navigation event listeners if multiple mutations
+                        if (lastFiveMutations.length > 1) {
+                          addNavigationListeners();
+                        }
+
+                        debugLog('Mutation popup created with data');
+                      } else {
+                        // Fallback if no mutations
+                        hoverPopup = new mapboxgl.Popup({
+                          closeButton: false,
+                          closeOnClick: false,
+                          maxWidth: '200px',
+                          offset: [0, -10],
+                        })
+                          .setLngLat(e.lngLat)
+                          .setHTML(
+                            `
+                            <div style="padding: 10px; background: #ffaa00; color: white; border-radius: 4px;">
+                              <strong>No Mutation Data</strong><br>
+                              Feature ID: ${feature.id || 'No ID'}
+                            </div>
+                          `,
+                          )
+                          .addTo(map);
+                      }
+                    } else {
+                      // Fallback if no addresses
+                      hoverPopup = new mapboxgl.Popup({
+                        closeButton: false,
+                        closeOnClick: false,
+                        maxWidth: '200px',
+                        offset: [0, -10],
+                      })
+                        .setLngLat(e.lngLat)
+                        .setHTML(
+                          `
+                          <div style="padding: 10px; background: #ffaa00; color: white; border-radius: 4px;">
+                            <strong>No Address Data</strong><br>
+                            Feature ID: ${feature.id || 'No ID'}
+                          </div>
+                        `,
+                        )
+                        .addTo(map);
+                    }
+                  } catch (error) {
+                    debugLog('Error parsing addresses JSON:', error);
+                    // Fallback popup on error
+                    hoverPopup = new mapboxgl.Popup({
+                      closeButton: false,
+                      closeOnClick: false,
+                      maxWidth: '200px',
+                      offset: [0, -10],
+                    })
+                      .setLngLat(e.lngLat)
+                      .setHTML(
+                        `
+                        <div style="padding: 10px; background: #ff0000; color: white; border-radius: 4px;">
+                          <strong>Error Parsing Data</strong><br>
+                          ${error.message}
+                        </div>
+                      `,
+                      )
+                      .addTo(map);
+                  }
+                } else {
+                  // Fallback if no properties
+                  hoverPopup = new mapboxgl.Popup({
+                    closeButton: false,
+                    closeOnClick: false,
+                    maxWidth: '200px',
+                    offset: [0, -10],
+                  })
+                    .setLngLat(e.lngLat)
+                    .setHTML(
+                      `
+                      <div style="padding: 10px; background: #ffaa00; color: white; border-radius: 4px;">
+                        <strong>No Properties</strong><br>
+                        Feature ID: ${feature.id || 'No ID'}
+                      </div>
+                    `,
+                    )
+                    .addTo(map);
+                }
+
+                debugLog('Hover popup created at:', e.lngLat);
+                map.getCanvas().style.cursor = 'pointer';
+              } else {
+                // No features under mouse
+                if (hoverPopup) {
+                  hoverPopup.remove();
+                  hoverPopup = null;
+                  debugLog('Hover popup removed - no features');
+                }
+                map.getCanvas().style.cursor = '';
+              }
+            }, 100); // 100ms delay
+          });
+
+          // Click handler for mutations (separate from hover)
+          map.on('click', 'mutation-point', e => {
+            debugLog('Clicked mutation point:', e.features);
+            if (e.features && e.features.length > 0) {
+              const feature = e.features[0];
+
+              // Remove hover popup if it exists (click popup will replace it)
+              if (hoverPopup) {
+                hoverPopup.remove();
+                hoverPopup = null;
+              }
+
+              if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
+                try {
+                  const addresses = JSON.parse(feature.properties.adresses);
+
+                  if (addresses && addresses.length > 0) {
+                    let popupContent = '';
+
+                    if (addresses.length === 1) {
+                      popupContent = `
+                        <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
+                          <div style="font-weight: bold; font-size: 14px; color: #3b82f6;">
+                            ${addresses[0].adresse_complete}
+                          </div>
+                          <div style="font-size: 11px; color: #666; margin-top: 3px;">
+                            ${addresses[0].commune} (${addresses[0].codepostal})
+                          </div>
+                        </div>
+                      `;
+                    } else {
+                      popupContent = `
+                        <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
+                          <div style="margin-bottom: 8px; font-weight: bold; color: #3b82f6;">
+                            ${addresses.length} adresses:
+                          </div>
+                          ${addresses
+                            .map(
+                              (address, index) => `
+                            <div style="
+                              margin: 4px 0; 
+                              padding: 6px; 
+                              background: #f8f9fa; 
+                              border-radius: 4px;
+                              ${index > 0 ? 'border-top: 1px solid #e0e0e0;' : ''}
+                            ">
+                              <div style="font-weight: bold;">${address.adresse_complete}</div>
+                              <div style="font-size: 11px; color: #666;">${address.commune} (${address.codepostal})</div>
+                            </div>
+                          `,
+                            )
+                            .join('')}
+                        </div>
+                      `;
+                    }
+
+                    // Create click popup (this one has close button)
+                    new mapboxgl.Popup({
+                      closeButton: true,
+                      closeOnClick: true,
+                      maxWidth: '400px',
+                      offset: [0, -5], // Reduced offset - closer to the point
+                    })
+                      .setLngLat(feature.geometry.coordinates)
+                      .setHTML(popupContent)
+                      .addTo(map);
+                  }
+                } catch (error) {
+                  debugLog('Error parsing addresses JSON in click handler:', error);
+                }
+              }
+            }
+          });
+
+          debugLog('Mutation point event handlers set up successfully');
+
+          // Add custom scale bar instead of default Mapbox scale control
+          const createCustomScaleBar = () => {
+            const scaleBarContainer = document.createElement('div');
+            scaleBarContainer.style.cssText = `
+              position: absolute;
+              z-index: 10;
+              box-shadow: none;
+              border: none;
+              inset: 10px 10px auto auto;
+              background-color: rgb(255, 255, 255);
+              opacity: 0.9;
+              display: flex;
+              flex-direction: row;
+              align-items: baseline;
+              padding: 0px 6px;
+              border-radius: 0.2rem;
             `;
-            container.appendChild(navDiv);
 
-            navDiv.querySelector('.prev-btn').addEventListener('click', e => {
-              e.stopPropagation();
-              currentIndex = currentIndex > 0 ? currentIndex - 1 : lastFiveMutations.length - 1;
-              renderProperty(currentIndex);
-            });
-            navDiv.querySelector('.next-btn').addEventListener('click', e => {
-              e.stopPropagation();
-              currentIndex = currentIndex < lastFiveMutations.length - 1 ? currentIndex + 1 : 0;
-              renderProperty(currentIndex);
-            });
-          }
-        };
-        renderProperty(currentIndex);
-      } else {
-        const addressLine = properties?.address || '';
+            const updateScaleBar = () => {
+              const bounds = map.getBounds();
+              const width = map.getContainer().offsetWidth;
 
-        let street = '';
-        let extractedCityName = '';
+              // Calculate the distance represented by the current view using zoom level
+              const zoom = map.getZoom();
+              const metersPerPixel = (156543.03392 * Math.cos((bounds.getCenter().lat * Math.PI) / 180)) / Math.pow(2, zoom);
+              const distance = (metersPerPixel * width) / 1000; // Convert to km
 
-        if (addressLine.includes(' - ')) {
-          const [rawStreet, rawCity] = addressLine.split(' - ');
-          street = rawStreet || '';
-          extractedCityName = rawCity?.split(' ')?.[1] || '';
-        }
+              // Fixed width for the scale bar (60px)
+              const fixedWidth = 60;
 
-        container.innerHTML = `
-        <div style="
-            background: #fff;
-            padding: 4px;
-            font-family: 'Maven Pro', sans-serif;
-            max-width: 480px;
-            width: 100%;
-            position: relative;
-            border-radius: 16px;
-        ">
-            <!-- Address -->
-            <div style="font-weight: 700; font-size: 16px;width:75%; margin-bottom: 10px; color: #1a1a1a;">
-              ${properties.numero || ''}  ${properties.nomVoie || ''}
-            </div>
+              // Calculate the distance represented by the fixed width scale bar
+              const scaleDistance = (distance * fixedWidth) / width;
 
-            <!-- No sales message -->
-            <div style="font-size: 14px; color: #333; margin-top: 8px;">
-                Aucune vente identifiée à cette adresse
-              </div>
-          </div>`;
-      }
-    } catch (popupError) {
-      console.error('Error creating hover popup:', popupError);
-      container.innerHTML = `
-        <div style="
-          background: #fff;
-          padding: 4px;
-          font-family: 'Maven Pro', sans-serif;
-          max-width: 480px;
-          width: 100%;
-          position: relative;
-          border-radius: 16px;
-        ">
-          <div style="font-size: 14px; color: #333; margin-top: 8px;">
-            Erreur lors du chargement des données
-            </div>
-        </div>`;
-    }
+              // Round to a nice number with better precision
+              let niceDistance = 1;
+              let unit = 'km';
 
-    return container;
-  };
-  const createPopupContent = features => {
-    const container = document.createElement('div');
-    container.className = 'popup-container';
-
-    const title = document.createElement('h3');
-    title.className = 'popup-title';
-    title.textContent = `choisissez une Adresse`;
-
-    const content = document.createElement('div');
-    content.className = 'popup-content';
-
-    features.forEach((feature, index) => {
-      const button = document.createElement('button');
-      button.className = 'popup-item';
-      button.innerHTML = `
-      <span class="address-number">${feature.properties.numero || 'N/A'}</span>
-      <span class="address-street">${(feature.properties.nomVoie || '').toUpperCase()}</span>
-
-    `;
-
-      button.addEventListener('click', e => {
-        e.stopPropagation();
-        // handleAddressClick({
-        //   numero: feature.properties.numero,
-        //   nomVoie: feature.properties.nomVoie,
-        // });
-        popup.current?.remove();
-      });
-
-      content.appendChild(button);
-    });
-
-    container.appendChild(title);
-    container.appendChild(content);
-
-    return container;
-  };
-  const toggleMapStyle = () => {
-    if (!map.current) return;
-
-    const newStyle = is3DView
-      ? 'mapbox://styles/saber5180/cmawpgdtd007301sc5ww48tds' // 2D style
-      : 'mapbox://styles/saber5180/cm9737hvv00en01qzefcd57b7'; // 3D style
-
-    map.current.setStyle(newStyle);
-    setIs3DView(!is3DView);
-  };
-
-  // Add zoom limit functions
-  const handleZoomIn = () => {
-    if (!map.current) return;
-    map.current.zoomIn();
-  };
-
-  const handleZoomOut = () => {
-    if (!map.current) return;
-    const currentZoom = map.current.getZoom();
-    map.current.zoomOut();
-  };
-
-  const propertyTypeIcons = [
-    <svg key="building" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-      <rect x="9" y="9" width="6" height="6"></rect>
-      <line x1="9" y1="1" x2="9" y2="4"></line>
-      <line x1="15" y1="1" x2="15" y2="4"></line>
-      <line x1="9" y1="20" x2="9" y2="23"></line>
-      <line x1="15" y1="20" x2="15" y2="23"></line>
-      <line x1="20" y1="9" x2="23" y2="9"></line>
-      <line x1="20" y1="14" x2="23" y2="14"></line>
-      <line x1="1" y1="9" x2="4" y2="9"></line>
-      <line x1="1" y1="14" x2="4" y2="14"></line>
-    </svg>,
-    <svg key="apartment" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-      <polyline points="9 22 9 12 15 12 15 22"></polyline>
-    </svg>,
-    <svg key="house" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-      <polyline points="9 22 9 12 15 12 15 22"></polyline>
-    </svg>,
-    <svg key="grid" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="7" height="7"></rect>
-      <rect x="14" y="3" width="7" height="7"></rect>
-      <rect x="14" y="14" width="7" height="7"></rect>
-      <rect x="3" y="14" width="7" height="7"></rect>
-    </svg>,
-  ];
-
-  // Toggle button for statistics panel
-  const toggleStatsPanel = () => {
-    setShowStatsPanel(prev => !prev);
-  };
-  useEffect(() => {
-    const panelRef = document.querySelector('.sidebar-panel');
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (showStatsPanel && panelRef && !panelRef.contains(e.target as Node)) {
-        setShowStatsPanel(false);
-      }
-    };
-    document.addEventListener('click', handleOutsideClick);
-    return () => document.removeEventListener('click', handleOutsideClick);
-  }, [showStatsPanel]);
-
-  useEffect(() => {
-    const coords = searchParams.coordinates;
-    if (coords && map.current && isValidCoordinates(coords)) {
-      const [mapLng, mapLat] = coords;
-      map.current.flyTo({
-        center: [mapLng, mapLat],
-        zoom: 17,
-      });
-    }
-  }, [searchParams.coordinates]);
-
-  useEffect(() => {
-    if (numero && nomVoie) {
-      handleAddressClick({ numero, nomVoie });
-    }
-  }, [numero, nomVoie]);
-
-  useEffect(() => {
-    if (!map.current) return;
-    const updateLocationName = async (): Promise<void> => {
-      try {
-        const center = map.current?.getCenter();
-        if (!center) return;
-
-        const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${center.lng},${center.lat}.json?types=place,locality&language=fr&access_token=${mapboxgl.accessToken}`,
-        );
-
-        const data = await response.json();
-        const locationFeature = data.features[0];
-
-        if (locationFeature) {
-          const locationName = locationFeature.text_fr || locationFeature.text;
-          setCurrentCity(locationName);
-        }
-      } catch (geocodingError) {
-        setError('Erreur de géocodage');
-      }
-    };
-    map.current.on('click', LAYER_ID, e => {
-      if (e.features.length > 0) {
-        const feature = e.features[0];
-        const featureId = feature.id;
-
-        if (selectedId.current) {
-          map.current.setFeatureState(
-            {
-              source: 'parcels-source',
-              sourceLayer: SOURCE_LAYER,
-              id: selectedId.current,
-            },
-            { selected: false },
-          );
-        }
-
-        selectedId.current = featureId;
-        map.current.setFeatureState(
-          {
-            source: 'parcels-source',
-            sourceLayer: SOURCE_LAYER,
-            id: featureId,
-          },
-          { selected: true },
-        );
-      }
-    });
-    map.current.on('moveend', updateLocationName);
-    map.current.on('zoomend', updateLocationName);
-
-    return () => {
-      if (map.current) {
-        map.current.off('moveend', updateLocationName);
-        map.current.off('zoomend', updateLocationName);
-      }
-    };
-  }, [map.current]);
-
-  useEffect(() => {
-    if (!mapContainer.current) return;
-
-    // Initialize map first
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/saber5180/cmawpgdtd007301sc5ww48tds',
-      center: [8.73692, 41.9281],
-      zoom: 13.5,
-      minZoom: 13.5,
-      pitch: 0,
-      bearing: 0,
-      attributionControl: false,
-    });
-
-    // Create scale elements first
-    const scaleContainer = document.createElement('div');
-    const scaleLine = document.createElement('div');
-    const scaleText = document.createElement('div');
-
-    // Apply styles
-    Object.assign(scaleContainer.style, {
-      position: 'fixed',
-      zIndex: 10,
-      bottom: '20px',
-      right: '20px',
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-      padding: '0 6px',
-      borderRadius: '4px',
-      display: 'flex',
-      alignItems: 'center',
-      pointerEvents: 'none',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    });
-
-    Object.assign(scaleLine.style, {
-      border: '2px solid #7e8490',
-      borderTop: 'none',
-      height: '7px',
-      width: '100px',
-      boxShadow: '0 1px 4px rgba(0, 0, 0, 0.3)',
-    });
-
-    Object.assign(scaleText.style, {
-      marginLeft: '8px',
-      fontSize: '12px',
-      color: '#4a5568',
-      fontFamily: 'Arial, sans-serif',
-      fontWeight: '500',
-    });
-
-    scaleContainer.appendChild(scaleLine);
-    scaleContainer.appendChild(scaleText);
-
-    const updateScale = () => {
-      if (!map.current) return;
-
-      const zoom = map.current.getZoom();
-      const center = map.current.getCenter();
-      const metersPerPixel = (156543.03392 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, zoom);
-      const widthMeters = metersPerPixel * 100;
-
-      let displayWidth = 100;
-      let displayText = '0 m';
-
-      if (!isNaN(widthMeters)) {
-        if (widthMeters > 1000) {
-          if (zoom <= 13.5) {
-            displayText = '1km';
-            displayWidth = 100;
-          } else {
-            const kmValue = (Math.round(widthMeters / 100) * 100) / 1000;
-            displayText = `${kmValue}km`;
-            displayWidth = (1000 / widthMeters) * 100;
-          }
-        } else {
-          const mValue = Math.round(widthMeters / 10) * 10;
-          displayText = `${mValue}m`;
-        }
-      }
-
-      scaleLine.style.width = `${displayWidth}px`;
-      scaleText.textContent = displayText;
-    };
-
-    // Add control after defining updateScale
-    map.current.addControl(
-      {
-        onAdd() {
-          updateScale();
-          return scaleContainer;
-        },
-        onRemove() {
-          scaleContainer.remove();
-        },
-      },
-      'top-right',
-    );
-
-    // Set up event listeners
-    const moveHandler = () => {
-      const center = map.current?.getCenter();
-      if (center && typeof onMapMove === 'function') {
-        onMapMove([center.lng, center.lat]);
-      }
-      // Clear popups on map move
-      popup.current?.remove();
-      hoverPopup.current?.remove();
-      popup.current = null;
-      hoverPopup.current = null;
-    };
-
-    map.current.on('move', updateScale);
-    map.current.on('zoom', updateScale);
-    map.current.on('moveend', moveHandler);
-
-    // Add wheel zoom limits
-    const wheelHandler = (e: mapboxgl.MapWheelEvent) => {
-      const currentZoom = map.current?.getZoom();
-      if (e.originalEvent.deltaY > 0 && currentZoom && currentZoom <= 13.5) {
-        e.originalEvent.preventDefault();
-      }
-    };
-
-    map.current.on('wheel', wheelHandler);
-
-    // Configure scroll zoom
-    map.current.scrollZoom.setWheelZoomRate(0.5);
-
-    // Rest of your existing map setup...
-    map.current.on('load', () => {
-      map.current.addSource('parcels-source', {
-        type: 'vector',
-        url: `mapbox://${TILESET_ID}`,
-      });
-
-      map.current.addLayer({
-        id: LAYER_ID,
-        type: 'fill',
-        source: 'parcels-source',
-        'source-layer': SOURCE_LAYER,
-        paint: {
-          'fill-color': [
-            'case',
-            ['boolean', ['feature-state', 'selected'], false],
-            '#0000FF',
-            ['boolean', ['feature-state', 'hover'], false],
-            '#89CFF0',
-            '#89CFF0',
-          ],
-          'fill-opacity': [
-            'case',
-            ['boolean', ['feature-state', 'selected'], false],
-            0.2,
-            ['boolean', ['feature-state', 'hover'], false],
-            0.2,
-            0.1,
-          ],
-        },
-      });
-
-      // Get visible layers
-      const layers = map.current.getStyle().layers;
-      const visibleLayers = layers.filter(layer => layer.type === 'circle' && layer.layout?.visibility !== 'none');
-      setActiveLayers(visibleLayers.map(l => l.id));
-
-      // Add event handlers for each visible layer
-      visibleLayers.forEach(({ id: layerId }) => {
-        let isMouseOverPopup = false;
-        let popupRemoveTimeout = null;
-
-        const mouseEnterPopup = () => {
-          isMouseOverPopup = true;
-          if (popupRemoveTimeout) {
-            clearTimeout(popupRemoveTimeout);
-            popupRemoveTimeout = null;
-          }
-        };
-        const mouseLeavePopup = () => {
-          isMouseOverPopup = false;
-          // Remove popup if mouse is not over the feature either
-          popupRemoveTimeout = setTimeout(() => {
-            if (!isMouseOverPopup) {
-              if (hoverPopup.current && !popup.current) {
-                hoverPopup.current.remove();
-                hoverPopup.current = null;
+              if (scaleDistance >= 0.9) {
+                // If we're close to 1km, show 1km
+                niceDistance = 1;
+                unit = 'km';
+              } else if (scaleDistance >= 0.5) {
+                // Show 0.5km or 1km
+                niceDistance = scaleDistance >= 0.75 ? 1 : 0.5;
+                unit = 'km';
+              } else if (scaleDistance >= 0.1) {
+                // Show 0.1km, 0.2km, 0.5km
+                if (scaleDistance >= 0.4) {
+                  niceDistance = 0.5;
+                } else if (scaleDistance >= 0.15) {
+                  niceDistance = 0.2;
+                } else {
+                  niceDistance = 0.1;
+                }
+                unit = 'km';
+              } else if (scaleDistance >= 0.01) {
+                // Show in meters
+                if (scaleDistance >= 0.05) {
+                  niceDistance = 100;
+                } else if (scaleDistance >= 0.02) {
+                  niceDistance = 50;
+                } else {
+                  niceDistance = 20;
+                }
+                unit = 'm';
+              } else {
+                niceDistance = 10;
+                unit = 'm';
               }
-            }
-          }, 100);
-        };
 
-        const mouseEnterHandler = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
-          if (!e.features?.length) return;
+              // Use fixed width instead of calculating actual width
+              const actualWidth = fixedWidth;
 
-          const feature = e.features[0];
-          const featureId = feature.id;
+              // Clear previous content
+              scaleBarContainer.innerHTML = '';
 
-          if (hoveredId.current) {
-            map.current.setFeatureState(
-              {
-                source: 'parcels-source',
-                sourceLayer: SOURCE_LAYER,
-                id: hoveredId.current,
-              },
-              { hover: false },
-            );
-          }
+              // Create scale bar element
+              const scaleBar = document.createElement('div');
+              scaleBar.style.cssText = `
+                border-top: none;
+                border-right: 2px solid rgb(126, 132, 144);
+                border-bottom: 2px solid rgb(126, 132, 144);
+                border-left: 2px solid rgb(126, 132, 144);
+                box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 4px;
+                height: 7px;
+                border-bottom-left-radius: 1px;
+                border-bottom-right-radius: 1px;
+                width: ${actualWidth}px;
+              `;
 
-          hoveredId.current = featureId;
-          map.current.setFeatureState(
-            {
-              source: 'parcels-source',
-              sourceLayer: SOURCE_LAYER,
-              id: featureId,
-            },
-            { hover: false },
-          );
+              // Create label
+              const label = document.createElement('div');
+              label.style.cssText = `
+                padding-left: 10px;
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                color: #333;
+              `;
+              label.textContent = `${niceDistance} ${unit}`;
 
-          map.current.getCanvas().style.cursor = 'pointer';
+              scaleBarContainer.appendChild(scaleBar);
+              scaleBarContainer.appendChild(label);
+            };
 
-          // Remove both popups when entering a new feature
-          popup.current?.remove();
-          popup.current = null;
-          hoverPopup.current?.remove();
-          hoverPopup.current = null;
+            // Update scale bar on map events
+            map.on('zoom', updateScaleBar);
+            map.on('move', updateScaleBar);
 
-          hoverPopup.current = new mapboxgl.Popup({
-            offset: 12,
-            closeOnClick: false,
-            closeButton: false,
-            className: 'hover-popup',
-          })
-            .setLngLat(e.lngLat)
-            .addTo(map.current);
+            // Initial update
+            updateScaleBar();
 
-          if (feature.properties) {
-            createHoverPopupContent(
-              {
-                numero: feature.properties.numero,
-                nomVoie: feature.properties.nomVoie,
-              },
-              currentCity,
-            ).then(content => {
-              if (hoverPopup.current) {
-                hoverPopup.current.setDOMContent(content);
-                // Add listeners to the popup DOM
-                content.addEventListener('mouseenter', mouseEnterPopup);
-                content.addEventListener('mouseleave', mouseLeavePopup);
-              }
-            });
-          }
-        };
+            return scaleBarContainer;
+          };
 
-        const mouseLeaveHandler = () => {
+          // Add custom scale bar to map
+          const customScaleBar = createCustomScaleBar();
+          map.getContainer().appendChild(customScaleBar);
+
+          // Add navigation control
+          map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+          // Load initial data after a short delay to ensure map is fully ready
           setTimeout(() => {
-            if (!isMouseOverPopup) {
-              if (hoveredId.current) {
-                map.current.setFeatureState(
-                  {
-                    source: 'parcels-source',
-                    sourceLayer: SOURCE_LAYER,
-                    id: hoveredId.current,
-                  },
-                  { hover: false },
-                );
-                hoveredId.current = null;
-              }
-
-              map.current.getCanvas().style.cursor = '';
-
-              // Only remove hover popup if there's no active address popup
-              if (hoverPopup.current && !popup.current) {
-                hoverPopup.current.remove();
-                hoverPopup.current = null;
-              }
-            }
-          }, 100); // small delay to allow mouse to move to popup
-        };
-
-        const clickHandler = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
-          // Remove hover popup when clicking
-          hoverPopup.current?.remove();
-          hoverPopup.current = null;
-          popup.current?.remove();
-
-          if (e.features?.length) {
-            const feature = e.features[0];
-            const featureId = feature.id;
-
-            if (selectedId.current) {
-              map.current.setFeatureState(
-                {
-                  source: 'parcels-source',
-                  sourceLayer: SOURCE_LAYER,
-                  id: selectedId.current,
-                },
-                { selected: false },
-              );
-            }
-
-            selectedId.current = featureId;
-            map.current.setFeatureState(
-              {
-                source: 'parcels-source',
-                sourceLayer: SOURCE_LAYER,
-                id: featureId,
-              },
-              { selected: true },
-            );
-
-            if (e.features.length === 1) {
-              // handleAddressClick({
-              //   numero: feature.properties?.numero,
-              //   nomVoie: feature.properties?.nomVoie,
-              // });
+            debugLog('Loading initial data with default parameters...');
+            loadInitialData();
+          }, 1000);
+          // Debounced function to prevent multiple rapid API calls
+          const debouncedDataLoad = debounce(() => {
+            debugLog('Debounced data load triggered');
+            if (currentActiveFilters) {
+              loadMutationsData();
             } else {
-              popup.current = new mapboxgl.Popup({
-                offset: 25,
-                closeOnClick: true,
-                className: 'multi-address-popup',
-              })
-                .setLngLat(e.lngLat)
-                .setDOMContent(createPopupContent(e.features))
-                .addTo(map.current);
+              loadInitialData();
             }
-          }
-        };
+          }, 300);
 
-        // Gestion du survol
-        map.current.on('mousemove', LAYER_ID, e => {
-          if (e.features.length > 0) {
-            const feature = e.features[0];
-            const featureId = feature.id;
-            if (hoveredId.current) {
-              map.current.setFeatureState(
-                {
-                  source: 'parcels-source',
-                  sourceLayer: SOURCE_LAYER,
-                  id: hoveredId.current,
-                },
-                { hover: false },
-              );
+          // Add event listeners for map movement
+          map.on('moveend', () => {
+            debugLog('Map move event triggered');
+            debouncedDataLoad();
+
+            if (onMapMove) {
+              const center = map.getCenter();
+              onMapMove([center.lng, center.lat]);
             }
+          });
 
-            hoveredId.current = featureId;
-            map.current.setFeatureState(
-              {
-                source: 'parcels-source',
-                sourceLayer: SOURCE_LAYER,
-                id: featureId,
-              },
-              { hover: true },
-            );
-          }
-        });
-        map.current.on('click', layerId, clickHandler);
-        map.current.on('mouseenter', layerId, mouseEnterHandler);
-        map.current.on('mouseleave', layerId, mouseLeaveHandler);
+          map.on('zoomend', () => {
+            debugLog('Map zoom event triggered');
+            debouncedDataLoad();
 
-        // Store handlers for cleanup
-        return () => {
-          if (map.current) {
-            map.current.off('click', layerId, clickHandler);
-            map.current.off('mouseenter', layerId, mouseEnterHandler);
-            map.current.off('mouseleave', layerId, mouseLeaveHandler);
-          }
-        };
+            if (onMapMove) {
+              const center = map.getCenter();
+              onMapMove([center.lng, center.lat]);
+            }
+          });
+
+          debugLog('Map event handlers set up successfully');
+        } catch (error) {
+          debugLog('Error during map setup:', error);
+          setMapError(`Map setup error: ${error}`);
+        }
       });
-    });
-
-    return () => {
-      if (map.current) {
-        map.current.off('move', updateScale);
-        map.current.off('zoom', updateScale);
-        map.current.off('moveend', moveHandler);
-        map.current.off('wheel', wheelHandler);
-        map.current.remove();
-      }
-      popup.current?.remove();
-      hoverPopup.current?.remove();
-    };
+    } catch (error) {
+      debugLog('Error creating map:', error);
+      setMapError(`Map creation error: ${error}`);
+    }
   }, []);
 
-  useEffect(() => {
-    if (coordinates && map.current) {
-      // Clear existing popups
-      popup.current?.remove();
-      hoverPopup.current?.remove();
-      popup.current = null;
-      hoverPopup.current = null;
+  // Event handlers are now set up in the map load event
 
-      map.current.flyTo({
-        center: coordinates,
-        zoom: 17,
+  // Trigger data reload when filter state changes
+  // Trigger data reload when filter state changes
+  useEffect(() => {
+    if (mapLoaded) {
+      if (filterState) {
+        debugLog('Filter state changed, triggering data reload');
+        // The loadMutationsData function will handle setting currentActiveFilters
+        loadMutationsData();
+      } else if (!currentActiveFilters) {
+        // Only load with defaults if no active filters are set
+        debugLog('No filters available, loading with defaults or skipping');
+        // You can either skip or load with default filters here
+      }
+    }
+  }, [filterState, mapLoaded]);
+
+  // Selected feature effect (unchanged but with debug logging)
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return;
+
+    debugLog('Processing selected feature:', selectedFeature);
+    const map = mapRef.current;
+
+    if (!map.getSource('selected-address')) {
+      debugLog('Adding selected address source');
+      map.addSource('selected-address', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+        generateId: true,
       });
 
-      // Remove existing layers and sources
-      if (map.current.getLayer('selected-point-layer')) {
-        map.current.removeLayer('selected-point-layer');
-      }
-      if (map.current.getSource('selected-point')) {
-        map.current.removeSource('selected-point');
-      }
-      if (map.current.getLayer('selected-address-circle')) {
-        map.current.removeLayer('selected-address-circle');
-      }
-      if (map.current.getSource('selected-address-circle')) {
-        map.current.removeSource('selected-address-circle');
-      }
+      map.addLayer({
+        id: 'selected-address-shadow',
+        type: 'circle',
+        source: 'selected-address',
+        paint: {
+          'circle-radius': 15,
+          'circle-color': 'rgba(255, 0, 0, 0.48)',
+          'circle-blur': 0.5,
+        },
+        filter: ['==', ['id'], ''],
+      });
 
-      // Add new marker
-      map.current.addSource('selected-point', {
-        type: 'geojson',
-        data: {
+      map.addLayer({
+        id: 'selected-address-layer',
+        type: 'circle',
+        source: 'selected-address',
+        paint: {
+          'circle-radius': 4,
+          'circle-color': '#ff0000',
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#fff',
+        },
+      });
+
+      // Selected address interactivity
+      map.on('mouseenter', 'selected-address-layer', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+
+      map.on('mouseleave', 'selected-address-layer', () => {
+        map.getCanvas().style.cursor = '';
+        if (hoveredSelectedId.current !== null) {
+          map.setFilter('selected-address-shadow', ['==', ['id'], '']);
+          hoveredSelectedId.current = null;
+        }
+      });
+
+      map.on('mousemove', 'selected-address-layer', (e: mapboxgl.MapMouseEvent) => {
+        if (e.features && e.features.length > 0) {
+          const featureId = e.features[0].id;
+          if (featureId !== hoveredSelectedId.current) {
+            hoveredSelectedId.current = featureId;
+            map.setFilter('selected-address-shadow', ['==', ['id'], featureId]);
+          }
+        }
+      });
+    }
+
+    const source = map.getSource('selected-address');
+    if (source && 'setData' in source) {
+      if (selectedFeature) {
+        debugLog('Setting selected feature data');
+        source.setData({ type: 'FeatureCollection', features: [selectedFeature] });
+        map.flyTo({ center: selectedFeature.geometry.coordinates, zoom: 18 });
+      } else {
+        debugLog('Clearing selected feature data');
+        source.setData({ type: 'FeatureCollection', features: [] });
+      }
+    }
+  }, [selectedFeature, mapLoaded]);
+
+  // Handle searchParams to show red marker for selected address
+  useEffect(() => {
+    if (searchParams?.coordinates) {
+      setSelectedAddress(searchParams.coordinates);
+      debugLog('Selected address coordinates:', searchParams.coordinates);
+    } else {
+      setSelectedAddress(null);
+    }
+  }, [searchParams]);
+
+  // Update red marker when selectedAddress changes
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return;
+
+    const map = mapRef.current;
+    const source = map.getSource('selected-address-marker');
+
+    if (source && source.type === 'geojson') {
+      if (selectedAddress) {
+        const feature: GeoJSON.Feature<GeoJSON.Point> = {
           type: 'Feature',
           geometry: {
             type: 'Point',
-            coordinates,
+            coordinates: selectedAddress,
           },
-          properties: {},
-        },
-      });
-
-      map.current.addLayer({
-        id: 'selected-point-layer',
-        type: 'circle',
-        source: 'selected-point',
-        minzoom: 16,
-        paint: {
-          'circle-radius': 5,
-          'circle-color': '#EF4444',
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff',
-        },
-      });
-
-      // Add a cluster layer for lower zooms (optional, for visual feedback)
-      map.current.addLayer({
-        id: 'parcels-cluster-layer',
-        type: 'circle',
-        source: 'parcels-source',
-        filter: ['has', 'point_count'],
-        minzoom: 13.5,
-        maxzoom: 16,
-        paint: {
-          'circle-color': '#1976D2',
-          'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 50, 25],
-          'circle-opacity': 0.6,
-        },
-      });
-      map.current.addLayer({
-        id: 'parcels-cluster-count',
-        type: 'symbol',
-        source: 'parcels-source',
-        filter: ['has', 'point_count'],
-        minzoom: 13.5,
-        maxzoom: 16,
-        layout: {
-          'text-field': '{point_count_abbreviated}',
-          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-          'text-size': 12,
-        },
-        paint: {
-          'text-color': '#fff',
-        },
-      });
-
-      // Add hover popup
-      map.current.on('mouseenter', 'selected-point-layer', () => {
-        map.current.getCanvas().style.cursor = 'pointer';
-      });
-
-      map.current.on('mouseleave', 'selected-point-layer', () => {
-        map.current.getCanvas().style.cursor = '';
-      });
-
-      map.current.on('mouseenter', 'selected-point-layer', () => {
-        if (hoverPopup.current) {
-          hoverPopup.current.remove();
-        }
-
-        hoverPopup.current = new mapboxgl.Popup({
-          offset: 12,
-          closeOnClick: false,
-          closeButton: false,
-          className: 'hover-popup',
-        })
-          .setLngLat(coordinates)
-          .addTo(map.current);
-
-        createHoverPopupContent(
-          {
-            numero: searchParams.numero,
-            nomVoie: searchParams.nomVoie,
+          properties: {
+            id: 'selected-address',
           },
-          currentCity,
-        ).then(content => {
-          if (hoverPopup.current) {
-            hoverPopup.current.setDOMContent(content);
-          }
+        };
+
+        source.setData({
+          type: 'FeatureCollection',
+          features: [feature],
         });
-      });
 
-      map.current.on('mouseleave', 'selected-point-layer', () => {
-        if (hoverPopup.current && !popup.current) {
-          hoverPopup.current.remove();
-          hoverPopup.current = null;
-        }
-      });
+        // Fly to the selected address
+        map.flyTo({
+          center: selectedAddress,
+          zoom: 16,
+          duration: 2000,
+        });
+
+        debugLog('Red marker added at:', selectedAddress);
+      } else {
+        // Clear the marker
+        source.setData({
+          type: 'FeatureCollection',
+          features: [],
+        });
+        debugLog('Red marker cleared');
+      }
     }
-  }, [coordinates]);
+  }, [selectedAddress, mapLoaded]);
 
-  // Highlight selected property on map when selectedProperty changes
-  useEffect(() => {
-    if (!map.current) return;
-    // Remove previous selection
-    if (selectedId.current) {
-      map.current.setFeatureState(
-        {
-          source: 'parcels-source',
-          sourceLayer: SOURCE_LAYER,
-          id: selectedId.current,
-        },
-        { selected: false },
-      );
-      selectedId.current = null;
-    }
-    if (selectedProperty && selectedProperty.id) {
-      // TODO: If property.id does not match feature.id, map accordingly
-      map.current.setFeatureState(
-        {
-          source: 'parcels-source',
-          sourceLayer: SOURCE_LAYER,
-          id: selectedProperty.id,
-        },
-        { selected: true },
-      );
-      selectedId.current = selectedProperty.id;
-    }
-  }, [selectedProperty]);
+  // Stats panel toggle function
+  const toggleStatsPanel = () => {
+    setShowStatsPanel(!showStatsPanel);
+  };
 
-  // Highlight hovered property on map when hoveredProperty changes
-  useEffect(() => {
-    if (!map.current) return;
-    // Remove previous hover highlight
-    if (hoveredId.current) {
-      map.current.setFeatureState(
-        {
-          source: 'parcels-source',
-          sourceLayer: SOURCE_LAYER,
-          id: hoveredId.current,
-        },
-        { hover: false },
-      );
-      hoveredId.current = null;
-    }
-    // Highlight new hovered property
-    if (hoveredProperty && hoveredProperty.id) {
-      map.current.setFeatureState(
-        {
-          source: 'parcels-source',
-          sourceLayer: SOURCE_LAYER,
-          id: hoveredProperty.id,
-        },
-        { hover: true },
-      );
-      hoveredId.current = hoveredProperty.id;
-    }
-  }, [hoveredProperty]);
-
-  // Replace the existing useEffect for stats with this optimized version
-  useEffect(() => {
-    if (!currentCity) return;
-    fetchPropertyStats(currentCity);
-  }, [currentCity]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      cancelPendingRequests();
-      mutationCache.current.clear();
-      statsCache.current.clear();
-      pendingRequestsRef.current.clear();
-    };
-  }, [cancelPendingRequests]);
-
-  // Clear mutation cache when city changes
-  useEffect(() => {
-    mutationCache.current.clear();
-  }, [currentCity]);
+  // Render with error handling
+  if (mapError) {
+    return (
+      <div className="relative h-screen w-full flex items-center justify-center bg-gray-100">
+        <div className="text-center p-8">
+          <h2 className="text-xl font-bold text-red-600 mb-4">Map Loading Error</h2>
+          <p className="text-gray-700 mb-4">{mapError}</p>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative h-screen w-screen">
-      {/* Toggle Button */}
+    <div className="relative h-screen w-full">
+      {!mapLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading map...</p>
+          </div>
+        </div>
+      )}
+      <div ref={mapContainer} className="h-full w-full" />
+
+      {/* Stats Panel Toggle Button */}
       <button
         onClick={() => {
           if (!showStatsPanel) {
@@ -1428,34 +1390,6 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
           </svg>
         )}
       </button>
-
-      {/* Map Controls */}
-      <div className="fixed top-20 left-4 flex flex-col gap-2 z-40 sm:absolute sm:top-16 sm:left-4 sm:z-40">
-        <div className="bg-white rounded-lg shadow-md flex flex-col">
-          <button onClick={handleZoomIn} className="p-2 hover:bg-gray-100 rounded-t-lg flex items-center justify-center text-gray-700">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
-          <div className="border-t border-gray-200"></div>
-          <button onClick={handleZoomOut} className="p-2 hover:bg-gray-100 rounded-b-lg flex items-center justify-center text-gray-700">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14" />
-            </svg>
-          </button>
-        </div>
-
-        <button
-          onClick={toggleMapStyle}
-          className="bg-white p-2 rounded-lg shadow-md hover:bg-gray-100 flex items-center justify-center text-gray-700"
-          title={is3DView ? 'Passer en vue 2D' : 'Passer en vue 3D'}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-            <path d="M7.5 4.21l4.5 2.6M7.5 19.79V14.6L3 12M16.5 4.21V9.4L21 12M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
-          </svg>
-        </button>
-      </div>
 
       {/* Stats Panel */}
       {showStatsPanel && (
@@ -1484,11 +1418,11 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
           <div className="h-px bg-gray-200 w-full mb-3" />
 
           {(() => {
-            const propertyTypeNames = ['Appartement', 'Maison', 'Local', 'Terrain', 'Bien Multiple'];
-            const getIndigoShade = idx => ['bg-indigo-600', 'bg-violet-500', 'bg-blue-400', 'bg-blue-600', 'bg-blue-900'][idx];
+            const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
+            const getIndigoShade = (idx: number) => ['#6929CF', '#121852', '#2971CF', '#862CC7', '#381EB0'][idx];
 
             const normalizedStats = propertyTypeNames.map((shortName, index) => {
-              const match = propertyStats.find(item => getShortTypeName(item.typeBien) === shortName);
+              const match = propertyStats.find(item => getStatsShortTypeName(item.typeBien) === shortName);
               return {
                 typeBien: shortName,
                 nombre: match?.nombre || 0,
@@ -1504,8 +1438,11 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
                     <button
                       key={stat.typeBien}
                       className={`flex-1 py-2 px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
-                        activePropertyType === index ? `${getIndigoShade(index)} text-white` : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
+                        activePropertyType === index ? 'text-white' : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
                       }`}
+                      style={{
+                        backgroundColor: activePropertyType === index ? getIndigoShade(index) : undefined,
+                      }}
                       onClick={() => setActivePropertyType(index)}
                     >
                       {stat.typeBien}
@@ -1515,10 +1452,10 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
 
                 {isLoading ? (
                   <div className="flex justify-center py-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent" />
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-500 border-t-transparent" />
                   </div>
-                ) : error ? (
-                  <div className="text-red-500 text-center py-1 text-xs">⚠️ {error}</div>
+                ) : statsError ? (
+                  <div className="text-red-500 text-center py-1 text-xs">⚠️ {statsError}</div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -1545,8 +1482,12 @@ const PropertyMap: React.FC<PropertyMapProps> = ({
         </div>
       )}
 
-      {/* Map Container */}
-      <div ref={mapContainer} className="h-full w-full pb-2" />
+      {debugging && (
+        <div className="absolute bottom-4 left-4 bg-white p-2 rounded shadow text-xs">
+          Map Status: {mapLoaded ? 'Loaded' : 'Loading...'}
+          {mapError && <div className="text-red-500">Error: {mapError}</div>}
+        </div>
+      )}
     </div>
   );
 };
