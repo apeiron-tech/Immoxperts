@@ -14,6 +14,7 @@ interface Property {
   surface: string;
   rooms: string | number;
   soldDate: string;
+  terrain?: string; // Add terrain attribute
   rawData: {
     terrain: any;
     mutationType: string;

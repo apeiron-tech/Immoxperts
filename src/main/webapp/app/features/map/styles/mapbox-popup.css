@@ -40,3 +40,25 @@
   color: #0b54d2;
   /* Or use color: blue; for a standard blue */
 }
+/* Red glowing shadow on hover */
+.mapboxgl-marker:hover .marker-inner {
+  background: #ff0000 !important;
+  transform: scale(1.5) !important;
+  box-shadow:
+    0 0 0 4px rgba(255, 0, 0, 0.45),
+    0 0 0 8px rgba(255, 0, 0, 0.25),
+    0 0 0 12px rgba(255, 0, 0, 0.1) !important;
+  transition: all 0.25s ease;
+}
+
+/* Hover effects for map circles */
+.mapboxgl-canvas-container canvas:hover {
+  cursor: pointer;
+}
+
+/* Custom hover styles for property circles */
+.property-circle-hover {
+  filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.6)) drop-shadow(0 0 20px rgba(255, 0, 0, 0.4));
+  transform: scale(1.2);
+  transition: all 0.3s ease;
+}

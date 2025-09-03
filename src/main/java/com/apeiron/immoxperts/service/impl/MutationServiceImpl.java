@@ -12,6 +12,7 @@ import com.apeiron.immoxperts.repository.MutationRepository;
 import com.apeiron.immoxperts.service.MutationService;
 import com.apeiron.immoxperts.service.dto.MutationDTO;
 import com.apeiron.immoxperts.service.dto.MutationSearchDTO;
+import com.apeiron.immoxperts.service.dto.StatsByCityDTO;
 import com.apeiron.immoxperts.service.mapper.MutationMapper;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -365,5 +366,22 @@ public class MutationServiceImpl implements MutationService {
                 return dto;
             })
             .collect(Collectors.toList());
+    }
+
+    public List<StatsByCityDTO> getStatsByCodeInsee(String codeInsee) {
+        LOG.debug("Getting stats for code INSEE: {}", codeInsee);
+
+        List<Object[]> rows = mutationRepository.findStatsByCodeInsee(codeInsee);
+
+        return rows.stream().map(this::buildStatsByCityDTO).toList();
+    }
+
+    private StatsByCityDTO buildStatsByCityDTO(Object[] row) {
+        String typeGroupe = (String) row[0];
+        Integer nombreMutations = ((Number) row[1]).intValue();
+        Double prixMedian = row[2] != null ? ((Number) row[2]).doubleValue() : null;
+        Double prixM2Median = row[3] != null ? ((Number) row[3]).doubleValue() : null;
+
+        return new StatsByCityDTO(typeGroupe, nombreMutations, prixMedian, prixM2Median);
     }
 }

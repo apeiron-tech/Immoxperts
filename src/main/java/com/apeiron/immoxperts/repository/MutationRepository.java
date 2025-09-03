@@ -66,6 +66,21 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
 
     @Query(
         value = """
+        SELECT
+            type_groupe,
+            nombre_mutations,
+            prix_median,
+            prix_m2_median
+        FROM dvf.mutation_stats_by_city
+        WHERE code_insee = :codeInsee
+        ORDER BY nombre_mutations DESC
+        """,
+        nativeQuery = true
+    )
+    List<Object[]> findStatsByCodeInsee(@Param("codeInsee") String codeInsee);
+
+    @Query(
+        value = """
         SELECT * FROM mutation_search_mv
         WHERE UPPER(commune) LIKE UPPER(CONCAT('%', :commune, '%'))
         ORDER BY datemut DESC

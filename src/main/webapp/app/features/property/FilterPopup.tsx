@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { FilterState } from '../../types/filters';
 
 interface RangeSliderProps {
   minValue?: number;
   maxValue?: number;
   onChange?: (min: number, max: number) => void;
   step?: number;
-  type?: 'price' | 'surface' | 'pricePerSqm' | 'date';
+  type?: 'price' | 'surface' | 'terrain' | 'pricePerSqm' | 'date';
 }
 
 const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100, onChange, step = 1, type = 'price' }) => {
@@ -58,6 +59,12 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
       const surfaceRange = surfaceMaxValue - surfaceMinValue;
       newValue = surfaceMinValue + (percentage / 100) * surfaceRange;
       currentStep = surfaceStep;
+    } else if (isTerrainSlider) {
+      // Convert percentage to actual terrain value
+      const terrainRange = terrainMaxValue - terrainMinValue;
+      newValue = terrainMinValue + (percentage / 100) * terrainRange;
+      // Dynamic step: 50m² up to 1000m², then 1000m²
+      currentStep = newValue <= 1000 ? 50 : 1000;
     } else if (isPricePerSqmSlider) {
       // Convert percentage to actual price per m² value
       const pricePerSqmRange = pricePerSqmMaxValue - pricePerSqmMinValue;
@@ -98,6 +105,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
   // Slider-specific logic
   const isPriceSlider = type === 'price';
   const isSurfaceSlider = type === 'surface';
+  const isTerrainSlider = type === 'terrain';
   const isPricePerSqmSlider = type === 'pricePerSqm';
   const isDateSlider = type === 'date';
 
@@ -110,6 +118,11 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
   const surfaceMinValue = 0;
   const surfaceMaxValue = 400; // 400m²
   const surfaceStep = 10; // 10m² steps
+
+  // Terrain-specific values
+  const terrainMinValue = 0;
+  const terrainMaxValue = 50000; // 50,000m²
+  const terrainStep = 50; // 50m² steps (changes to 1000m² after 1000m²)
 
   // Price per m² specific values
   const pricePerSqmMinValue = 0;
@@ -127,6 +140,8 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
       return ((min - priceMinValue) / (priceMaxValue - priceMinValue)) * 100;
     } else if (isSurfaceSlider) {
       return ((min - surfaceMinValue) / (surfaceMaxValue - surfaceMinValue)) * 100;
+    } else if (isTerrainSlider) {
+      return ((min - terrainMinValue) / (terrainMaxValue - terrainMinValue)) * 100;
     } else if (isPricePerSqmSlider) {
       return ((min - pricePerSqmMinValue) / (pricePerSqmMaxValue - pricePerSqmMinValue)) * 100;
     } else if (isDateSlider) {
@@ -140,6 +155,8 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
       return ((max - priceMinValue) / (priceMaxValue - priceMinValue)) * 100;
     } else if (isSurfaceSlider) {
       return ((max - surfaceMinValue) / (surfaceMaxValue - surfaceMinValue)) * 100;
+    } else if (isTerrainSlider) {
+      return ((max - terrainMinValue) / (terrainMaxValue - terrainMinValue)) * 100;
     } else if (isPricePerSqmSlider) {
       return ((max - pricePerSqmMinValue) / (pricePerSqmMaxValue - pricePerSqmMinValue)) * 100;
     } else if (isDateSlider) {
@@ -196,6 +213,27 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
       // Range selected
       return `De ${minSurface}m² à ${maxSurface}m²`;
+    } else if (isTerrainSlider) {
+      const minTerrain = Math.round(min);
+      const maxTerrain = Math.round(max);
+
+      // Full range selected
+      if (minTerrain === terrainMinValue && maxTerrain === terrainMaxValue) {
+        return 'Tous terrains';
+      }
+
+      // Only min selected (from min to max)
+      if (minTerrain > terrainMinValue && maxTerrain === terrainMaxValue) {
+        return `À partir de ${minTerrain.toLocaleString('fr-FR')}m²`;
+      }
+
+      // Only max selected (from min to max)
+      if (minTerrain === terrainMinValue && maxTerrain < terrainMaxValue) {
+        return `Jusqu'à ${maxTerrain.toLocaleString('fr-FR')}m²`;
+      }
+
+      // Range selected
+      return `De ${minTerrain.toLocaleString('fr-FR')}m² à ${maxTerrain.toLocaleString('fr-FR')}m²`;
     } else if (isPricePerSqmSlider) {
       const minPricePerSqm = Math.round(min);
       const maxPricePerSqm = Math.round(max);
@@ -282,7 +320,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
       {/* Connect (filled area between handles) */}
       <div
-        className="absolute h-1.5 bg-blue-500 rounded-full"
+        className="absolute h-1.5 bg-green-500 rounded-full"
         style={{
           left: `${minPosition}%`,
           width: `${connectWidth}%`,
@@ -293,7 +331,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
       {/* Min handle */}
       <div
-        className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full cursor-pointer hover:shadow-lg transition-shadow z-10"
+        className="absolute w-5 h-5 bg-white border-2 border-green-500 rounded-full cursor-pointer hover:shadow-lg transition-shadow z-10"
         style={{
           left: `${minPosition}%`,
           top: '50%',
@@ -304,7 +342,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
       {/* Max handle */}
       <div
-        className="absolute w-5 h-5 bg-white border-2 border-blue-500 rounded-full cursor-pointer hover:shadow-lg transition-shadow z-10"
+        className="absolute w-5 h-5 bg-white border-2 border-green-500 rounded-full cursor-pointer hover:shadow-lg transition-shadow z-10"
         style={{
           left: `${maxPosition}%`,
           top: '50%',
@@ -315,28 +353,6 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     </div>
   );
 };
-
-// Rest of your FilterPopup component with updated RangeSlider usage
-interface FilterState {
-  propertyTypes: {
-    maison: boolean;
-    terrain: boolean;
-    appartement: boolean;
-    biensMultiples: boolean;
-    localCommercial: boolean;
-  };
-  roomCounts: {
-    studio: boolean;
-    deuxPieces: boolean;
-    troisPieces: boolean;
-    quatrePieces: boolean;
-    cinqPiecesPlus: boolean;
-  };
-  priceRange: [number, number];
-  surfaceRange: [number, number];
-  pricePerSqmRange: [number, number];
-  dateRange: [number, number];
-}
 
 interface FilterPopupProps {
   isOpen: boolean;
@@ -364,6 +380,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     },
     priceRange: [0, 20000000], // 0 to 20M €
     surfaceRange: [0, 400], // 0 to 400m²
+    terrainRange: [0, 50000], // 0 to 50,000m²
     pricePerSqmRange: [0, 40000], // 0 to 40k €/m²
     dateRange: [0, 130], // January 2014 to December 2024 (months)
   };
@@ -398,7 +415,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
   };
 
   const handleRangeChange = (
-    rangeType: keyof Pick<FilterState, 'priceRange' | 'surfaceRange' | 'pricePerSqmRange' | 'dateRange'>,
+    rangeType: keyof Pick<FilterState, 'priceRange' | 'surfaceRange' | 'terrainRange' | 'pricePerSqmRange' | 'dateRange'>,
     min: number,
     max: number,
   ) => {
@@ -477,6 +494,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     }
   };
 
+  const getTerrainText = () => {
+    const minTerrain = Math.round(filters.terrainRange[0]);
+    const maxTerrain = Math.round(filters.terrainRange[1]);
+    const terrainMinValue = 0;
+    const terrainMaxValue = 50000;
+
+    if (minTerrain === terrainMinValue && maxTerrain === terrainMaxValue) {
+      return 'Tous terrains';
+    } else if (minTerrain > terrainMinValue && maxTerrain === terrainMaxValue) {
+      return `À partir de ${minTerrain.toLocaleString('fr-FR')}m²`;
+    } else if (minTerrain === terrainMinValue && maxTerrain < terrainMaxValue) {
+      return `Jusqu'à ${maxTerrain.toLocaleString('fr-FR')}m²`;
+    } else {
+      return `De ${minTerrain.toLocaleString('fr-FR')}m² à ${maxTerrain.toLocaleString('fr-FR')}m²`;
+    }
+  };
+
   const getPricePerSqmText = () => {
     const minPricePerSqm = Math.round(filters.pricePerSqmRange[0]);
     const maxPricePerSqm = Math.round(filters.pricePerSqmRange[1]);
@@ -550,7 +584,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <input
                       type="checkbox"
                       id="maison"
-                      className="w-5 h-5 rounded accent-indigo-900"
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: '#7069F9' }}
                       checked={filters.propertyTypes.maison}
                       onChange={() => handlePropertyTypeChange('maison')}
                     />
@@ -562,7 +597,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <input
                       type="checkbox"
                       id="terrain"
-                      className="w-5 h-5 rounded accent-indigo-900"
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: '#7069F9' }}
                       checked={filters.propertyTypes.terrain}
                       onChange={() => handlePropertyTypeChange('terrain')}
                     />
@@ -574,7 +610,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <input
                       type="checkbox"
                       id="appartement"
-                      className="w-5 h-5 rounded accent-indigo-900"
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: '#7069F9' }}
                       checked={filters.propertyTypes.appartement}
                       onChange={() => handlePropertyTypeChange('appartement')}
                     />
@@ -586,7 +623,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <input
                       type="checkbox"
                       id="biens-multiples"
-                      className="w-5 h-5 rounded accent-indigo-900"
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: '#7069F9' }}
                       checked={filters.propertyTypes.biensMultiples}
                       onChange={() => handlePropertyTypeChange('biensMultiples')}
                     />
@@ -598,7 +636,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <input
                       type="checkbox"
                       id="local-commercial"
-                      className="w-5 h-5 rounded accent-indigo-900"
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: '#7069F9' }}
                       checked={filters.propertyTypes.localCommercial}
                       onChange={() => handlePropertyTypeChange('localCommercial')}
                     />
@@ -617,7 +656,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <input
                       type="checkbox"
                       id="studio"
-                      className="w-5 h-5 rounded accent-indigo-900"
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: '#7069F9' }}
                       checked={filters.roomCounts.studio}
                       onChange={() => handleRoomCountChange('studio')}
                     />
@@ -629,7 +669,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <input
                       type="checkbox"
                       id="2pieces"
-                      className="w-5 h-5 rounded accent-indigo-900"
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: '#7069F9' }}
                       checked={filters.roomCounts.deuxPieces}
                       onChange={() => handleRoomCountChange('deuxPieces')}
                     />
@@ -641,7 +682,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <input
                       type="checkbox"
                       id="3pieces"
-                      className="w-5 h-5 rounded accent-indigo-900"
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: '#7069F9' }}
                       checked={filters.roomCounts.troisPieces}
                       onChange={() => handleRoomCountChange('troisPieces')}
                     />
@@ -653,7 +695,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <input
                       type="checkbox"
                       id="4pieces"
-                      className="w-5 h-5 rounded accent-indigo-900"
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: '#7069F9' }}
                       checked={filters.roomCounts.quatrePieces}
                       onChange={() => handleRoomCountChange('quatrePieces')}
                     />
@@ -665,7 +708,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <input
                       type="checkbox"
                       id="5pieces"
-                      className="w-5 h-5 rounded accent-indigo-900"
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: '#7069F9' }}
                       checked={filters.roomCounts.cinqPiecesPlus}
                       onChange={() => handleRoomCountChange('cinqPiecesPlus')}
                     />
@@ -705,6 +749,19 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                 />
               </div>
 
+              {/* Terrain */}
+              <div className="mb-6 space-y-2">
+                <h3 className="text-xl font-bold">Terrain</h3>
+                <p className="text-lg">{getTerrainText()}</p>
+                <RangeSlider
+                  type="terrain"
+                  minValue={0}
+                  maxValue={50000}
+                  step={50}
+                  onChange={(min, max) => handleRangeChange('terrainRange', min, max)}
+                />
+              </div>
+
               {/* Prix m² */}
               <div className="mb-6 space-y-2">
                 <h3 className="text-xl font-bold">Prix m²</h3>
@@ -739,7 +796,11 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
           <button onClick={onClose} className="px-8 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-lg">
             Annuler
           </button>
-          <button onClick={() => onApply(filters)} className="px-8 py-3 bg-indigo-900 text-white rounded-lg hover:bg-indigo-800 text-lg">
+          <button
+            onClick={() => onApply(filters)}
+            className="px-8 py-3 text-white rounded-lg hover:bg-opacity-90 text-lg transition-colors duration-200"
+            style={{ backgroundColor: '#7069F9' }}
+          >
             Appliquer
           </button>
         </div>

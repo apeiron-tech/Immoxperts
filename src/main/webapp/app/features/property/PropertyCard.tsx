@@ -12,6 +12,7 @@ interface Property {
   surface: string;
   rooms: string | number;
   soldDate: string;
+  terrain?: string; // Add terrain attribute
 }
 
 // 1. UPDATE THE PROPS INTERFACE
@@ -23,6 +24,7 @@ interface PropertyCardProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   isHovered: boolean; // This prop will control the hover style
+  isMapHovered?: boolean; // **NEW**: Highlight when hovered from map
 }
 
 // --- HELPER FUNCTIONS ---
@@ -36,6 +38,30 @@ const getShortTypeName = (typeBien: string) => {
     'Bien Multiple': 'Bien Multiple',
   };
   return names[typeBien as keyof typeof names] || typeBien.split(' ')[0];
+};
+
+// Helper function to check if a value exists and is not empty
+const hasValue = (value: any): boolean => {
+  return value && value !== 'N/A' && value !== '' && value !== null && value !== undefined;
+};
+
+// Helper function to format property details
+const formatPropertyDetails = (rooms: any, surface: string, terrain?: string): string => {
+  const details: string[] = [];
+
+  if (hasValue(rooms)) {
+    details.push(`${rooms} pièces`);
+  }
+
+  if (hasValue(surface)) {
+    details.push(surface);
+  }
+
+  if (hasValue(terrain)) {
+    details.push(`Terrain: ${terrain}`);
+  }
+
+  return details.length > 0 ? details.join(' - ') : '';
 };
 
 const getPropertyTypeColor = (propertyType: string) => {
@@ -57,24 +83,28 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   onMouseEnter,
   onMouseLeave,
   isHovered, // Use the prop from the parent
+  isMapHovered = false, // **NEW**: Default to false
 }) => {
-  const { address, type, rooms, surface, soldDate, price, pricePerSqm } = property;
+  const { address, type, rooms, surface, soldDate, price, pricePerSqm, terrain } = property;
 
   // Formatting values for display
   const priceFormatted = Number(price?.replace(/[^0-9]/g, '')).toLocaleString('fr-FR') + ' €';
-  const pricePerSqmFormatted = pricePerSqm || 'N/A';
+  const pricePerSqmFormatted = hasValue(pricePerSqm) ? pricePerSqm : '';
+
+  // Format property details
+  const propertyDetails = formatPropertyDetails(rooms, surface, terrain);
 
   return (
     <div
       style={{
-        background: '#fff',
+        background: isMapHovered ? '#f0f9ff' : '#fff', // Light blue background when map hovered
         padding: 24,
         fontFamily: `'Maven Pro', sans-serif`,
         borderRadius: 16,
         cursor: 'pointer',
-        // 2. STYLING IS NOW DRIVEN BY THE `isHovered` PROP
-        boxShadow: isHovered ? '0 4px 20px rgba(36,28,131,0.18)' : '0 2px 12px rgba(36,28,131,0.08)',
-        border: isHovered ? '2px solid #4F46E5' : '1px solid #e5e7eb',
+        // 2. STYLING IS NOW DRIVEN BY THE `isHovered` PROP OR `isMapHovered`
+        boxShadow: isHovered || isMapHovered ? '0 4px 20px rgba(36,28,131,0.18)' : '0 2px 12px rgba(36,28,131,0.08)',
+        border: isHovered || isMapHovered ? '2px solid #4F46E5' : '1px solid #e5e7eb',
         display: 'flex',
         flexDirection: 'row',
         gap: 16,
@@ -94,9 +124,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
         <div style={{ fontSize: 15, color: '#333', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
           <span style={{ color: getPropertyTypeColor(type), fontWeight: 900, fontSize: 15 }}>{getShortTypeName(type)}</span>
-          <span style={{ color: '#888', fontWeight: 500, fontSize: 14 }}>
-            {rooms || 'N/A'} pièces - {surface || 'N/A'}
-          </span>
+          {propertyDetails && <span style={{ color: '#888', fontWeight: 500, fontSize: 14 }}>{propertyDetails}</span>}
         </div>
         <div
           style={{
@@ -126,7 +154,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         }}
       >
         <div style={{ color: '#241c83', fontWeight: 800, fontSize: 18, lineHeight: 1 }}>{priceFormatted}</div>
-        <div style={{ color: '#888', fontSize: 14 }}>{pricePerSqmFormatted}</div>
+        {pricePerSqmFormatted && <div style={{ color: '#888', fontSize: 14 }}>{pricePerSqmFormatted}</div>}
       </div>
     </div>
   );

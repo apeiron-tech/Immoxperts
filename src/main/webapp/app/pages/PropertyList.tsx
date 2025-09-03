@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import PropertyMap from '../features/map/PropertyMap';
 import PropertyCard from 'app/features/property/PropertyCard';
+import { FilterState } from '../types/filters';
 
 // ===================================================================
 // TYPE DEFINITIONS
@@ -27,27 +28,6 @@ interface Property {
   };
 }
 
-interface FilterState {
-  propertyTypes: {
-    maison: boolean;
-    terrain: boolean;
-    appartement: boolean;
-    biensMultiples: boolean;
-    localCommercial: boolean;
-  };
-  roomCounts: {
-    studio: boolean;
-    deuxPieces: boolean;
-    troisPieces: boolean;
-    quatrePieces: boolean;
-    cinqPiecesPlus: boolean;
-  };
-  priceRange: [number, number];
-  surfaceRange: [number, number];
-  pricePerSqmRange: [number, number];
-  dateRange: [number, number];
-}
-
 interface PropertyListProps {
   searchParams: {
     coordinates?: [number, number];
@@ -55,6 +35,7 @@ interface PropertyListProps {
   };
   filterState?: FilterState;
   onFiltersChange?: (filters: FilterState | null) => void; // Add callback for filter changes
+  onMapHover?: (propertyId: number | null) => void; // Add callback for map hover
 }
 
 type SortOption = 'date-desc' | 'date-asc' | 'price-desc' | 'price-asc' | 'sqm-desc' | 'sqm-asc';
@@ -63,11 +44,12 @@ type SortOption = 'date-desc' | 'date-asc' | 'price-desc' | 'price-asc' | 'sqm-d
 // REACT COMPONENT
 // ===================================================================
 
-const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, onFiltersChange }) => {
+const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, onFiltersChange, onMapHover }) => {
   // --- STATE MANAGEMENT ---
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [hoveredPropertyId, setHoveredPropertyId] = useState<number | null>(null);
+  const [mapHoveredPropertyId, setMapHoveredPropertyId] = useState<number | null>(null);
   const [activeView, setActiveView] = useState<'map' | 'list'>('map');
   const [sortOption, setSortOption] = useState<SortOption>('date-desc');
 
@@ -118,12 +100,18 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
     onFiltersChange?.(null);
   }, [onFiltersChange]);
 
+  // Handle map hover to highlight property in list
+  const handleMapHover = useCallback((propertyId: number | null) => {
+    setMapHoveredPropertyId(propertyId);
+  }, []);
+
   // --- DATA FETCHING ---
 
   // This function will be called by PropertyMap when it gets new mutation data
   // This function will be called by PropertyMap when it gets new mutation data
   const updatePropertiesFromMutations = useCallback((mutationData: any[]) => {
-    console.warn('PropertyList: Starting data update process...');
+    console.warn('🔥 PropertyList: Starting data update process with', mutationData?.length || 0, 'features');
+    console.warn('🔥 PropertyList: Current properties count before update:', properties.length);
 
     // Start loading state
     setIsLoadingProperties(true);
@@ -210,6 +198,12 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
       setProperties(limitedProperties);
       setDataVersion(prev => prev + 1);
       setIsLoadingProperties(false);
+
+      console.warn('🔥 PropertyList: FINISHED updating! New properties count:', limitedProperties.length);
+      console.warn(
+        '🔥 PropertyList: First 3 properties:',
+        limitedProperties.slice(0, 3).map(p => ({ id: p.id, address: p.address, coordinates: p.coordinates })),
+      );
     }, 100); // 100ms delay to ensure clean state
   }, []);
 
@@ -227,7 +221,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
   // --- RENDER ---
   return (
-    <div className="flex flex-col lg:flex-row w-full h-screen bg-gray-50">
+    <div className="flex flex-col lg:flex-row w-full h-full bg-gray-50">
       {/* --- Mobile View Toggle --- */}
       <div className="lg:hidden flex justify-center gap-2 py-2 bg-white shadow-md z-20">
         <button
@@ -250,9 +244,10 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
       {/* --- List & Detail Panel --- */}
       <div
-        className={`w-full lg:w-[400px] lg:flex-shrink-0 flex flex-col bg-white border-r border-gray-200 z-10 ${
+        className={`w-full lg:flex-shrink-0 flex flex-col bg-white border-r border-gray-200 z-10 ${
           activeView === 'map' ? 'hidden lg:flex' : 'flex'
         }`}
+        style={{ width: window.innerWidth >= 1024 ? '480px' : '100%' }}
       >
         {selectedProperty ? (
           // --- Detail View ---
@@ -296,25 +291,20 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
             <div className="p-4 border-b">
               <div className="flex justify-between items-center mb-2">
                 <h2 className="font-semibold">Transactions à proximité</h2>
-                {/* **OPTIONAL**: Add filter indicator and clear button */}
-                {currentActiveFilters && (
-                  <button onClick={clearFilters} className="text-xs text-blue-600 hover:underline">
-                    Effacer filtres
-                  </button>
-                )}
+
+                <select
+                  value={sortOption}
+                  onChange={e => setSortOption(e.target.value as SortOption)}
+                  className="w-1/2 border rounded-md px-2 py-1.5 text-sm bg-white"
+                >
+                  <option value="date-desc">Plus récentes</option>
+                  <option value="date-asc">Plus anciennes</option>
+                  <option value="price-desc">Prix ↓</option>
+                  <option value="price-asc">Prix ↑</option>
+                  <option value="sqm-desc">€/m² ↓</option>
+                  <option value="sqm-asc">€/m² ↑</option>
+                </select>
               </div>
-              <select
-                value={sortOption}
-                onChange={e => setSortOption(e.target.value as SortOption)}
-                className="w-full border rounded-md px-2 py-1.5 text-sm bg-white"
-              >
-                <option value="date-desc">Plus récentes</option>
-                <option value="date-asc">Plus anciennes</option>
-                <option value="price-desc">Prix ↓</option>
-                <option value="price-asc">Prix ↑</option>
-                <option value="sqm-desc">€/m² ↓</option>
-                <option value="sqm-asc">€/m² ↑</option>
-              </select>
             </div>
 
             <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -325,6 +315,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                     property={property}
                     onClick={() => handlePropertySelect(property)}
                     isHovered={hoveredPropertyId === property.id}
+                    isMapHovered={mapHoveredPropertyId === property.id}
                     onMouseEnter={() => setHoveredPropertyId(property.id)}
                     onMouseLeave={() => setHoveredPropertyId(null)}
                   />
@@ -347,6 +338,8 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
           hoveredProperty={hoveredProperty}
           filterState={currentActiveFilters} // **KEY**: Pass the currently active filters
           onDataUpdate={updatePropertiesFromMutations} // **NEW**: Callback to update PropertyCard data
+          onMapHover={handleMapHover} // **NEW**: Callback for map hover
+          dataVersion={dataVersion} // **NEW**: Pass data version to trigger zone stats recalculation
         />
       </div>
     </div>

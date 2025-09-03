@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import axios from 'axios';
 import './styles/mapbox-popup.css';
 // Add CSS import at the top (make sure this is included)
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { FilterState } from '../../types/filters';
 
 // Types definitions
 interface Feature {
@@ -38,27 +39,6 @@ interface Property {
   };
 }
 
-interface FilterState {
-  propertyTypes: {
-    maison: boolean;
-    terrain: boolean;
-    appartement: boolean;
-    biensMultiples: boolean;
-    localCommercial: boolean;
-  };
-  roomCounts: {
-    studio: boolean;
-    deuxPieces: boolean;
-    troisPieces: boolean;
-    quatrePieces: boolean;
-    cinqPiecesPlus: boolean;
-  };
-  priceRange: [number, number];
-  surfaceRange: [number, number];
-  pricePerSqmRange: [number, number];
-  dateRange: [number, number];
-}
-
 interface MapPageProps {
   selectedFeature?: Feature | null;
   properties?: Property[];
@@ -72,6 +52,8 @@ interface MapPageProps {
   hoveredProperty?: Property | null;
   filterState?: FilterState;
   onDataUpdate?: (mutationData: any[]) => void; // **NEW**: Callback to update PropertyCard data
+  onMapHover?: (propertyId: number | null) => void; // **NEW**: Callback for map hover
+  dataVersion?: number; // **NEW**: Data version to trigger zone stats recalculation
 }
 
 interface AddressProperties {
@@ -124,10 +106,131 @@ const getStatsShortTypeName = (type: string) => {
     Appartement: 'Appartement',
     Maison: 'Maison',
     Terrain: 'Terrain',
-    'Local Commercial': 'Local',
     'Bien Multiple': 'Bien Multiple',
   };
   return shortNames[type] || type;
+};
+
+// **NEW**: Function to calculate statistics from map data
+const calculateZoneStats = (mapFeatures: any[]) => {
+  console.warn('🔄 calculateZoneStats called with', mapFeatures.length, 'features');
+
+  const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Bien Multiple'];
+  const stats = [];
+
+  propertyTypeNames.forEach(typeName => {
+    const uniqueMutations = new Map(); // Use Map to track unique mutations by ID
+
+    // Extract all mutations of this type from map features
+    mapFeatures.forEach(feature => {
+      if (feature.properties && feature.properties.adresses) {
+        try {
+          const addresses =
+            typeof feature.properties.adresses === 'string' ? JSON.parse(feature.properties.adresses) : feature.properties.adresses;
+
+          if (Array.isArray(addresses)) {
+            addresses.forEach(address => {
+              if (address.mutations && Array.isArray(address.mutations)) {
+                address.mutations.forEach(mutation => {
+                  if (mutation.type_groupe === typeName) {
+                    // Only add if we haven't seen this mutation ID before
+                    if (!uniqueMutations.has(mutation.id)) {
+                      uniqueMutations.set(mutation.id, mutation);
+                      console.warn(
+                        `✅ Added unique mutation: ${mutation.id} (${mutation.type_groupe}) - Price: ${mutation.valeur}, Price/m²: ${mutation.prix_m2}`,
+                      );
+                    } else {
+                      console.warn(`🔄 Skipped duplicate mutation: ${mutation.id} (${mutation.type_groupe})`);
+                    }
+                  }
+                });
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Error parsing addresses:', err);
+        }
+      }
+    });
+
+    // Convert Map values back to array
+    const mutations = Array.from(uniqueMutations.values());
+
+    console.warn(`🔍 ${typeName}: Found ${uniqueMutations.size} unique mutations out of total processed`);
+
+    // Calculate statistics for this property type
+    if (mutations.length > 0) {
+      const prices = mutations.map(m => m.valeur || 0).filter(p => p > 0);
+      const pricesPerM2 = mutations.map(m => m.prix_m2 || 0).filter(p => p > 0);
+
+      // Calculate medians
+      const medianPrice = prices.length > 0 ? calculateMedian(prices) : 0;
+      const medianPricePerM2 = pricesPerM2.length > 0 ? calculateMedian(pricesPerM2) : 0;
+
+      // Debug logging
+      console.warn(
+        `📊 ${typeName}: ${mutations.length} unique mutations, median price: ${medianPrice}, median price/m²: ${medianPricePerM2}`,
+      );
+
+      stats.push({
+        typeGroupe: typeName,
+        nombre: mutations.length, // This now represents unique mutations
+        prixMoyen: Math.round(medianPrice),
+        prixM2Moyen: Math.round(medianPricePerM2),
+      });
+    } else {
+      // No data for this type
+      stats.push({
+        typeGroupe: typeName,
+        nombre: 0,
+        prixMoyen: 0,
+        prixM2Moyen: 0,
+      });
+    }
+  });
+
+  console.warn('📊 Final zone stats calculated:', stats);
+  return stats;
+};
+
+// Helper function to calculate median
+const calculateMedian = (values: number[]) => {
+  if (values.length === 0) return 0;
+
+  const sorted = values.slice().sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 0) {
+    return (sorted[middle - 1] + sorted[middle]) / 2;
+  } else {
+    return sorted[middle];
+  }
+};
+
+// Function to get INSEE code from coordinates
+const getINSEECodeFromCoords = async (lng: number, lat: number) => {
+  try {
+    const response = await axios.get(`https://api-adresse.data.gouv.fr/reverse/`, {
+      params: {
+        lon: lng,
+        lat,
+      },
+    });
+
+    if (response.data && response.data.features && response.data.features.length > 0) {
+      const feature = response.data.features[0];
+      const properties = feature.properties;
+
+      return {
+        city: properties.city || properties.name,
+        insee: properties.citycode,
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error('Error getting INSEE code:', err);
+    return null;
+  }
 };
 
 const PropertyMap: React.FC<MapPageProps> = ({
@@ -140,6 +243,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
   hoveredProperty,
   filterState,
   onDataUpdate,
+  onMapHover,
+  dataVersion,
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
@@ -151,6 +256,11 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const [statsError, setStatsError] = useState('');
   const [currentCity, setCurrentCity] = useState('AJACCIO');
   const [selectedAddress, setSelectedAddress] = useState<[number, number] | null>(null);
+  const [currentINSEE, setCurrentINSEE] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // **NEW**: Stats scope selection (commune or zone)
+  const [statsScope, setStatsScope] = useState<'commune' | 'zone'>('commune');
+  const [zoneStats, setZoneStats] = useState([]);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -159,6 +269,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const [currentActiveFilters, setCurrentActiveFilters] = useState<FilterState | null>(null);
   // Save filter parameters locally so they persist between map moves
   const [savedFilterParams, setSavedFilterParams] = useState<any>(null);
+  // Use a ref to store current active filters to prevent state reset issues
+  const currentActiveFiltersRef = useRef<FilterState | null>(null);
 
   // Debug logging
   const debugLog = (message: string, data?: any) => {
@@ -230,8 +342,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
       maxSellPrice: currentFilterState.priceRange[1].toString(),
       minSurface: currentFilterState.surfaceRange[0].toString(),
       maxSurface: currentFilterState.surfaceRange[1].toString(),
-      minSurfaceLand: currentFilterState.surfaceRange[0].toString(), // Using surface range for land too
-      maxSurfaceLand: currentFilterState.surfaceRange[1].toString(),
+      minSurfaceLand: currentFilterState.terrainRange[0].toString(), // Using terrain range for land
+      maxSurfaceLand: currentFilterState.terrainRange[1].toString(),
       minSquareMeterPrice: currentFilterState.pricePerSqmRange[0].toString(),
       maxSquareMeterPrice: currentFilterState.pricePerSqmRange[1].toString(),
       minDate: minDate.toISOString().split('T')[0],
@@ -260,7 +372,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         minSurface: '0',
         maxSurface: '400',
         minSurfaceLand: '0',
-        maxSurfaceLand: '400',
+        maxSurfaceLand: '50000',
         minSquareMeterPrice: '0',
         maxSquareMeterPrice: '40000',
         minDate: '2013-12-31',
@@ -293,7 +405,30 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
         // **NEW**: Notify PropertyList about new data
         if (onDataUpdate) {
+          console.warn('🔄 PropertyMap (initial): Calling onDataUpdate with', geojsonData.features.length, 'features');
           onDataUpdate(geojsonData.features);
+        } else {
+          console.warn('⚠️ PropertyMap (initial): onDataUpdate callback not provided!');
+        }
+
+        // **NEW**: Recalculate zone stats immediately after initial data is loaded
+        if (statsScope === 'zone') {
+          setTimeout(() => {
+            console.warn('📊 Recalculating zone stats after initial data load...');
+            console.warn('📊 Current statsScope:', statsScope);
+
+            if (mapRef.current && mapRef.current.getSource('mutations-live')) {
+              const features = mapRef.current.querySourceFeatures('mutations-live');
+              console.warn('📊 Found', features.length, 'features for initial zone stats calculation');
+
+              const calculatedStats = calculateZoneStats(features);
+              console.warn('📊 Initial zone stats calculated:', calculatedStats);
+
+              setZoneStats(calculatedStats);
+            } else {
+              console.warn('📊 ERROR: Map or source not available for initial zone stats calculation');
+            }
+          }, 200); // Increased delay to ensure map data is fully processed
         }
       }
     } catch (e) {
@@ -318,16 +453,22 @@ const PropertyMap: React.FC<MapPageProps> = ({
       let filtersToUse;
       let filterParams;
 
+      debugLog('=== FILTER STATE DEBUG ===');
+      debugLog('filterState:', filterState);
+      debugLog('currentActiveFilters:', currentActiveFilters);
+      debugLog('currentActiveFiltersRef.current:', currentActiveFiltersRef.current);
+
       if (filterState) {
         // New filters from parent component - use these and update active filters
         filtersToUse = filterState;
         setCurrentActiveFilters(filterState);
+        currentActiveFiltersRef.current = filterState;
         debugLog('Using new filter state from parent:', filterState);
         filterParams = convertFilterStateToParams(filtersToUse);
-      } else if (currentActiveFilters) {
-        // Use previously set active filters
-        filtersToUse = currentActiveFilters;
-        debugLog('Using current active filters:', currentActiveFilters);
+      } else if (currentActiveFiltersRef.current) {
+        // Use previously set active filters from ref
+        filtersToUse = currentActiveFiltersRef.current;
+        debugLog('Using current active filters from ref:', currentActiveFiltersRef.current);
         filterParams = convertFilterStateToParams(filtersToUse);
       } else {
         // No filters available - use default parameters
@@ -370,7 +511,45 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
         // **NEW**: Notify PropertyList about new data
         if (onDataUpdate) {
+          console.warn('🔄 PropertyMap (move): Calling onDataUpdate with', geojsonData.features.length, 'features');
           onDataUpdate(geojsonData.features);
+
+          // **ADDITIONAL**: Force zone stats recalculation right after property list update
+          if (statsScope === 'zone') {
+            setTimeout(() => {
+              console.warn('📊 DIRECT: Force recalculating zone stats after property list update');
+              const features = mapRef.current.querySourceFeatures('mutations-live');
+              console.warn('📊 DIRECT: Features found for calculation:', features.length);
+              const calculatedStats = calculateZoneStats(features);
+              console.warn('📊 DIRECT: New zone stats calculated:', calculatedStats);
+              setZoneStats(calculatedStats);
+            }, 500); // Wait for property list to finish updating
+          }
+        } else {
+          console.warn('⚠️ PropertyMap (move): onDataUpdate callback not provided!');
+        }
+
+        // **NEW**: Recalculate zone stats immediately after new data is loaded
+        if (statsScope === 'zone') {
+          setTimeout(() => {
+            console.warn('📊 Recalculating zone stats after new data load...');
+            console.warn('📊 Current statsScope:', statsScope);
+
+            if (mapRef.current && mapRef.current.getSource('mutations-live')) {
+              const features = mapRef.current.querySourceFeatures('mutations-live');
+              console.warn('📊 Found', features.length, 'features for zone stats recalculation');
+
+              const calculatedStats = calculateZoneStats(features);
+              console.warn('📊 Newly calculated zone stats:', calculatedStats);
+
+              setZoneStats(calculatedStats);
+              console.warn('📊 Zone stats state updated!');
+            } else {
+              console.warn('📊 ERROR: Map or source not available for zone stats recalculation');
+            }
+          }, 200); // Increased delay to ensure map data is fully processed
+        } else {
+          console.warn('📊 Not recalculating zone stats because statsScope is:', statsScope);
         }
       }
     } catch (e) {
@@ -405,9 +584,10 @@ const PropertyMap: React.FC<MapPageProps> = ({
         style: 'mapbox://styles/immoxpert/cmck83rh6001501r1dlt1fy8k',
         center: [8.73692, 41.9281], // Corsica center
         zoom: 12,
-        minZoom: 13, // Limit zoom out to exactly 1km (zoom level 13 = ~1km scale)
+        minZoom: 13, // Limit zoom out to 1km maximum (zoom level 13 = ~1km scale)
         maxZoom: 18,
         antialias: true, // Enable antialiasing for better performance
+        attributionControl: false, // Remove Mapbox attribution
       });
 
       const map = mapRef.current;
@@ -518,32 +698,44 @@ const PropertyMap: React.FC<MapPageProps> = ({
             promoteId: 'id',
           });
 
-          // Add mutation point layers
-
-          map.addLayer({
-            id: 'mutation-point-shadow',
-            type: 'circle',
-            source: 'mutations-live',
-            paint: {
-              'circle-radius': 25,
-              'circle-color': 'rgba(255, 0, 0, 0.4)', // Red shadow
-              'circle-blur': 2,
-              'circle-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0],
-            },
-          });
-
+          // Main circle layer - normal appearance
           map.addLayer({
             id: 'mutation-point',
             type: 'circle',
             source: 'mutations-live',
             paint: {
-              'circle-color': ['case', ['boolean', ['feature-state', 'hover'], false], '#ff0000', '#3b82f6'],
-              'circle-radius': ['case', ['boolean', ['feature-state', 'hover'], false], 15, 6],
-              'circle-stroke-width': ['case', ['boolean', ['feature-state', 'hover'], false], 5, 2],
-              'circle-stroke-color': '#fff',
-              'circle-stroke-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0.8],
+              'circle-color': '#7069F9',
+              'circle-radius': 4,
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff',
+              'circle-stroke-opacity': 0.9,
+              'circle-opacity': 0.8,
             },
           });
+
+          // Add a separate source for the hovered circle shadow
+          map.addSource('hovered-circle', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] },
+          });
+
+          // Shadow layer for the hovered circle only
+          map.addLayer(
+            {
+              id: 'hovered-circle-shadow',
+              type: 'circle',
+              source: 'hovered-circle',
+              paint: {
+                'circle-radius': 22, // Slightly larger than main circle for shadow effect
+                'circle-color': 'rgba(112, 105, 249, 0.99)', // Shadow matching new circle color #7069F9
+                'circle-blur': 1,
+                'circle-opacity': 1.0,
+              },
+            },
+            'mutation-point',
+          ); // Insert below main layer
+
+          // Add shadow layer for depth effect
 
           // ===================================================================
           // SECTION 4: SELECTED ADDRESS RED MARKER
@@ -579,24 +771,44 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
           // Simple hover detection - try a different approach
           let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
-          let hoveredFeatureId: string | null = null;
 
-          // Handle mouse enter for hover effects
+          // Handle mouse enter - add only the hovered circle to separate source
           map.on('mouseenter', 'mutation-point', e => {
             if (e.features && e.features.length > 0) {
               const feature = e.features[0];
-              if (feature.id) {
-                hoveredFeatureId = feature.id as string;
-                map.setFeatureState({ source: 'mutations-live', id: feature.id }, { hover: true });
+
+              // Add the hovered feature to the separate source
+              const hoveredFeatureData: GeoJSON.FeatureCollection = {
+                type: 'FeatureCollection',
+                features: [feature as GeoJSON.Feature],
+              };
+
+              // Update the hovered-circle source with just this feature
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+              (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+
+              map.getCanvas().style.cursor = 'pointer';
+
+              // Notify PropertyList about hover
+              if (onMapHover && feature.properties?.idparcelle) {
+                onMapHover(parseInt(feature.properties.idparcelle, 10));
               }
             }
           });
 
-          // Handle mouse leave for hover effects
-          map.on('mouseleave', 'mutation-point', e => {
-            if (hoveredFeatureId) {
-              map.setFeatureState({ source: 'mutations-live', id: hoveredFeatureId }, { hover: false });
-              hoveredFeatureId = null;
+          map.on('mouseleave', 'mutation-point', () => {
+            // Clear the hovered-circle source (remove all features)
+            const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+              type: 'FeatureCollection',
+              features: [],
+            };
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+            (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+
+            map.getCanvas().style.cursor = '';
+
+            if (onMapHover) {
+              onMapHover(null);
             }
           });
 
@@ -685,12 +897,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       const firstMutation = mutations.length > 0 ? mutations[0] : null;
 
                       if (firstMutation) {
-                        // Create a function to render mutation data
-                        const lastFiveMutations = mutations.slice(0, 5);
+                        // Create a function to render mutation data - show ALL mutations, not just 5
+                        const allMutations = mutations; // Remove the slice(0, 5) limit
                         let currentIndex = 0;
 
                         const renderMutation = index => {
-                          const mutation = lastFiveMutations[index];
+                          const mutation = allMutations[index];
                           const address = firstAddress.adresse_complete || '';
                           const propertyTypeLabel = mutation.type_groupe || 'Default';
                           const rooms = mutation.nbpprinc || 0;
@@ -710,101 +922,101 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           const detailsText = details.length > 0 ? details.join(' – ') : 'N/A';
 
                           return `
-            <div style="
-              background: #fff;
-              padding: 1px;
-              font-family: 'Maven Pro', sans-serif;
-              max-width: 450px;
-              width: 100%;
-              position: relative;
-              border-radius: 16px;
-            ">
-              <!-- Address -->
-              <div style="font-weight: 700; font-size: 16px;width:75%; margin-bottom: 10px; color: #1a1a1a;">
-                  ${address.toUpperCase() || ''}
-              </div>
+             <div style="
+               background: #fff;
+               padding: 1px;
+               font-family: 'Maven Pro', sans-serif;
+               max-width: 450px;
+               width: 100%;
+               position: relative;
+               border-radius: 16px;
+             ">
+               <!-- Address -->
+               <div style="font-weight: 700; font-size: 16px;width:75%; margin-bottom: 10px; color: #1a1a1a;">
+                   ${address.toUpperCase() || ''}
+               </div>
 
-              <!-- Property Type, Rooms, Surface, Terrain -->
-              <div style="font-size: 16px;width:70%; color: #333;">
-                <span style="color: ${getPropertyTypeColor(propertyTypeLabel)}; font-weight: 900; margin-bottom: 10px;">
-                  ${getShortTypeName(propertyTypeLabel)}
-                </span>
-                  <span style="margin-top: 10px;">${detailsText}</span>
-              </div>
+               <!-- Property Type, Rooms, Surface, Terrain -->
+               <div style="font-size: 16px;width:70%; color: #333;">
+                 <span style="color: ${getPropertyTypeColor(propertyTypeLabel)}; font-weight: 900; margin-bottom: 10px;">
+                   ${getShortTypeName(propertyTypeLabel)}
+                 </span>
+                   <span style="margin-top: 10px;">${detailsText}</span>
+               </div>
 
-              <!-- Price Box -->
-              <div style="
-                position: absolute;
-                top: 0px;
-                right: 0px;
-                border: 1px solid #e5e7eb;
-                padding: 10px 14px;
-                border-radius: 12px;
-                text-align: right;
-                min-width: 110px;
-              ">
-                <div style="color: #241c83; font-weight: 800; font-size: 18px;">${priceFormatted}</div>
-                <div style="color: #888; font-size: 14px;">${pricePerSqm}</div>
-              </div>
+               <!-- Price Box -->
+               <div style="
+                 position: absolute;
+                 top: 0px;
+                 right: 0px;
+                 border: 1px solid #e5e7eb;
+                 padding: 10px 14px;
+                 border-radius: 12px;
+                 text-align: right;
+                 min-width: 110px;
+               ">
+                 <div style="color: #241c83; font-weight: 800; font-size: 18px;">${priceFormatted}</div>
+                 <div style="color: #888; font-size: 14px;">${pricePerSqm}</div>
+               </div>
 
-              <!-- Sold Date -->
-              <div style="
-                margin-top: 16px;
-                display: inline-block;
-                border: 1px solid #e5e7eb;
-                padding: 10px 14px;
-                border-radius: 12px;
-                font-size: 14px;
-                color: #444;
-              ">
-                  Vendu le <strong style="color: #000;">${formatFrenchDate(soldDate || '')}</strong>
-              </div>
-              
-              ${
-                lastFiveMutations.length > 1
-                  ? `
-              <!-- Navigation -->
-              <div style="
-                margin-top: 8px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 4px;
-                padding: 4px;
-                
-              ">
-                <button class="prev-btn" style="
-                  padding: 4px 8px;
-                  border: 1px solid #e5e7eb;
-                  border-radius: 6px;
-                  background: white;
-                  color: #666;
-                  cursor: pointer;
-                  font-size: 12px;
-                  hover:background: #f9fafb;
-                ">&lt;</button>
-                <span style="
-                  font-size: 12px;
-                  color: #3b82f6;
-                  font-weight: 500;
-                  padding: 0 12px;
-                ">${index + 1} / ${lastFiveMutations.length}</span>
-                <button class="next-btn" style="
-                  padding: 4px 8px;
-                  border: 1px solid #e5e7eb;
-                  border-radius: 6px;
-                  background: white;
-                  color: #666;
-                  cursor: pointer;
-                  font-size: 12px;
-                  hover:background: #f9fafb;
-                ">&gt;</button>
-              </div>
-              `
-                  : ''
-              }
-            </div>
-          `;
+               <!-- Sold Date -->
+               <div style="
+                 margin-top: 16px;
+                 display: inline-block;
+                 border: 1px solid #e5e7eb;
+                 padding: 10px 14px;
+                 border-radius: 12px;
+                 font-size: 14px;
+                 color: #444;
+               ">
+                   Vendu le <strong style="color: #000;">${formatFrenchDate(soldDate || '')}</strong>
+               </div>
+               
+               ${
+                 allMutations.length > 1
+                   ? `
+               <!-- Navigation -->
+               <div style="
+                 margin-top: 8px;
+                 display: flex;
+                 align-items: center;
+                 justify-content: center;
+                 gap: 4px;
+                 padding: 4px;
+                 
+               ">
+                 <button class="prev-btn" style="
+                   padding: 4px 8px;
+                   border: 1px solid #e5e7eb;
+                   border-radius: 6px;
+                   background: white;
+                   color: #666;
+                   cursor: pointer;
+                   font-size: 12px;
+                   hover:background: #f9fafb;
+                 ">&lt;</button>
+                 <span style="
+                   font-size: 12px;
+                   color: #3b82f6;
+                   font-weight: 500;
+                   padding: 0 12px;
+                 ">${index + 1} / ${allMutations.length}</span>
+                 <button class="next-btn" style="
+                   padding: 4px 8px;
+                   border: 1px solid #e5e7eb;
+                   border-radius: 6px;
+                   background: white;
+                   color: #666;
+                   cursor: pointer;
+                   font-size: 12px;
+                   hover:background: #f9fafb;
+                 ">&gt;</button>
+               </div>
+               `
+                   : ''
+               }
+             </div>
+           `;
                         };
 
                         const popupContent = renderMutation(currentIndex);
@@ -830,7 +1042,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                             if (prevBtn) {
                               prevBtn.addEventListener('click', event => {
                                 event.stopPropagation();
-                                currentIndex = currentIndex > 0 ? currentIndex - 1 : lastFiveMutations.length - 1;
+                                currentIndex = currentIndex > 0 ? currentIndex - 1 : allMutations.length - 1;
                                 hoverPopup.setHTML(renderMutation(currentIndex));
                                 addNavigationListeners(); // Re-add listeners after HTML update
                               });
@@ -839,7 +1051,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                             if (nextBtn) {
                               nextBtn.addEventListener('click', event => {
                                 event.stopPropagation();
-                                currentIndex = currentIndex < lastFiveMutations.length - 1 ? currentIndex + 1 : 0;
+                                currentIndex = currentIndex < allMutations.length - 1 ? currentIndex + 1 : 0;
                                 hoverPopup.setHTML(renderMutation(currentIndex));
                                 addNavigationListeners(); // Re-add listeners after HTML update
                               });
@@ -848,7 +1060,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         };
 
                         // Add navigation event listeners if multiple mutations
-                        if (lastFiveMutations.length > 1) {
+                        if (allMutations.length > 1) {
                           addNavigationListeners();
                         }
 
@@ -891,8 +1103,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         )
                         .addTo(map);
                     }
-                  } catch (error) {
-                    debugLog('Error parsing addresses JSON:', error);
+                  } catch (err) {
+                    debugLog('Error parsing addresses JSON:', err);
                     // Fallback popup on error
                     hoverPopup = new mapboxgl.Popup({
                       closeButton: false,
@@ -905,7 +1117,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         `
                         <div style="padding: 10px; background: #ff0000; color: white; border-radius: 4px;">
                           <strong>Error Parsing Data</strong><br>
-                          ${error.message}
+                          ${err.message}
                         </div>
                       `,
                       )
@@ -1012,8 +1224,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       .setHTML(popupContent)
                       .addTo(map);
                   }
-                } catch (error) {
-                  debugLog('Error parsing addresses JSON in click handler:', error);
+                } catch (err) {
+                  debugLog('Error parsing addresses JSON in click handler:', err);
                 }
               }
             }
@@ -1025,19 +1237,19 @@ const PropertyMap: React.FC<MapPageProps> = ({
           const createCustomScaleBar = () => {
             const scaleBarContainer = document.createElement('div');
             scaleBarContainer.style.cssText = `
-              position: absolute;
-              z-index: 10;
-              box-shadow: none;
-              border: none;
-              inset: 10px 10px auto auto;
-              background-color: rgb(255, 255, 255);
-              opacity: 0.9;
-              display: flex;
-              flex-direction: row;
-              align-items: baseline;
-              padding: 0px 6px;
-              border-radius: 0.2rem;
-            `;
+               position: absolute;
+               z-index: 10;
+               box-shadow: none;
+               border: none;
+               inset: auto 10px 10px auto;
+               background-color: rgb(255, 255, 255);
+               opacity: 0.9;
+               display: flex;
+               flex-direction: row;
+               align-items: baseline;
+               padding: 0px 6px;
+               border-radius: 0.2rem;
+             `;
 
             const updateScaleBar = () => {
               const bounds = map.getBounds();
@@ -1058,36 +1270,41 @@ const PropertyMap: React.FC<MapPageProps> = ({
               let niceDistance = 1;
               let unit = 'km';
 
-              if (scaleDistance >= 0.9) {
-                // If we're close to 1km, show 1km
-                niceDistance = 1;
-                unit = 'km';
-              } else if (scaleDistance >= 0.5) {
-                // Show 0.5km or 1km
-                niceDistance = scaleDistance >= 0.75 ? 1 : 0.5;
-                unit = 'km';
-              } else if (scaleDistance >= 0.1) {
-                // Show 0.1km, 0.2km, 0.5km
-                if (scaleDistance >= 0.4) {
-                  niceDistance = 0.5;
-                } else if (scaleDistance >= 0.15) {
-                  niceDistance = 0.2;
+              if (scaleDistance >= 1) {
+                // If we're at 1km or more, show in km
+                if (scaleDistance >= 2) {
+                  niceDistance = Math.round(scaleDistance);
                 } else {
-                  niceDistance = 0.1;
+                  niceDistance = 1;
                 }
                 unit = 'km';
-              } else if (scaleDistance >= 0.01) {
-                // Show in meters
-                if (scaleDistance >= 0.05) {
-                  niceDistance = 100;
-                } else if (scaleDistance >= 0.02) {
-                  niceDistance = 50;
-                } else {
-                  niceDistance = 20;
-                }
-                unit = 'm';
               } else {
-                niceDistance = 10;
+                // Show in meters for distances less than 1km
+                if (scaleDistance >= 0.9) {
+                  niceDistance = 900;
+                } else if (scaleDistance >= 0.8) {
+                  niceDistance = 800;
+                } else if (scaleDistance >= 0.7) {
+                  niceDistance = 700;
+                } else if (scaleDistance >= 0.6) {
+                  niceDistance = 600;
+                } else if (scaleDistance >= 0.5) {
+                  niceDistance = 500;
+                } else if (scaleDistance >= 0.4) {
+                  niceDistance = 400;
+                } else if (scaleDistance >= 0.3) {
+                  niceDistance = 300;
+                } else if (scaleDistance >= 0.2) {
+                  niceDistance = 200;
+                } else if (scaleDistance >= 0.1) {
+                  niceDistance = 100;
+                } else if (scaleDistance >= 0.05) {
+                  niceDistance = 50;
+                } else if (scaleDistance >= 0.02) {
+                  niceDistance = 20;
+                } else {
+                  niceDistance = 10;
+                }
                 unit = 'm';
               }
 
@@ -1139,8 +1356,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           const customScaleBar = createCustomScaleBar();
           map.getContainer().appendChild(customScaleBar);
 
-          // Add navigation control
-          map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+          // Navigation controls will be added manually in JSX for better positioning
 
           // Load initial data after a short delay to ensure map is fully ready
           setTimeout(() => {
@@ -1150,11 +1366,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
           // Debounced function to prevent multiple rapid API calls
           const debouncedDataLoad = debounce(() => {
             debugLog('Debounced data load triggered');
-            if (currentActiveFilters) {
-              loadMutationsData();
-            } else {
-              loadInitialData();
-            }
+            // Always use loadMutationsData which will handle both filtered and unfiltered cases
+            loadMutationsData();
           }, 300);
 
           // Add event listeners for map movement
@@ -1166,6 +1379,30 @@ const PropertyMap: React.FC<MapPageProps> = ({
               const center = map.getCenter();
               onMapMove([center.lng, center.lat]);
             }
+
+            // **NEW**: Recalculate zone stats if needed
+            recalculateZoneStatsIfNeeded();
+
+            // ✅ MODIFIER cette partie dans votre useEffect existant
+            const updateLocationName = async () => {
+              try {
+                const center = map.getCenter();
+                if (!center) return;
+
+                const locationData = await getINSEECodeFromCoords(center.lng, center.lat);
+
+                if (locationData) {
+                  setCurrentCity(locationData.city);
+                  setCurrentINSEE(locationData.insee);
+                  // ✅ SUPPRIMER cette ligne - les stats se chargent automatiquement via le useEffect ci-dessus
+                  // await fetchPropertyStatsByINSEE(locationData.insee);
+                }
+              } catch (err) {
+                setError('Erreur géocodage');
+              }
+            };
+
+            updateLocationName();
           });
 
           map.on('zoomend', () => {
@@ -1179,18 +1416,31 @@ const PropertyMap: React.FC<MapPageProps> = ({
           });
 
           debugLog('Map event handlers set up successfully');
-        } catch (error) {
-          debugLog('Error during map setup:', error);
-          setMapError(`Map setup error: ${error}`);
+        } catch (err) {
+          debugLog('Error during map setup:', err);
+          setMapError(`Map setup error: ${err}`);
         }
       });
-    } catch (error) {
-      debugLog('Error creating map:', error);
-      setMapError(`Map creation error: ${error}`);
+    } catch (err) {
+      debugLog('Error creating map:', err);
+      setMapError(`Map creation error: ${err}`);
     }
   }, []);
 
   // Event handlers are now set up in the map load event
+
+  // Load initial data when map is first loaded
+  useEffect(() => {
+    if (mapLoaded && !currentActiveFilters && !filterState) {
+      debugLog('Map loaded, loading initial data with defaults');
+      loadInitialData();
+    }
+  }, [mapLoaded]);
+
+  // Debug: Track currentActiveFilters changes
+  useEffect(() => {
+    debugLog('currentActiveFilters changed:', currentActiveFilters);
+  }, [currentActiveFilters]);
 
   // Trigger data reload when filter state changes
   // Trigger data reload when filter state changes
@@ -1201,12 +1451,147 @@ const PropertyMap: React.FC<MapPageProps> = ({
         // The loadMutationsData function will handle setting currentActiveFilters
         loadMutationsData();
       } else if (!currentActiveFilters) {
-        // Only load with defaults if no active filters are set
-        debugLog('No filters available, loading with defaults or skipping');
-        // You can either skip or load with default filters here
+        // Load initial data with default parameters when no filters are set
+        debugLog('No filters available, loading initial data with defaults');
+        loadInitialData();
       }
     }
   }, [filterState, mapLoaded]);
+
+  // ✅ NOUVEAU - Simple appel API basé sur currentINSEE
+  useEffect(() => {
+    if (!currentINSEE || !showStatsPanel) return;
+
+    const fetchStatsByINSEE = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // ✅ Appel à votre nouvelle API
+        const response = await axios.get('/api/mutations/stats/by-city', {
+          params: { codeInsee: currentINSEE },
+        });
+
+        setPropertyStats(response.data);
+      } catch (err) {
+        console.error('Erreur récupération statistiques:', err);
+        setError('Erreur chargement statistiques');
+        setPropertyStats([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStatsByINSEE();
+  }, [currentINSEE, showStatsPanel]);
+
+  // **NEW**: Calculate zone statistics when scope is "zone" and map has data
+  useEffect(() => {
+    if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
+      // Small delay to ensure map data is loaded
+      setTimeout(() => {
+        console.warn('📊 Calculating zone statistics from current map data...');
+
+        const features = mapRef.current.querySourceFeatures('mutations-live');
+        console.warn('📊 Found', features.length, 'features on map for zone stats');
+
+        const calculatedStats = calculateZoneStats(features);
+        console.warn('📊 Calculated zone stats:', calculatedStats);
+
+        setZoneStats(calculatedStats);
+      }, 500); // 500ms delay to ensure data is loaded
+    }
+  }, [statsScope, mapLoaded]); // Recalculate when scope changes or map loads
+
+  // **NEW**: Recalculate zone stats when map moves (if zone scope is selected)
+  const recalculateZoneStatsIfNeeded = useCallback(() => {
+    console.warn('🔄 recalculateZoneStatsIfNeeded called, statsScope:', statsScope);
+    if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
+      setTimeout(() => {
+        console.warn('📊 FORCE Recalculating zone stats after map move...');
+        const features = mapRef.current.querySourceFeatures('mutations-live');
+        console.warn('📊 FORCE Found', features.length, 'features for recalculation');
+        const calculatedStats = calculateZoneStats(features);
+        console.warn('📊 FORCE Recalculated zone stats after map move:', calculatedStats);
+        setZoneStats(calculatedStats);
+      }, 300); // Longer delay to ensure data is fully loaded
+    } else {
+      console.warn('📊 Not recalculating: statsScope =', statsScope, ', map ready =', !!mapRef.current);
+    }
+  }, [statsScope]);
+
+  // **NEW**: Recalculate zone stats when data version changes (triggered by PropertyList)
+  useEffect(() => {
+    if (statsScope === 'zone' && dataVersion !== undefined && mapRef.current && mapRef.current.getSource('mutations-live')) {
+      console.warn('🚀 TRIGGERED: Zone stats recalculation by dataVersion change:', dataVersion);
+
+      // Small delay to ensure map rendering is complete
+      setTimeout(() => {
+        const features = mapRef.current.querySourceFeatures('mutations-live');
+        console.warn('🚀 TRIGGERED: Found', features.length, 'features for zone stats');
+
+        const calculatedStats = calculateZoneStats(features);
+        console.warn('🚀 TRIGGERED: Calculated new zone stats:', calculatedStats);
+
+        setZoneStats(calculatedStats);
+        console.warn('🚀 TRIGGERED: Zone stats updated successfully!');
+      }, 300);
+    } else {
+      console.warn('🚀 NOT TRIGGERED: statsScope =', statsScope, ', dataVersion =', dataVersion, ', map ready =', !!mapRef.current);
+    }
+  }, [dataVersion, statsScope]); // Trigger when dataVersion or statsScope changes
+
+  // **NEW**: Handle property card hover to highlight corresponding point on map
+  useEffect(() => {
+    if (!mapRef.current || !mapRef.current.getSource('mutations-live')) return;
+
+    // Clear existing hover effect first
+    const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [],
+    };
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+
+    if (hoveredProperty) {
+      console.warn('🎯 PropertyMap: Looking for hovered property:', hoveredProperty.address, hoveredProperty.coordinates);
+
+      // Find the corresponding feature on the map by matching coordinates
+      const features = mapRef.current.querySourceFeatures('mutations-live');
+      console.warn('🎯 PropertyMap: Found', features.length, 'map features to check');
+
+      for (const feature of features) {
+        if (feature.geometry && feature.geometry.type === 'Point') {
+          const featureCoords = feature.geometry.coordinates;
+          const propertyCoords = hoveredProperty.coordinates;
+
+          // Check if coordinates match exactly (they should be exactly the same)
+          const coordsMatch = featureCoords[0] === propertyCoords[0] && featureCoords[1] === propertyCoords[1];
+
+          console.warn('🔍 Comparing coordinates:', {
+            featureCoords: [featureCoords[0], featureCoords[1]],
+            propertyCoords: [propertyCoords[0], propertyCoords[1]],
+            exactMatch: coordsMatch,
+          });
+
+          if (coordsMatch) {
+            console.warn('🎯 PropertyMap: Found exact coordinate match!');
+
+            // Show blue box shadow for this feature
+            const hoveredFeatureData: GeoJSON.FeatureCollection = {
+              type: 'FeatureCollection',
+              features: [feature as GeoJSON.Feature],
+            };
+
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+            (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+            console.warn('🎯 PropertyMap: Applied blue shadow to map point!');
+            break; // Exit early once found
+          }
+        }
+      }
+    }
+  }, [hoveredProperty]);
 
   // Selected feature effect (unchanged but with debug logging)
   useEffect(() => {
@@ -1359,7 +1744,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
   }
 
   return (
-    <div className="relative h-screen w-full">
+    <div className="relative h-full w-full">
       {!mapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
           <div className="text-center">
@@ -1391,6 +1776,73 @@ const PropertyMap: React.FC<MapPageProps> = ({
         )}
       </button>
 
+      {/* Custom Zoom Controls */}
+      <div className="absolute top-20 left-4 z-30 flex flex-col gap-1">
+        {/* Zoom In Button */}
+        <button
+          onClick={() => {
+            if (mapRef.current) {
+              mapRef.current.zoomIn();
+            }
+          }}
+          className="bg-white text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-sm border border-gray-200"
+          title="Zoom in"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+        </button>
+
+        {/* Zoom Out Button */}
+        <button
+          onClick={() => {
+            if (mapRef.current) {
+              mapRef.current.zoomOut();
+            }
+          }}
+          className="bg-white text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-sm border border-gray-200"
+          title="Zoom out"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
+          </svg>
+        </button>
+
+        {/* Reset View Button */}
+        <button
+          onClick={() => {
+            if (mapRef.current) {
+              // Reset to search coordinates or default view
+              if (searchParams?.coordinates) {
+                mapRef.current.flyTo({
+                  center: searchParams.coordinates,
+                  zoom: 16,
+                  duration: 1000,
+                });
+              } else {
+                // Default to Paris if no search coordinates
+                mapRef.current.flyTo({
+                  center: [2.3522, 48.8566],
+                  zoom: 12,
+                  duration: 1000,
+                });
+              }
+            }
+          }}
+          className="bg-white text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-sm border border-gray-200"
+          title="Reset to search location"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
+      </div>
+
       {/* Stats Panel */}
       {showStatsPanel && (
         <div
@@ -1404,12 +1856,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
               <div>
                 <select
                   id="stats-scope"
+                  value={statsScope}
+                  onChange={e => setStatsScope(e.target.value as 'commune' | 'zone')}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer min-w-[120px]"
                   style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
                 >
                   <option value="commune">Commune</option>
-                  <option value="quartier">Quartier</option>
-                  <option value="zone">Zone affichée</option>
+                  Statistiques Marché <option value="zone">Zone affichée</option>
                 </select>
               </div>
             </div>
@@ -1418,16 +1871,25 @@ const PropertyMap: React.FC<MapPageProps> = ({
           <div className="h-px bg-gray-200 w-full mb-3" />
 
           {(() => {
-            const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
-            const getIndigoShade = (idx: number) => ['#6929CF', '#121852', '#2971CF', '#862CC7', '#381EB0'][idx];
+            // ✅ Adaptation pour les nouvelles données de l'API
+            const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Bien Multiple'];
+            const getIndigoShade = idx => ['bg-indigo-600', 'bg-violet-500', 'bg-blue-400', 'bg-blue-600'][idx];
 
-            const normalizedStats = propertyTypeNames.map((shortName, index) => {
-              const match = propertyStats.find(item => getStatsShortTypeName(item.typeBien) === shortName);
+            // **NEW**: Choose data source based on selected scope
+            const currentStatsData = statsScope === 'commune' ? propertyStats : zoneStats;
+            console.warn('📊 Using stats data:', { statsScope, currentStatsData });
+
+            const normalizedStats = propertyTypeNames.map((typeName, index) => {
+              // ✅ Recherche directe par typeGroupe depuis l'API ou zone data
+              const match = currentStatsData.find(item => {
+                return item.typeGroupe === typeName;
+              });
+
               return {
-                typeBien: shortName,
-                nombre: match?.nombre || 0,
-                prixMoyen: match?.prixMoyen || 0,
-                prixM2Moyen: match?.prixM2Moyen || 0,
+                typeBien: typeName,
+                nombre: match?.nombreMutations || match?.nombre || 0,
+                prixMoyen: match?.prixMedian || match?.prixMoyen || 0,
+                prixM2Moyen: match?.prixM2Median || match?.prixM2Moyen || 0,
               };
             });
 
@@ -1438,11 +1900,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     <button
                       key={stat.typeBien}
                       className={`flex-1 py-2 px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
-                        activePropertyType === index ? 'text-white' : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
+                        activePropertyType === index ? `${getIndigoShade(index)} text-white` : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
                       }`}
-                      style={{
-                        backgroundColor: activePropertyType === index ? getIndigoShade(index) : undefined,
-                      }}
                       onClick={() => setActivePropertyType(index)}
                     >
                       {stat.typeBien}
@@ -1452,24 +1911,24 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                 {isLoading ? (
                   <div className="flex justify-center py-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-500 border-t-transparent" />
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent" />
                   </div>
-                ) : statsError ? (
-                  <div className="text-red-500 text-center py-1 text-xs">⚠️ {statsError}</div>
+                ) : error ? (
+                  <div className="text-red-500 text-center py-1 text-xs">⚠️ {error}</div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Nombre de ventes</p>
+                      <p className="text-xs text-gray-600 mb-1">Number of sales</p>
                       <p className="text-base font-semibold text-gray-900">{formatNumber(normalizedStats[activePropertyType]?.nombre)}</p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Prix Médian</p>
+                      <p className="text-xs text-gray-600 mb-1">Median Price</p>
                       <p className="text-base font-semibold text-gray-900">
                         {formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€
                       </p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Prix au m² Médian</p>
+                      <p className="text-xs text-gray-600 mb-1">Median Price per m²</p>
                       <p className="text-base font-semibold text-gray-900">
                         {formatNumber(normalizedStats[activePropertyType]?.prixM2Moyen)}€
                       </p>
@@ -1479,13 +1938,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
               </>
             );
           })()}
-        </div>
-      )}
-
-      {debugging && (
-        <div className="absolute bottom-4 left-4 bg-white p-2 rounded shadow text-xs">
-          Map Status: {mapLoaded ? 'Loaded' : 'Loading...'}
-          {mapError && <div className="text-red-500">Error: {mapError}</div>}
         </div>
       )}
     </div>

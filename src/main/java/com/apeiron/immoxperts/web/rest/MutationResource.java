@@ -4,10 +4,8 @@ import com.apeiron.immoxperts.repository.MutationCustomRepository;
 import com.apeiron.immoxperts.repository.MutationRepository;
 import com.apeiron.immoxperts.service.MutationService;
 import com.apeiron.immoxperts.service.PropertyStatisticsService;
-import com.apeiron.immoxperts.service.dto.CommuneStatsDTO;
-import com.apeiron.immoxperts.service.dto.MutationDTO;
-import com.apeiron.immoxperts.service.dto.MutationSearchDTO;
-import com.apeiron.immoxperts.service.dto.PropertyStatisticsDTO;
+import com.apeiron.immoxperts.service.dto.*;
+import com.apeiron.immoxperts.service.impl.MutationServiceImpl;
 import com.apeiron.immoxperts.web.rest.errors.BadRequestAlertException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
@@ -51,17 +49,20 @@ public class MutationResource {
     @Autowired
     private final MutationCustomRepository mutationCustomRepository;
 
+    private final MutationServiceImpl mutationServiceImp;
     private final MutationService mutationService;
     private final MutationRepository mutationRepository;
     private final PropertyStatisticsService propertyStatisticsService;
 
     public MutationResource(
         MutationCustomRepository mutationCustomRepository,
+        MutationServiceImpl mutationServiceImp,
         MutationService mutationService,
         MutationRepository mutationRepository,
         PropertyStatisticsService propertyStatisticsService
     ) {
         this.mutationCustomRepository = mutationCustomRepository;
+        this.mutationServiceImp = mutationServiceImp;
         this.mutationService = mutationService;
         this.mutationRepository = mutationRepository;
         this.propertyStatisticsService = propertyStatisticsService;
@@ -274,5 +275,14 @@ public class MutationResource {
         Page<MutationDTO> page = mutationService.searchMutationsByStreetAndCommune(street, commune, pageable);
         HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
         return ResponseEntity.ok().headers(headers).body(page);
+    }
+
+    @GetMapping("/stats/by-city")
+    public ResponseEntity<List<StatsByCityDTO>> getStatsByCity(@RequestParam String codeInsee) {
+        LOG.debug("REST request to get stats by city for code INSEE: {}", codeInsee);
+
+        List<StatsByCityDTO> stats = mutationServiceImp.getStatsByCodeInsee(codeInsee);
+
+        return ResponseEntity.ok(stats);
     }
 }
