@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import PropertyMap from '../features/map/PropertyMap';
 import PropertyCard from 'app/features/property/PropertyCard';
+import PropertyCardClick from 'app/features/property/PropertyCardClick';
 import { FilterState } from '../types/filters';
 
 // ===================================================================
@@ -57,6 +59,18 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   const [currentActiveFilters, setCurrentActiveFilters] = useState<FilterState | null>(null);
   const [isLoadingProperties, setIsLoadingProperties] = useState(false);
   const [dataVersion, setDataVersion] = useState(0); // Force re-render
+
+  // New state for address selection and similar properties
+  const [currentAddress, setCurrentAddress] = useState<{ address: string; city: string } | null>(null);
+  const [similarProperties, setSimilarProperties] = useState<Property[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Animation variants for sidebar
+  const sidebarVariants = {
+    hidden: { x: -100, opacity: 0 },
+    visible: { x: 0, opacity: 1 },
+    exit: { x: -100, opacity: 0 },
+  };
 
   // --- DERIVED STATE (MEMOIZED) ---
   const sortedProperties = useMemo(() => {
@@ -210,6 +224,17 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   // --- EVENT HANDLERS ---
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
+
+    // Find similar properties for this property
+    const similar = properties.filter(
+      prop =>
+        prop.id !== property.id &&
+        (prop.address.toLowerCase().includes(property.address.toLowerCase()) ||
+          prop.city.toLowerCase().includes(property.city.toLowerCase())),
+    );
+    setSimilarProperties(similar);
+    setCurrentIndex(0);
+
     if (window.innerWidth < 1024) {
       setActiveView('list');
     }
@@ -217,6 +242,59 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
   const closeSidebar = () => {
     setSelectedProperty(null);
+  };
+
+  const handleAddressSelect = (address: { address: string; city: string; mutations?: any[] }) => {
+    setCurrentAddress(address);
+    setSelectedProperty(null);
+
+    // If mutations are provided directly from the map, convert them to Property format
+    if (address.mutations && Array.isArray(address.mutations)) {
+      const mutationProperties: Property[] = address.mutations.map((mutation: any, index: number) => ({
+        id: Date.now() + index,
+        address: address.address,
+        city: address.city,
+        numericPrice: mutation.valeur || 0,
+        numericSurface: mutation.sbati || 0,
+        price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
+        surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
+        type: mutation.type_groupe || 'Type inconnu',
+        soldDate: mutation.date ? new Date(mutation.date).toLocaleDateString('fr-FR') : '',
+        pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
+        rooms: mutation.nbpprinc || '',
+        terrain: mutation.sterr ? `${mutation.sterr.toLocaleString('fr-FR')} m²` : '',
+        coordinates: [0, 0], // Not needed for display
+        rawData: {
+          terrain: mutation.sterr || 0,
+          mutationType: mutation.id?.toString() || '',
+          department: address.city,
+        },
+      }));
+
+      setSimilarProperties(mutationProperties);
+      setCurrentIndex(0);
+      return;
+    }
+
+    // Fallback: Find properties with mutations for this specific address
+    const addressProperties = properties.filter(
+      prop => prop.address.toLowerCase() === address.address.toLowerCase() && prop.city.toLowerCase() === address.city.toLowerCase(),
+    );
+
+    // If no exact matches, find similar properties in the same city
+    const foundProperties =
+      addressProperties.length > 0
+        ? addressProperties
+        : properties.filter(prop => prop.city.toLowerCase().includes(address.city.toLowerCase())).slice(0, 5); // Limit to 5 similar properties
+
+    setSimilarProperties(foundProperties);
+    setCurrentIndex(0);
+  };
+
+  const closeAddressSidebar = () => {
+    setCurrentAddress(null);
+    setSimilarProperties([]);
+    setCurrentIndex(0);
   };
 
   // --- RENDER ---
@@ -250,41 +328,152 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
         style={{ width: window.innerWidth >= 1024 ? '480px' : '100%' }}
       >
         {selectedProperty ? (
-          // --- Detail View ---
-          <div className="p-4 flex-1 overflow-y-auto">
-            <button onClick={closeSidebar} className="text-blue-600 hover:underline text-sm mb-4">
-              ← Retour à la liste
-            </button>
-            <h2 className="text-xl font-bold text-gray-800">{selectedProperty.address}</h2>
-            <p className="text-md text-gray-600">{selectedProperty.city}</p>
-            <div className="mt-4 grid grid-cols-2 gap-4 text-center">
-              <div className="bg-gray-100 p-3 rounded-lg">
-                <div className="text-sm text-gray-500">Prix de vente</div>
-                <div className="font-semibold text-lg">{selectedProperty.price}</div>
-              </div>
-              <div className="bg-gray-100 p-3 rounded-lg">
-                <div className="text-sm text-gray-500">Surface</div>
-                <div className="font-semibold text-lg">{selectedProperty.surface || 'Non spécifiée'}</div>
-              </div>
-              <div className="bg-gray-100 p-3 rounded-lg">
-                <div className="text-sm text-gray-500">Prix/m²</div>
-                <div className="font-semibold text-lg">{selectedProperty.pricePerSqm || 'Non spécifié'}</div>
-              </div>
-              <div className="bg-gray-100 p-3 rounded-lg">
-                <div className="text-sm text-gray-500">Pièces</div>
-                <div className="font-semibold text-lg">{selectedProperty.rooms || 'Non spécifié'}</div>
-              </div>
-            </div>
-            {selectedProperty.terrain && (
-              <div className="mt-4 text-center">
-                <div className="bg-gray-100 p-3 rounded-lg">
-                  <div className="text-sm text-gray-500">Terrain</div>
-                  <div className="font-semibold text-lg">{selectedProperty.terrain}</div>
+          <motion.div
+            className="h-full w-full bg-white overflow-hidden border-r border-gray-200 rounded-lg"
+            variants={sidebarVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            key={`property-details-${selectedProperty.id}`}
+          >
+            <div className="w-full h-full overflow-y-auto custom-scroll">
+              <div className="p-4 space-y-4">
+                <div className="pt-2">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2 p-2 w-full">
+                      {similarProperties[currentIndex] ? (
+                        <motion.div
+                          key={`similar-property-${currentIndex}-${similarProperties[currentIndex]?.id || 'none'}`}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <PropertyCardClick
+                            property={similarProperties[currentIndex]}
+                            onClick={() => handlePropertySelect(similarProperties[currentIndex])}
+                            compact
+                          />
+                        </motion.div>
+                      ) : (
+                        <div className="p-4 text-center text-gray-500">Aucune propriété à afficher</div>
+                      )}
+
+                      {similarProperties.length > 0 && (
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => setCurrentIndex(prev => (prev > 0 ? prev - 1 : similarProperties.length - 1))}
+                            className="p-1 hover:text-blue-600"
+                          >
+                            &lt;
+                          </button>
+                          <span className="text-s px-4 text-blue-600 font-medium">
+                            {currentIndex + 1} / {similarProperties.length}
+                          </span>
+                          <button
+                            onClick={() => setCurrentIndex(prev => (prev < similarProperties.length - 1 ? prev + 1 : 0))}
+                            className="p-1 hover:text-blue-600"
+                          >
+                            &gt;
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="relative flex items-center py-2">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-gray-200"></div>
+                        </div>
+                        <span className="relative bg-white pr-4 text-gray-900 font-semibold text-sm">En savoir plus</span>
+                      </div>
+
+                      <div className="flex flex-col gap-2 text-sm">
+                        <p>Générez une analyse à cette adresse pour obtenir :</p>
+                        <ul className="list-inside list-disc">
+                          <li>L'estimation de la valeur du bien</li>
+                          <li>L'analyse cadastrale</li>
+                          <li>Une présentation des ventes réalisées à proximité</li>
+                          <li>L'évolution des prix dans ce quartier</li>
+                          <li>Une analyse du quartier</li>
+                        </ul>
+                      </div>
+                    </div>
+                    <button onClick={closeSidebar} className="text-gray-400 hover:text-gray-700 text-3xl">
+                      &times;
+                    </button>
+                  </div>
                 </div>
               </div>
+            </div>
+          </motion.div>
+        ) : currentAddress ? (
+          <motion.div
+            className="h-full w-full bg-white overflow-hidden border-r border-gray-200 rounded-lg p-4 space-y-4"
+            variants={sidebarVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            key={`address-details-${currentAddress.address}`}
+          >
+            <div className="flex items-start justify-end">
+              <button onClick={closeAddressSidebar} className="text-gray-500 hover:text-gray-700 text-lg">
+                &times;
+              </button>
+            </div>
+
+            {/* PropertyCardClick right after address/city */}
+            {similarProperties.length > 0 && similarProperties[currentIndex] && (
+              <motion.div
+                key={`address-property-${currentIndex}-${similarProperties[currentIndex]?.id || 'none'}`}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <PropertyCardClick
+                  property={similarProperties[currentIndex]}
+                  onClick={() => handlePropertySelect(similarProperties[currentIndex])}
+                  compact
+                />
+              </motion.div>
             )}
-            <p className="text-sm text-gray-500 mt-4">Vendu le: {selectedProperty.soldDate || 'Date non spécifiée'}</p>
-          </div>
+
+            {/* Navigation arrows if multiple properties */}
+            {similarProperties.length > 1 && (
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => setCurrentIndex(prev => (prev > 0 ? prev - 1 : similarProperties.length - 1))}
+                  className="p-1 hover:text-blue-600"
+                >
+                  &lt;
+                </button>
+                <span className="text-s px-4 text-blue-600 font-medium">
+                  {currentIndex + 1} / {similarProperties.length}
+                </span>
+                <button
+                  onClick={() => setCurrentIndex(prev => (prev < similarProperties.length - 1 ? prev + 1 : 0))}
+                  className="p-1 hover:text-blue-600"
+                >
+                  &gt;
+                </button>
+              </div>
+            )}
+
+            {/* Transaction count or no data message */}
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Détails supplémentaires</h3>
+              <ul className="list-disc pl-4 space-y-1 text-xs text-gray-600">
+                <li>Tendances de marché</li>
+                <li>Analyse cadastrale</li>
+                <li>Services proximité</li>
+              </ul>
+            </div>
+
+            <div className="bg-gray-50 p-2 rounded-md text-sm">
+              <p className="text-gray-600 mb-1">Estimation gratuite</p>
+              <button className="bg-blue-600 text-white px-3 py-1 rounded-md text-xs hover:bg-blue-700">Évaluer mon bien</button>
+            </div>
+          </motion.div>
         ) : (
           // --- List View ---
           <>
@@ -333,6 +522,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
         <PropertyMap
           properties={properties}
           onPropertySelect={handlePropertySelect}
+          onAddressSelect={handleAddressSelect}
           searchParams={searchParams}
           selectedProperty={selectedProperty}
           hoveredProperty={hoveredProperty}

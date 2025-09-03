@@ -44,6 +44,7 @@ interface MapPageProps {
   properties?: Property[];
   onMapMove?: (coordinates: [number, number]) => void;
   onPropertySelect?: (property: Property) => void;
+  onAddressSelect?: (address: { address: string; city: string; mutations?: any[] }) => void;
   searchParams?: {
     coordinates?: [number, number];
     address?: string;
@@ -238,6 +239,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
   properties,
   onMapMove,
   onPropertySelect,
+  onAddressSelect,
   searchParams,
   selectedProperty,
   hoveredProperty,
@@ -1177,14 +1179,30 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     let popupContent = '';
 
                     if (addresses.length === 1) {
+                      const address = addresses[0];
+                      const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
+
                       popupContent = `
                         <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
                           <div style="font-weight: bold; font-size: 14px; color: #3b82f6;">
-                            ${addresses[0].adresse_complete}
+                            ${address.adresse_complete}
                           </div>
                           <div style="font-size: 11px; color: #666; margin-top: 3px;">
-                            ${addresses[0].commune} (${addresses[0].codepostal})
+                            ${address.commune} (${address.codepostal})
                           </div>
+                          ${
+                            hasMutations
+                              ? `
+                            <div style="margin-top: 8px; font-size: 10px; color: #059669;">
+                              ${address.mutations.length} transaction(s) disponible(s)
+                            </div>
+                          `
+                              : `
+                            <div style="margin-top: 8px; font-size: 10px; color: #dc2626;">
+                              Aucune transaction récente
+                            </div>
+                          `
+                          }
                         </div>
                       `;
                     } else {
@@ -1194,27 +1212,65 @@ const PropertyMap: React.FC<MapPageProps> = ({
                             ${addresses.length} adresses:
                           </div>
                           ${addresses
-                            .map(
-                              (address, index) => `
-                            <div style="
-                              margin: 4px 0; 
-                              padding: 6px; 
-                              background: #f8f9fa; 
-                              border-radius: 4px;
-                              ${index > 0 ? 'border-top: 1px solid #e0e0e0;' : ''}
-                            ">
+                            .map((address, index) => {
+                              const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
+                              return `
+                            <div 
+                              style="
+                                margin: 4px 0; 
+                                padding: 6px; 
+                                background: #f8f9fa; 
+                                border-radius: 4px;
+                                cursor: pointer;
+                                transition: background-color 0.2s;
+                                ${index > 0 ? 'border-top: 1px solid #e0e0e0;' : ''}
+                              "
+                              onmouseover="this.style.backgroundColor='#e5f3ff'"
+                              onmouseout="this.style.backgroundColor='#f8f9fa'"
+                              onclick="window.selectAddress && window.selectAddress(${index})"
+                            >
                               <div style="font-weight: bold;">${address.adresse_complete}</div>
                               <div style="font-size: 11px; color: #666;">${address.commune} (${address.codepostal})</div>
+                              ${
+                                hasMutations
+                                  ? `
+                                <div style="font-size: 10px; color: #059669; margin-top: 2px;">
+                                  ${address.mutations.length} transaction(s)
+                                </div>
+                              `
+                                  : `
+                                <div style="font-size: 10px; color: #dc2626; margin-top: 2px;">
+                                  Aucune transaction
+                                </div>
+                              `
+                              }
                             </div>
-                          `,
-                            )
+                          `;
+                            })
                             .join('')}
                         </div>
                       `;
                     }
 
+                    // Set up global function for address selection in multi-address popups
+                    if (addresses.length > 1) {
+                      (window as any).selectAddress = (index: number) => {
+                        const clickedAddress = addresses[index];
+                        const hasMutations =
+                          clickedAddress.mutations && Array.isArray(clickedAddress.mutations) && clickedAddress.mutations.length > 0;
+
+                        if (hasMutations) {
+                          onAddressSelect?.({
+                            address: clickedAddress.adresse_complete,
+                            city: clickedAddress.commune,
+                            mutations: clickedAddress.mutations,
+                          });
+                        }
+                      };
+                    }
+
                     // Create click popup (this one has close button)
-                    new mapboxgl.Popup({
+                    const popup = new mapboxgl.Popup({
                       closeButton: true,
                       closeOnClick: true,
                       maxWidth: '400px',
@@ -1223,6 +1279,27 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       .setLngLat(feature.geometry.coordinates)
                       .setHTML(popupContent)
                       .addTo(map);
+
+                    // Clean up global function when popup is closed
+                    popup.on('close', () => {
+                      if ((window as any).selectAddress) {
+                        delete (window as any).selectAddress;
+                      }
+                    });
+
+                    // Call onAddressSelect when an address is clicked (only for single address with mutations)
+                    if (addresses.length === 1) {
+                      const address = addresses[0];
+                      const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
+
+                      if (hasMutations) {
+                        onAddressSelect?.({
+                          address: address.adresse_complete,
+                          city: address.commune,
+                          mutations: address.mutations,
+                        });
+                      }
+                    }
                   }
                 } catch (err) {
                   debugLog('Error parsing addresses JSON in click handler:', err);
