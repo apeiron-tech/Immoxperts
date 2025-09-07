@@ -23,6 +23,8 @@ interface Testimonial {
 const Louer: React.FC = () => {
   const navigate = useNavigate();
   const [propertyType, setPropertyType] = useState<'maison' | 'appartement'>('maison');
+  const [location, setLocation] = useState<string>('');
+  const [maxBudget, setMaxBudget] = useState<string>('');
 
   const cities: City[] = [
     { name: 'Paris', url: '#' },
@@ -121,6 +123,8 @@ const Louer: React.FC = () => {
                       <input
                         type="text"
                         placeholder="Ville, quartier, région"
+                        value={location}
+                        onChange={e => setLocation(e.target.value)}
                         className="w-full py-2.5 pl-10 pr-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
@@ -134,6 +138,8 @@ const Louer: React.FC = () => {
                       </div>
                       <input
                         type="number"
+                        value={maxBudget}
+                        onChange={e => setMaxBudget(e.target.value)}
                         className="w-full py-2.5 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                       <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">€/mois</span>
@@ -168,7 +174,14 @@ const Louer: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => navigate('/RecherchLouer')}
+                    onClick={() => {
+                      const searchParams = {
+                        location,
+                        maxBudget,
+                        propertyType,
+                      };
+                      navigate('/RecherchLouer', { state: searchParams });
+                    }}
                     className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition duration-200 ease-in-out flex items-center justify-center font-medium"
                   >
                     <FiSearch className="mr-2 h-5 w-5" />

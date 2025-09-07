@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Home, Search, Heart, User, ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-// Temporary placeholder images until actual assets are added
-const leboncoin = 'https://via.placeholder.com/150';
-const avendrealouer = 'https://via.placeholder.com/150';
-const figaroimmo = 'https://via.placeholder.com/150';
+// Logos des plateformes immobilières
+const seloger = 'https://www.seloger.com/favicon.ico'; // Logo SeLoger officiel
+const leboncoin = '/content/assets/leboncoin-e1561735918709.png'; // Logo LeBonCoin
+const avendrealouer = 'https://www.avendrealouer.fr/favicon.ico'; // Logo AvendreA
+const figaroimmo = '/content/assets/figaroimmo.png'; // Logo Figaro Immo
 
 interface Property {
   id: number;
@@ -23,147 +25,117 @@ interface Property {
   images: string[];
 }
 
+interface ApiProperty {
+  id: number;
+  postalCode: string;
+  propertyType: string;
+  address: string;
+  details: string;
+  price: number;
+  priceText: string;
+  images: string;
+  scrapedAt: string;
+}
+
+interface SearchParams {
+  location: string;
+  maxBudget: string;
+  propertyType: string;
+}
+
 interface ImageGalleryProps {
   images: string[];
   tags: string[];
 }
 
 const RecherchLouer: React.FC = () => {
+  const location = useLocation();
+  const searchParams = location.state as SearchParams;
+
   const associationLogos = {
+    seloger,
     leboncoin,
     avendrealouer,
     figaroimmo,
   };
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [apiProperties, setApiProperties] = useState<ApiProperty[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const toggleMobileMenu = (): void => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  // Sample property data
-  const properties: Property[] = [
-    {
-      id: 1,
-      price: '1 210 €',
-      type: 'Appartement meublé',
-      description: 'Idéalement situé à proximité de la Place des Vosges, au 5ème étage...',
-      surface: '85 m²',
-      rooms: '3 (2 chambres)',
-      bathrooms: '2',
-      kitchen: 'équipée',
-      balcony: 'Oui',
-      address: '12 Rue de Rivoli, 75001 Paris, France',
-      tags: ['En vente', 'Géolocalisé'],
-      Association: ['avendrealouer'],
-      Association_url: ['https://immobilier.lefigaro.fr/'],
-      images: [
-        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1080&q=80',
-      ],
-    },
-    {
-      id: 2,
-      price: '720 €',
-      type: 'Appartement meublé',
-      description: 'Venez découvrir ce studio de 31.11m² Loi Carrez baigné de lumière naturelle...',
-      surface: '31 m²',
-      rooms: '2 (2 chambres)',
-      bathrooms: '1',
-      kitchen: 'équipée',
-      balcony: 'Non',
-      address: '12 Rue de Rivoli, 75001 Paris, France',
-      tags: ['En vente', 'Baisse de prix'],
-      Association: ['figaroimmo', 'leboncoin', 'avendrealouer'],
-      Association_url: ['https://immobilier.lefigaro.fr/', 'https://www.leboncoin.fr/', 'https://immobilier.lefigaro.fr/'],
-      images: [
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-      ],
-    },
-    {
-      id: 3,
-      price: '915 €',
-      type: 'Appartement meublé',
-      description: 'En plein cœur du Marais et dans un bel immeuble ancien parfaitement entretenu...',
-      surface: '38 m²',
-      rooms: '2 (2 chambres)',
-      bathrooms: '1',
-      kitchen: 'équipée',
-      balcony: 'Oui',
-      address: '12 Rue de Rivoli, 75001 Paris, France',
-      tags: ['En vente'],
-      Association: ['avendrealouer'],
-      Association_url: ['https://immobilier.lefigaro.fr/'],
-      images: [
-        'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-      ],
-    },
-    {
-      id: 4,
-      price: '1 410 €',
-      type: 'Appartement meublé',
-      description: 'Magnifique appartement avec vue dégagée...',
-      surface: '92 m²',
-      rooms: '4 (3 chambres)',
-      bathrooms: '2',
-      kitchen: 'équipée',
-      balcony: 'Oui',
-      address: '12 Rue de Rivoli, 75001 Paris, France',
-      tags: ['En vente'],
-      Association: ['figaroimmo'],
-      Association_url: ['https://immobilier.lefigaro.fr/'],
-      images: [
-        'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-      ],
-    },
-    {
-      id: 5,
-      price: '1 050 €',
-      type: 'Appartement meublé',
-      description: 'Charmant appartement haussmannien...',
-      surface: '65 m²',
-      rooms: '3 (2 chambres)',
-      bathrooms: '1',
-      kitchen: 'équipée',
-      balcony: 'Non',
-      address: '12 Rue de Rivoli, 75001 Paris, France',
-      tags: ['En vente', 'Géolocalisé'],
-      Association: ['figaroimmo', 'leboncoin'],
-      Association_url: ['https://immobilier.lefigaro.fr/', 'https://www.leboncoin.fr/'],
-      images: [
-        'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-      ],
-    },
-    {
-      id: 6,
-      price: '940 €',
-      type: 'Appartement meublé',
-      description: 'Bel appartement rénové avec goût...',
-      surface: '45 m²',
-      rooms: '2 (1 chambre)',
-      bathrooms: '1',
-      kitchen: 'équipée',
-      balcony: 'Non',
-      address: '12 Rue de Rivoli, 75001 Paris, France',
-      tags: ['Expiré'],
-      Association: ['leboncoin'],
-      Association_url: ['https://immobilier.lefigaro.fr/'],
-      images: [
-        'https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1080&q=80',
-      ],
-    },
-  ];
+  // Function to convert API property to display property
+  const convertApiPropertyToProperty = (apiProp: ApiProperty): Property => {
+    const imagesArray = JSON.parse(apiProp.images || '[]');
+    return {
+      id: apiProp.id,
+      price: apiProp.priceText,
+      type: apiProp.propertyType,
+      description: apiProp.details,
+      surface: extractSurface(apiProp.details),
+      rooms: extractRooms(apiProp.details),
+      bathrooms: '1', // Default value since not in API
+      kitchen: 'équipée', // Default value since not in API
+      balcony: 'Non', // Default value since not in API
+      address: apiProp.address,
+      tags: ['En vente'], // Default tag
+      Association: ['seloger'], // Default association - SeLoger
+      Association_url: ['https://www.seloger.com/'],
+      images: imagesArray.length > 0 ? imagesArray : ['/content/assets/logo.png'], // Image par défaut locale
+    };
+  };
+
+  // Helper functions to extract data from details string
+  const extractSurface = (details: string): string => {
+    const match = details.match(/(\d+(?:,\d+)?)\s*m²/);
+    return match ? `${match[1]} m²` : 'N/A';
+  };
+
+  const extractRooms = (details: string): string => {
+    const match = details.match(/(\d+)\s*pièces/);
+    return match ? `${match[1]} pièces` : 'N/A';
+  };
+
+  // Function to fetch properties from API
+  const fetchProperties = async () => {
+    if (!searchParams) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { location: searchLocation, maxBudget, propertyType } = searchParams;
+      const apiPropertyType = propertyType === 'appartement' ? 'Appartement' : 'Maison';
+
+      const url = `http://localhost:8080/api/louer/search?propertyType=${encodeURIComponent(apiPropertyType)}&postalCode=${encodeURIComponent(searchLocation)}&price=${encodeURIComponent(maxBudget)}`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setApiProperties(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error fetching properties:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch properties when component mounts or search params change
+  useEffect(() => {
+    fetchProperties();
+  }, [searchParams]);
+
+  // Convert API properties to display properties
+  const properties: Property[] = apiProperties.map(convertApiPropertyToProperty);
 
   // Function to render tags
   const renderTags = (tags: string[]): JSX.Element[] => {
@@ -423,119 +395,201 @@ const RecherchLouer: React.FC = () => {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          {properties.map((property, index) => (
-            <motion.div
-              key={property.id}
-              className="bg-white rounded-3xl p-3 shadow-md overflow-hidden"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
+        {/* Search parameters display */}
+        {searchParams && (
+          <motion.div
+            className="mb-6 p-4 bg-white rounded-lg shadow-sm border"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">Résultats de recherche</h2>
+            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+              <span>
+                <strong>Localisation:</strong> {searchParams.location}
+              </span>
+              <span>
+                <strong>Budget max:</strong> {searchParams.maxBudget} €/mois
+              </span>
+              <span>
+                <strong>Type:</strong> {searchParams.propertyType}
+              </span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Loading state */}
+        {isLoading && (
+          <motion.div
+            className="flex justify-center items-center py-12"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Recherche en cours...</p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Error state */}
+        {error && (
+          <motion.div
+            className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <p className="text-red-800">Erreur lors de la recherche: {error}</p>
+            <button
+              onClick={fetchProperties}
+              className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200"
             >
-              <ImageGallery images={property.images} tags={property.tags} />
+              Réessayer
+            </button>
+          </motion.div>
+        )}
 
-              <div className="p-4">
+        {/* Properties grid */}
+        {!isLoading && !error && (
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            {properties.length > 0 ? (
+              properties.map((property, index) => (
                 <motion.div
-                  className="flex justify-between items-start"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.3 }}
+                  key={property.id}
+                  className="bg-white rounded-3xl p-3 shadow-md overflow-hidden"
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
                 >
-                  <motion.h2 className="text-xl font-bold text-gray-900" whileHover={{ scale: 1.05 }}>
-                    {property.price}
-                  </motion.h2>
-                </motion.div>
-                <motion.p
-                  className="text-gray-700 font-medium mt-1"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.4 }}
-                >
-                  {property.type}
-                </motion.p>
-                <motion.p
-                  className="text-gray-600 text-sm mt-1 line-clamp-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.5 }}
-                >
-                  {property.description}
-                </motion.p>
+                  <ImageGallery images={property.images} tags={property.tags} />
 
-                <motion.div
-                  className="mt-3 grid grid-cols-2 gap-2 text-sm"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.6 }}
-                >
-                  <div>
-                    <span className="text-gray-500">Surface: </span>
-                    <span className="font-medium">{property.surface}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Pièces: </span>
-                    <span className="font-medium">{property.rooms}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Salles de bain: </span>
-                    <span className="font-medium">{property.bathrooms}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Cuisine: </span>
-                    <span className="font-medium">{property.kitchen}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Balcon: </span>
-                    <span className="font-medium">{property.balcony}</span>
-                  </div>
-                </motion.div>
+                  <div className="p-4">
+                    <motion.div
+                      className="flex justify-between items-start"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.3 }}
+                    >
+                      <motion.h2 className="text-xl font-bold text-gray-900" whileHover={{ scale: 1.05 }}>
+                        {property.price}
+                      </motion.h2>
+                    </motion.div>
+                    <motion.p
+                      className="text-gray-700 font-medium mt-1"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.4 }}
+                    >
+                      {property.type}
+                    </motion.p>
+                    <motion.p
+                      className="text-gray-600 text-sm mt-1 line-clamp-2"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.5 }}
+                    >
+                      {property.description}
+                    </motion.p>
 
-                <motion.div
-                  className="mt-3 flex items-center text-xs text-gray-500"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.7 }}
-                >
-                  <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                    ></path>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                  </svg>
-                  {property.address}
-                </motion.div>
+                    <motion.div
+                      className="mt-3 grid grid-cols-2 gap-2 text-sm"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.6 }}
+                    >
+                      <div>
+                        <span className="text-gray-500">Surface: </span>
+                        <span className="font-medium">{property.surface}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Pièces: </span>
+                        <span className="font-medium">{property.rooms}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Salles de bain: </span>
+                        <span className="font-medium">{property.bathrooms}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Cuisine: </span>
+                        <span className="font-medium">{property.kitchen}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Balcon: </span>
+                        <span className="font-medium">{property.balcony}</span>
+                      </div>
+                    </motion.div>
 
-                <motion.div className="mt-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.8 }}>
-                  <div className="flex items-center space-x-2">
-                    {property.Association.map((assoc, assocIndex) => (
-                      <motion.a
-                        key={assocIndex}
-                        href={property.Association_url[assocIndex]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-900"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                    <motion.div
+                      className="mt-3 flex items-center text-xs text-gray-500"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.7 }}
+                    >
+                      <svg
+                        className="h-4 w-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
                       >
-                        <img src={associationLogos[assoc]} alt={assoc} className="h-4 w-4 object-contain" />
-                        <span>{assoc}</span>
-                      </motion.a>
-                    ))}
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                        ></path>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      </svg>
+                      {property.address}
+                    </motion.div>
+
+                    <motion.div
+                      className="mt-4"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.8 }}
+                    >
+                      <div className="flex items-center space-x-2">
+                        {property.Association.map((assoc, assocIndex) => (
+                          <motion.a
+                            key={assocIndex}
+                            href={property.Association_url[assocIndex]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-900"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <img src={associationLogos[assoc]} alt={assoc} className="h-4 w-4 object-contain" />
+                            <span>{assoc}</span>
+                          </motion.a>
+                        ))}
+                      </div>
+                    </motion.div>
                   </div>
                 </motion.div>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+              ))
+            ) : (
+              <motion.div
+                className="col-span-full text-center py-12"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <p className="text-gray-500 text-lg">Aucun bien trouvé pour cette recherche.</p>
+                <p className="text-gray-400 text-sm mt-2">Essayez de modifier vos critères de recherche.</p>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
       </main>
     </div>
   );
