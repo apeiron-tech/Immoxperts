@@ -3,6 +3,7 @@ import { createAsyncThunk, isFulfilled, isPending } from '@reduxjs/toolkit';
 import { cleanEntity } from 'app/shared/util/entity-utils';
 import { EntityState, IQueryParams, createEntitySlice, serializeAxiosError } from 'app/shared/reducers/reducer.utils';
 import { IAdresse, defaultValue } from 'app/shared/model/adresse.model';
+import { API_ENDPOINTS } from 'app/config/api.config';
 
 const initialState: EntityState<IAdresse> = {
   loading: false,
@@ -14,7 +15,7 @@ const initialState: EntityState<IAdresse> = {
   updateSuccess: false,
 };
 
-const apiUrl = 'api/adresses';
+const apiUrl = API_ENDPOINTS.entities.adresses;
 
 // Actions
 

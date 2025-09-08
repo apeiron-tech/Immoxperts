@@ -3,6 +3,7 @@ import { Storage } from 'react-jhipster';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { AppThunk } from 'app/config/store';
 import { serializeAxiosError } from './reducer.utils';
+import { API_ENDPOINTS } from 'app/config/api.config';
 
 const AUTH_TOKEN_KEY = 'jhi-authenticationToken';
 
@@ -27,7 +28,7 @@ export const getSession = (): AppThunk => (dispatch, getState) => {
   dispatch(getAccount());
 };
 
-export const getAccount = createAsyncThunk('authentication/get_account', async () => axios.get<any>('api/account'), {
+export const getAccount = createAsyncThunk('authentication/get_account', async () => axios.get<any>(API_ENDPOINTS.account.account), {
   serializeError: serializeAxiosError,
 });
 

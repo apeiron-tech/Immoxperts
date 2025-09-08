@@ -3,6 +3,7 @@ import { createAsyncThunk, isFulfilled, isPending } from '@reduxjs/toolkit';
 import { cleanEntity } from 'app/shared/util/entity-utils';
 import { EntityState, IQueryParams, createEntitySlice, serializeAxiosError } from 'app/shared/reducers/reducer.utils';
 import { ILocal, defaultValue } from 'app/shared/model/local.model';
+import { API_ENDPOINTS } from 'app/config/api.config';
 
 const initialState: EntityState<ILocal> = {
   loading: false,
@@ -14,7 +15,7 @@ const initialState: EntityState<ILocal> = {
   updateSuccess: false,
 };
 
-const apiUrl = 'api/locals';
+const apiUrl = API_ENDPOINTS.entities.locals;
 
 // Actions
 

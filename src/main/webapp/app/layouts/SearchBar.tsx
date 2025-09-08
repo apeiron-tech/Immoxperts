@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import FilterPopup from '../features/property/FilterPopup';
 import { FilterState } from '../types/filters';
+import { API_ENDPOINTS } from 'app/config/api.config';
 
 interface SearchBarProps {
   onSearch: (searchParams: { numero: number; nomVoie: string; coordinates: [number, number]; context?: Array<{ text: string }> }) => void;
@@ -34,7 +35,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       if (searchQuery.length > 2) {
         try {
           setIsLoading(true);
-          const response = await fetch(`http://localhost:8080/api/adresses/suggestions?q=${encodeURIComponent(searchQuery)}`);
+          const response = await fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(searchQuery)}`);
 
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

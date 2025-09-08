@@ -3,6 +3,7 @@ import { createAsyncThunk, isFulfilled, isPending } from '@reduxjs/toolkit';
 import { cleanEntity } from 'app/shared/util/entity-utils';
 import { EntityState, IQueryParams, createEntitySlice, serializeAxiosError } from 'app/shared/reducers/reducer.utils';
 import { ILot, defaultValue } from 'app/shared/model/lot.model';
+import { API_ENDPOINTS } from 'app/config/api.config';
 
 const initialState: EntityState<ILot> = {
   loading: false,
@@ -14,7 +15,7 @@ const initialState: EntityState<ILot> = {
   updateSuccess: false,
 };
 
-const apiUrl = 'api/lots';
+const apiUrl = API_ENDPOINTS.entities.lots;
 
 // Actions
 

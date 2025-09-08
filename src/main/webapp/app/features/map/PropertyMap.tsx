@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import axios from 'axios';
 import './styles/mapbox-popup.css';
-// Add CSS import at the top (make sure this is included)
+import { API_ENDPOINTS } from 'app/config/api.config';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { FilterState } from '../../types/filters';
 
@@ -251,7 +251,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
   // Stats panel state
-  const [showStatsPanel, setShowStatsPanel] = useState(false);
+  const [showStatsPanel, setShowStatsPanel] = useState(true); // Show by default
   const [activePropertyType, setActivePropertyType] = useState(0);
   const [propertyStats, setPropertyStats] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -382,7 +382,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         limit: '500',
       });
 
-      const apiUrl = `http://localhost:8080/api/mutations/search?${params.toString()}`;
+      const apiUrl = `${API_ENDPOINTS.mutations.search}?${params.toString()}`;
       debugLog('Calling initial API:', apiUrl);
 
       const { data } = await axios.get(apiUrl);
@@ -488,7 +488,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         ...filterParams,
       });
 
-      const apiUrl = `http://localhost:8080/api/mutations/search?${params.toString()}`;
+      const apiUrl = `${API_ENDPOINTS.mutations.search}?${params.toString()}`;
       debugLog('Calling API:', apiUrl);
 
       const { data } = await axios.get(apiUrl);
@@ -1439,6 +1439,27 @@ const PropertyMap: React.FC<MapPageProps> = ({
           setTimeout(() => {
             debugLog('Loading initial data with default parameters...');
             loadInitialData();
+
+            // Load initial INSEE code for statistics
+            const loadInitialINSEE = async () => {
+              try {
+                const center = map.getCenter();
+                if (!center) return;
+
+                const locationData = await getINSEECodeFromCoords(center.lng, center.lat);
+
+                if (locationData) {
+                  setCurrentCity(locationData.city);
+                  setCurrentINSEE(locationData.insee);
+                  debugLog('Initial INSEE code loaded:', locationData.insee);
+                }
+              } catch (err) {
+                debugLog('Error loading initial INSEE code:', err);
+                setError('Erreur géocodage initial');
+              }
+            };
+
+            loadInitialINSEE();
           }, 1000);
           // Debounced function to prevent multiple rapid API calls
           const debouncedDataLoad = debounce(() => {
@@ -1537,18 +1558,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // ✅ NOUVEAU - Simple appel API basé sur currentINSEE
   useEffect(() => {
-    if (!currentINSEE || !showStatsPanel) return;
+    if (!currentINSEE) return; // Load stats when we have INSEE code, regardless of panel visibility
 
     const fetchStatsByINSEE = async () => {
       try {
         setIsLoading(true);
         setError(null);
+        debugLog('Loading statistics for INSEE code:', currentINSEE);
 
         // ✅ Appel à votre nouvelle API
-        const response = await axios.get('/api/mutations/stats/by-city', {
+        const response = await axios.get(`${API_ENDPOINTS.mutations.statsByCity}`, {
           params: { codeInsee: currentINSEE },
         });
 
+        debugLog('Statistics loaded successfully:', response.data);
         setPropertyStats(response.data);
       } catch (err) {
         console.error('Erreur récupération statistiques:', err);
@@ -1560,7 +1583,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
     };
 
     fetchStatsByINSEE();
-  }, [currentINSEE, showStatsPanel]);
+  }, [currentINSEE]);
 
   // **NEW**: Calculate zone statistics when scope is "zone" and map has data
   useEffect(() => {
