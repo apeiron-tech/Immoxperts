@@ -251,12 +251,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
   // Stats panel state
-  const [showStatsPanel, setShowStatsPanel] = useState(true); // Show by default
+  const [showStatsPanel, setShowStatsPanel] = useState(false); // Closed by default
   const [activePropertyType, setActivePropertyType] = useState(0);
   const [propertyStats, setPropertyStats] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [statsError, setStatsError] = useState('');
   const [currentCity, setCurrentCity] = useState('AJACCIO');
+  const [currentMapStyle, setCurrentMapStyle] = useState('original'); // Track current map style
   const [selectedAddress, setSelectedAddress] = useState<[number, number] | null>(null);
   const [currentINSEE, setCurrentINSEE] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -274,11 +275,41 @@ const PropertyMap: React.FC<MapPageProps> = ({
   // Use a ref to store current active filters to prevent state reset issues
   const currentActiveFiltersRef = useRef<FilterState | null>(null);
 
+  // Ref to store hover popup for cleanup
+  const hoverPopupRef = useRef<mapboxgl.Popup | null>(null);
+
+  // Ref to store click popup for cleanup
+  const clickPopupRef = useRef<mapboxgl.Popup | null>(null);
+
   // Debug logging
   const debugLog = (message: string, data?: any) => {
     if (debugging) {
       console.warn(`[MapboxDebug] ${message}`, data || '');
     }
+  };
+
+  // Function to clear hover popups
+  const clearHoverPopup = () => {
+    if (hoverPopupRef.current) {
+      hoverPopupRef.current.remove();
+      hoverPopupRef.current = null;
+      debugLog('Hover popup cleared');
+    }
+  };
+
+  // Function to clear click popups
+  const clearClickPopup = () => {
+    if (clickPopupRef.current) {
+      clickPopupRef.current.remove();
+      clickPopupRef.current = null;
+      debugLog('Click popup cleared');
+    }
+  };
+
+  // Function to clear all popups
+  const clearAllPopups = () => {
+    clearHoverPopup();
+    clearClickPopup();
   };
 
   // Function to check WebGL support
@@ -585,8 +616,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
         container: mapContainer.current,
         style: 'mapbox://styles/immoxpert/cmck83rh6001501r1dlt1fy8k',
         center: [8.73692, 41.9281], // Corsica center
-        zoom: 12,
-        minZoom: 13, // Limit zoom out to 1km maximum (zoom level 13 = ~1km scale)
+        zoom: 14,
+        minZoom: 12, // Limit zoom out to maximum 1km
         maxZoom: 18,
         antialias: true, // Enable antialiasing for better performance
         attributionControl: false, // Remove Mapbox attribution
@@ -769,7 +800,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
           // ===================================================================
 
           // Mutation point interactivity with hover popup - CLEANED UP VERSION
-          let hoverPopup = null;
 
           // Simple hover detection - try a different approach
           let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -832,9 +862,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 debugLog('Feature found:', feature);
 
                 // Remove existing popup
-                if (hoverPopup) {
-                  hoverPopup.remove();
-                  hoverPopup = null;
+                if (hoverPopupRef.current) {
+                  hoverPopupRef.current.remove();
+                  hoverPopupRef.current = null;
                 }
 
                 // Create mutation data popup
@@ -889,10 +919,19 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         }).format(price);
                       };
 
-                      const formatPricePerSqm = (price, surface) => {
-                        if (!surface || surface === 0) return 'N/A';
-                        const pricePerSqm = Math.round(price / surface);
-                        return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+                      const formatPricePerSqm = (price, surface, terrain, propertyType) => {
+                        // For terrain, use terrain size (sterr)
+                        if (propertyType && propertyType.toLowerCase().includes('terrain')) {
+                          if (!terrain || terrain === 0) return 'N/A';
+                          const pricePerSqm = Math.round(price / terrain);
+                          return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+                        }
+                        // For other types (appartement, maison, etc.), use surface (sbati)
+                        else {
+                          if (!surface || surface === 0) return 'N/A';
+                          const pricePerSqm = Math.round(price / surface);
+                          return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+                        }
                       };
 
                       // Get the first mutation for display
@@ -913,7 +952,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           const price = mutation.valeur || 0;
                           const soldDate = mutation.date || '';
                           const priceFormatted = formatPrice(price);
-                          const pricePerSqm = formatPricePerSqm(price, surface);
+                          const pricePerSqm = formatPricePerSqm(price, surface, terrain, propertyTypeLabel);
 
                           // Build the details string, only showing non-zero values
                           const details = [];
@@ -1023,7 +1062,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                         const popupContent = renderMutation(currentIndex);
 
-                        hoverPopup = new mapboxgl.Popup({
+                        hoverPopupRef.current = new mapboxgl.Popup({
                           closeButton: false,
                           closeOnClick: false,
                           maxWidth: '450px',
@@ -1037,7 +1076,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         // Function to add navigation event listeners
                         const addNavigationListeners = () => {
                           setTimeout(() => {
-                            const popupElement = hoverPopup.getElement();
+                            const popupElement = hoverPopupRef.current?.getElement();
                             const prevBtn = popupElement.querySelector('.prev-btn');
                             const nextBtn = popupElement.querySelector('.next-btn');
 
@@ -1045,7 +1084,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                               prevBtn.addEventListener('click', event => {
                                 event.stopPropagation();
                                 currentIndex = currentIndex > 0 ? currentIndex - 1 : allMutations.length - 1;
-                                hoverPopup.setHTML(renderMutation(currentIndex));
+                                hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
                                 addNavigationListeners(); // Re-add listeners after HTML update
                               });
                             }
@@ -1054,7 +1093,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                               nextBtn.addEventListener('click', event => {
                                 event.stopPropagation();
                                 currentIndex = currentIndex < allMutations.length - 1 ? currentIndex + 1 : 0;
-                                hoverPopup.setHTML(renderMutation(currentIndex));
+                                hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
                                 addNavigationListeners(); // Re-add listeners after HTML update
                               });
                             }
@@ -1069,7 +1108,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         debugLog('Mutation popup created with data');
                       } else {
                         // Fallback if no mutations
-                        hoverPopup = new mapboxgl.Popup({
+                        hoverPopupRef.current = new mapboxgl.Popup({
                           closeButton: false,
                           closeOnClick: false,
                           maxWidth: '200px',
@@ -1088,7 +1127,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       }
                     } else {
                       // Fallback if no addresses
-                      hoverPopup = new mapboxgl.Popup({
+                      hoverPopupRef.current = new mapboxgl.Popup({
                         closeButton: false,
                         closeOnClick: false,
                         maxWidth: '200px',
@@ -1108,7 +1147,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   } catch (err) {
                     debugLog('Error parsing addresses JSON:', err);
                     // Fallback popup on error
-                    hoverPopup = new mapboxgl.Popup({
+                    hoverPopupRef.current = new mapboxgl.Popup({
                       closeButton: false,
                       closeOnClick: false,
                       maxWidth: '200px',
@@ -1127,7 +1166,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   }
                 } else {
                   // Fallback if no properties
-                  hoverPopup = new mapboxgl.Popup({
+                  hoverPopupRef.current = new mapboxgl.Popup({
                     closeButton: false,
                     closeOnClick: false,
                     maxWidth: '200px',
@@ -1149,9 +1188,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 map.getCanvas().style.cursor = 'pointer';
               } else {
                 // No features under mouse
-                if (hoverPopup) {
-                  hoverPopup.remove();
-                  hoverPopup = null;
+                if (hoverPopupRef.current) {
+                  hoverPopupRef.current.remove();
+                  hoverPopupRef.current = null;
                   debugLog('Hover popup removed - no features');
                 }
                 map.getCanvas().style.cursor = '';
@@ -1166,10 +1205,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
               const feature = e.features[0];
 
               // Remove hover popup if it exists (click popup will replace it)
-              if (hoverPopup) {
-                hoverPopup.remove();
-                hoverPopup = null;
-              }
+              clearHoverPopup();
 
               if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
                 try {
@@ -1187,22 +1223,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           <div style="font-weight: bold; font-size: 14px; color: #3b82f6;">
                             ${address.adresse_complete}
                           </div>
-                          <div style="font-size: 11px; color: #666; margin-top: 3px;">
-                            ${address.commune} (${address.codepostal})
-                          </div>
-                          ${
-                            hasMutations
-                              ? `
-                            <div style="margin-top: 8px; font-size: 10px; color: #059669;">
-                              ${address.mutations.length} transaction(s) disponible(s)
-                            </div>
-                          `
-                              : `
-                            <div style="margin-top: 8px; font-size: 10px; color: #dc2626;">
-                              Aucune transaction récente
-                            </div>
-                          `
-                          }
+                        
+                   
                         </div>
                       `;
                     } else {
@@ -1269,11 +1291,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       };
                     }
 
+                    // Clear any existing click popup first
+                    clearClickPopup();
+
                     // Create click popup (this one has close button)
-                    const popup = new mapboxgl.Popup({
+                    clickPopupRef.current = new mapboxgl.Popup({
                       closeButton: true,
                       closeOnClick: true,
-                      maxWidth: '400px',
+                      maxWidth: window.innerWidth < 768 ? '250px' : '350px', // Made smaller
                       offset: [0, -5], // Reduced offset - closer to the point
                     })
                       .setLngLat(feature.geometry.coordinates)
@@ -1281,10 +1306,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       .addTo(map);
 
                     // Clean up global function when popup is closed
-                    popup.on('close', () => {
+                    clickPopupRef.current.on('close', () => {
                       if ((window as any).selectAddress) {
                         delete (window as any).selectAddress;
                       }
+                      // Clear the ref when popup is closed
+                      clickPopupRef.current = null;
                     });
 
                     // Call onAddressSelect when an address is clicked (only for single address with mutations)
@@ -1309,6 +1336,16 @@ const PropertyMap: React.FC<MapPageProps> = ({
           });
 
           debugLog('Mutation point event handlers set up successfully');
+
+          // Add click handler for map (not on any feature) to clear popups
+          map.on('click', e => {
+            const features = map.queryRenderedFeatures(e.point, { layers: ['mutation-point'] });
+            if (features.length === 0) {
+              // Clicked on empty area, clear all popups
+              clearAllPopups();
+              debugLog('Clicked on empty area, cleared all popups');
+            }
+          });
 
           // Add custom scale bar instead of default Mapbox scale control
           const createCustomScaleBar = () => {
@@ -1825,6 +1862,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // Stats panel toggle function
   const toggleStatsPanel = () => {
+    clearAllPopups(); // Clear all popups when opening stats panel
     setShowStatsPanel(!showStatsPanel);
   };
 
@@ -1863,7 +1901,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           }
           toggleStatsPanel();
         }}
-        className="absolute top-4 left-4 z-30 bg-white text-gray-600 px-2 py-1 rounded-lg flex items-center gap-1 text-xs hover:bg-gray-50 sm:text-sm"
+        className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 bg-white text-gray-600 px-2 py-1 sm:px-3 sm:py-2 rounded-lg flex items-center gap-1 text-xs sm:text-sm hover:bg-gray-50 shadow-md"
       >
         {showStatsPanel ? (
           <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24">
@@ -1877,7 +1915,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
       </button>
 
       {/* Custom Zoom Controls */}
-      <div className="absolute top-20 left-4 z-30 flex flex-col gap-1">
+      <div className="absolute top-16 left-2 sm:top-20 sm:left-4 z-30 flex flex-col gap-1">
         {/* Zoom In Button */}
         <button
           onClick={() => {
@@ -1885,7 +1923,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
               mapRef.current.zoomIn();
             }
           }}
-          className="bg-white text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-sm border border-gray-200"
+          className="bg-white text-gray-600 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200"
           title="Zoom in"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1900,7 +1938,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
               mapRef.current.zoomOut();
             }
           }}
-          className="bg-white text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-sm border border-gray-200"
+          className="bg-white text-gray-600 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200"
           title="Zoom out"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1908,36 +1946,38 @@ const PropertyMap: React.FC<MapPageProps> = ({
           </svg>
         </button>
 
-        {/* Reset View Button */}
+        {/* Map Style Toggle Button */}
         <button
           onClick={() => {
             if (mapRef.current) {
-              // Reset to search coordinates or default view
-              if (searchParams?.coordinates) {
-                mapRef.current.flyTo({
-                  center: searchParams.coordinates,
-                  zoom: 16,
-                  duration: 1000,
-                });
+              const map = mapRef.current;
+
+              if (currentMapStyle === 'original') {
+                // Switch to new style
+                map.setStyle('mapbox://styles/immoxpert/cmcvzcpf4002n01que0el1fsy');
+                setCurrentMapStyle('alternative');
               } else {
-                // Default to Paris if no search coordinates
-                mapRef.current.flyTo({
-                  center: [2.3522, 48.8566],
-                  zoom: 12,
-                  duration: 1000,
-                });
+                // Switch back to original style
+                map.setStyle('mapbox://styles/immoxpert/cmck83rh6001501r1dlt1fy8k');
+                setCurrentMapStyle('original');
               }
+
+              // Re-add essential elements after style loads
+              map.once('style.load', () => {
+                // Reload initial data
+                loadInitialData();
+              });
             }
           }}
-          className="bg-white text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-sm border border-gray-200"
-          title="Reset to search location"
+          className="bg-white text-gray-600 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200"
+          title="Toggle map style"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth="2"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"
             />
           </svg>
         </button>
@@ -1946,23 +1986,22 @@ const PropertyMap: React.FC<MapPageProps> = ({
       {/* Stats Panel */}
       {showStatsPanel && (
         <div
-          className="fixed sm:absolute top-0 left-0 sm:top-4 sm:left-16 z-20 bg-white rounded-none sm:rounded-xl shadow-lg p-4 w-full sm:w-[520px] h-full sm:h-auto overflow-y-auto sm:overflow-visible border-t sm:border border-gray-100"
+          className="fixed sm:absolute top-0 left-0 sm:top-4 sm:left-16 z-20 bg-white rounded-none sm:rounded-xl shadow-lg p-3 sm:p-4 w-full sm:w-[520px] h-full sm:h-auto overflow-y-auto sm:overflow-visible border-t sm:border border-gray-100"
           onClick={e => e.stopPropagation()}
         >
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-semibold text-gray-800">Statistiques Marché</h3>
-            <div className="flex items-center gap-2">
-              <div className="text-sm font-medium text-gray-600 mr-2">{currentCity}</div>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-2">
+            <h3 className="text-sm sm:text-base font-semibold text-gray-800">Statistiques Marché</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <div>
                 <select
                   id="stats-scope"
                   value={statsScope}
                   onChange={e => setStatsScope(e.target.value as 'commune' | 'zone')}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer min-w-[120px]"
+                  className="border border-gray-300 rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer w-full sm:min-w-[120px]"
                   style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
                 >
-                  <option value="commune">Commune</option>
-                  Statistiques Marché <option value="zone">Zone affichée</option>
+                  <option value="commune">Commune ({currentCity})</option>
+                  <option value="zone">Zone affichée</option>
                 </select>
               </div>
             </div>
@@ -1977,7 +2016,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
             // **NEW**: Choose data source based on selected scope
             const currentStatsData = statsScope === 'commune' ? propertyStats : zoneStats;
-            console.warn('📊 Using stats data:', { statsScope, currentStatsData });
 
             const normalizedStats = propertyTypeNames.map((typeName, index) => {
               // ✅ Recherche directe par typeGroupe depuis l'API ou zone data
@@ -1995,11 +2033,11 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
             return (
               <>
-                <div className="flex flex-wrap sm:flex-nowrap mb-3 gap-2">
+                <div className="grid grid-cols-2 sm:flex sm:flex-nowrap mb-3 gap-1 sm:gap-2">
                   {normalizedStats.map((stat, index) => (
                     <button
                       key={stat.typeBien}
-                      className={`flex-1 py-2 px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
+                      className={`flex-1 py-2 px-1 sm:px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
                         activePropertyType === index ? `${getIndigoShade(index)} text-white` : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
                       }`}
                       onClick={() => setActivePropertyType(index)}
@@ -2016,21 +2054,23 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 ) : error ? (
                   <div className="text-red-500 text-center py-1 text-xs">⚠️ {error}</div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Number of sales</p>
-                      <p className="text-base font-semibold text-gray-900">{formatNumber(normalizedStats[activePropertyType]?.nombre)}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">Nombre de ventes</p>
+                      <p className="text-sm sm:text-base font-semibold text-gray-900">
+                        {formatNumber(normalizedStats[activePropertyType]?.nombre)}
+                      </p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Median Price</p>
-                      <p className="text-base font-semibold text-gray-900">
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">Prix médian</p>
+                      <p className="text-sm sm:text-base font-semibold text-gray-900">
                         {formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€
                       </p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Median Price per m²</p>
-                      <p className="text-base font-semibold text-gray-900">
-                        {formatNumber(normalizedStats[activePropertyType]?.prixM2Moyen)}€
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">Prix médian au m²</p>
+                      <p className="text-sm sm:text-base font-semibold text-gray-900">
+                        {Math.round(normalizedStats[activePropertyType]?.prixM2Moyen || 0).toLocaleString('fr-FR')}€
                       </p>
                     </div>
                   </div>

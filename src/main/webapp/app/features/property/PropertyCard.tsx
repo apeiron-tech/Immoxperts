@@ -54,7 +54,7 @@ const formatPropertyDetails = (rooms: any, surface: string, terrain?: string): s
   }
 
   if (hasValue(surface)) {
-    details.push(surface);
+    details.push(`Surface: ${surface}`);
   }
 
   if (hasValue(terrain)) {
