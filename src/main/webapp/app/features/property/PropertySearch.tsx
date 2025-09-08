@@ -111,7 +111,7 @@ const RecherchLouer: React.FC = () => {
       const { location: searchLocation, maxBudget, propertyType } = searchParams;
       const apiPropertyType = propertyType === 'appartement' ? 'Appartement' : 'Maison';
 
-      const url = `http://localhost:8080/api/louer/search?propertyType=${encodeURIComponent(apiPropertyType)}&postalCode=${encodeURIComponent(searchLocation)}&price=${encodeURIComponent(maxBudget)}`;
+      const url = `https://immoxperts.apeiron-tech.dev/api/louer/search?propertyType=${encodeURIComponent(apiPropertyType)}&postalCode=${encodeURIComponent(searchLocation)}&price=${encodeURIComponent(maxBudget)}`;
 
       const response = await fetch(url);
 
