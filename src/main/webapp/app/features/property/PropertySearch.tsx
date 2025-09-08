@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Home, Search, Heart, User, ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_ENDPOINTS, EXTERNAL_URLS } from 'app/config/api.config';
 // Logos des plateformes immobilières
-const seloger = 'https://www.seloger.com/favicon.ico'; // Logo SeLoger officiel
+const seloger = `${EXTERNAL_URLS.seloger.mms}favicon.ico`; // Logo SeLoger officiel
 const leboncoin = '/content/assets/leboncoin-e1561735918709.png'; // Logo LeBonCoin
-const avendrealouer = 'https://www.avendrealouer.fr/favicon.ico'; // Logo AvendreA
+const avendrealouer = `${EXTERNAL_URLS.avendrealouer.website}favicon.ico`; // Logo AvendreA
 const figaroimmo = '/content/assets/figaroimmo.png'; // Logo Figaro Immo
 
 interface Property {
@@ -84,7 +85,7 @@ const RecherchLouer: React.FC = () => {
       address: apiProp.address,
       tags: ['En vente'], // Default tag
       Association: ['seloger'], // Default association - SeLoger
-      Association_url: ['https://www.seloger.com/'],
+      Association_url: [EXTERNAL_URLS.seloger.mms],
       images: imagesArray.length > 0 ? imagesArray : ['/content/assets/logo.png'], // Image par défaut locale
     };
   };

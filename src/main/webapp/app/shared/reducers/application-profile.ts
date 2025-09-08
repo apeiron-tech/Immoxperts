@@ -2,6 +2,7 @@ import axios from 'axios';
 
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { serializeAxiosError } from './reducer.utils';
+import { API_ENDPOINTS } from 'app/config/api.config';
 
 const initialState = {
   ribbonEnv: '',
@@ -11,7 +12,7 @@ const initialState = {
 
 export type ApplicationProfileState = Readonly<typeof initialState>;
 
-export const getProfile = createAsyncThunk('applicationProfile/get_profile', async () => axios.get<any>('management/info'), {
+export const getProfile = createAsyncThunk('applicationProfile/get_profile', async () => axios.get<any>(API_ENDPOINTS.management.info), {
   serializeError: serializeAxiosError,
 });
 

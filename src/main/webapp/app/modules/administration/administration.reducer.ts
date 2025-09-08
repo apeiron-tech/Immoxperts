@@ -3,6 +3,7 @@ import { createAsyncThunk, createSlice, isPending, isRejected } from '@reduxjs/t
 
 import { serializeAxiosError } from 'app/shared/reducers/reducer.utils';
 import { AppThunk } from 'app/config/store';
+import { API_ENDPOINTS } from 'app/config/api.config';
 
 const initialState = {
   loading: false,
@@ -24,29 +25,37 @@ export type AdministrationState = Readonly<typeof initialState>;
 
 // Actions
 
-export const getSystemHealth = createAsyncThunk('administration/fetch_health', async () => axios.get<any>('management/health'), {
-  serializeError: serializeAxiosError,
-});
-
-export const getSystemMetrics = createAsyncThunk('administration/fetch_metrics', async () => axios.get<any>('management/jhimetrics'), {
-  serializeError: serializeAxiosError,
-});
-
-export const getSystemThreadDump = createAsyncThunk(
-  'administration/fetch_thread_dump',
-  async () => axios.get<any>('management/threaddump'),
+export const getSystemHealth = createAsyncThunk(
+  'administration/fetch_health',
+  async () => axios.get<any>(API_ENDPOINTS.management.health),
   {
     serializeError: serializeAxiosError,
   },
 );
 
-export const getLoggers = createAsyncThunk('administration/fetch_logs', async () => axios.get<any>('management/loggers'), {
+export const getSystemMetrics = createAsyncThunk(
+  'administration/fetch_metrics',
+  async () => axios.get<any>(API_ENDPOINTS.management.metrics),
+  {
+    serializeError: serializeAxiosError,
+  },
+);
+
+export const getSystemThreadDump = createAsyncThunk(
+  'administration/fetch_thread_dump',
+  async () => axios.get<any>(API_ENDPOINTS.management.threaddump),
+  {
+    serializeError: serializeAxiosError,
+  },
+);
+
+export const getLoggers = createAsyncThunk('administration/fetch_logs', async () => axios.get<any>(API_ENDPOINTS.management.loggers), {
   serializeError: serializeAxiosError,
 });
 
 export const setLoggers = createAsyncThunk(
   'administration/fetch_logs_change_level',
-  async ({ name, configuredLevel }: any) => axios.post(`management/loggers/${name}`, { configuredLevel }),
+  async ({ name, configuredLevel }: any) => axios.post(`${API_ENDPOINTS.management.loggers}/${name}`, { configuredLevel }),
   {
     serializeError: serializeAxiosError,
   },
@@ -59,13 +68,13 @@ export const changeLogLevel: (name, configuredLevel) => AppThunk = (name, config
 
 export const getConfigurations = createAsyncThunk(
   'administration/fetch_configurations',
-  async () => axios.get<any>('management/configprops'),
+  async () => axios.get<any>(API_ENDPOINTS.management.configprops),
   {
     serializeError: serializeAxiosError,
   },
 );
 
-export const getEnv = createAsyncThunk('administration/fetch_env', async () => axios.get<any>('management/env'), {
+export const getEnv = createAsyncThunk('administration/fetch_env', async () => axios.get<any>(API_ENDPOINTS.management.env), {
   serializeError: serializeAxiosError,
 });
 

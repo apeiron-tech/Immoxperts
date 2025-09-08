@@ -3,6 +3,7 @@ import { createAsyncThunk, createSlice, isFulfilled, isPending, isRejected } fro
 
 import { IUser, defaultValue } from 'app/shared/model/user.model';
 import { IQueryParams, serializeAxiosError } from 'app/shared/reducers/reducer.utils';
+import { API_ENDPOINTS, API_BASE_URL } from 'app/config/api.config';
 
 const initialState = {
   loading: false,
@@ -15,8 +16,8 @@ const initialState = {
   totalItems: 0,
 };
 
-const apiUrl = 'api/users';
-const adminUrl = 'api/admin/users';
+const apiUrl = `${API_BASE_URL}/api/users`;
+const adminUrl = `${API_BASE_URL}/api/admin/users`;
 
 // Async Actions
 
@@ -31,7 +32,7 @@ export const getUsersAsAdmin = createAsyncThunk('userManagement/fetch_users_as_a
 });
 
 export const getRoles = createAsyncThunk('userManagement/fetch_roles', async () => {
-  const response = await axios.get<any[]>(`api/authorities`);
+  const response = await axios.get<any[]>(API_ENDPOINTS.authorities);
   response.data = response?.data?.map(authority => authority.name);
   return response;
 });
