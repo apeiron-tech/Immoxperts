@@ -77,17 +77,41 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
     const props = [...properties];
     switch (sortOption) {
       case 'date-desc':
-        return props.sort((a, b) => new Date(b.soldDate).getTime() - new Date(a.soldDate).getTime());
+        return props.sort((a, b) => {
+          const dateA = new Date(a.soldDate);
+          const dateB = new Date(b.soldDate);
+          // Handle invalid dates by putting them at the end
+          if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+          if (isNaN(dateA.getTime())) return 1;
+          if (isNaN(dateB.getTime())) return -1;
+          return dateB.getTime() - dateA.getTime();
+        });
       case 'date-asc':
-        return props.sort((a, b) => new Date(a.soldDate).getTime() - new Date(b.soldDate).getTime());
+        return props.sort((a, b) => {
+          const dateA = new Date(a.soldDate);
+          const dateB = new Date(b.soldDate);
+          // Handle invalid dates by putting them at the end
+          if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+          if (isNaN(dateA.getTime())) return 1;
+          if (isNaN(dateB.getTime())) return -1;
+          return dateA.getTime() - dateB.getTime();
+        });
       case 'price-desc':
         return props.sort((a, b) => b.numericPrice - a.numericPrice);
       case 'price-asc':
         return props.sort((a, b) => a.numericPrice - b.numericPrice);
       case 'sqm-desc':
-        return props.sort((a, b) => b.numericPrice / b.numericSurface - a.numericPrice / a.numericSurface);
+        return props.sort((a, b) => {
+          const pricePerSqmA = a.numericSurface > 0 ? a.numericPrice / a.numericSurface : 0;
+          const pricePerSqmB = b.numericSurface > 0 ? b.numericPrice / b.numericSurface : 0;
+          return pricePerSqmB - pricePerSqmA;
+        });
       case 'sqm-asc':
-        return props.sort((a, b) => a.numericPrice / a.numericSurface - b.numericPrice / b.numericSurface);
+        return props.sort((a, b) => {
+          const pricePerSqmA = a.numericSurface > 0 ? a.numericPrice / a.numericSurface : 0;
+          const pricePerSqmB = b.numericSurface > 0 ? b.numericPrice / b.numericSurface : 0;
+          return pricePerSqmA - pricePerSqmB;
+        });
       default:
         return props;
     }
@@ -124,9 +148,6 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   // This function will be called by PropertyMap when it gets new mutation data
   // This function will be called by PropertyMap when it gets new mutation data
   const updatePropertiesFromMutations = useCallback((mutationData: any[]) => {
-    console.warn('🔥 PropertyList: Starting data update process with', mutationData?.length || 0, 'features');
-    console.warn('🔥 PropertyList: Current properties count before update:', properties.length);
-
     // Start loading state
     setIsLoadingProperties(true);
 
@@ -137,10 +158,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
     // Small delay to ensure state is cleared
     setTimeout(() => {
-      console.warn('PropertyList: Processing', mutationData?.length || 0, 'mutation features');
-
       if (!mutationData || mutationData.length === 0) {
-        console.warn('PropertyList: No data received, keeping list empty');
         setIsLoadingProperties(false);
         setDataVersion(prev => prev + 1);
         return;
@@ -151,7 +169,6 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
       mutationData.forEach((feature: any, featureIndex: number) => {
         if (!feature?.properties?.adresses) {
-          console.warn(`Feature ${featureIndex} has no addresses, skipping`);
           return;
         }
 
@@ -161,7 +178,6 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
             typeof feature.properties.adresses === 'string' ? JSON.parse(feature.properties.adresses) : feature.properties.adresses;
 
           if (!Array.isArray(addresses)) {
-            console.warn(`Feature ${featureIndex} addresses is not an array, skipping`);
             return;
           }
 
@@ -198,26 +214,17 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
             }
           });
         } catch (error) {
-          console.error(`Error parsing addresses for feature ${featureIndex}:`, error);
+          // Error parsing addresses
         }
       });
 
       // Limit to max 50 properties
       const limitedProperties = allProperties.slice(0, 50);
 
-      console.warn('PropertyList: Setting NEW property list with', limitedProperties.length, 'properties');
-      console.warn('PropertyList: Sample properties:', limitedProperties.slice(0, 3));
-
       // Set new properties and update version
       setProperties(limitedProperties);
       setDataVersion(prev => prev + 1);
       setIsLoadingProperties(false);
-
-      console.warn('🔥 PropertyList: FINISHED updating! New properties count:', limitedProperties.length);
-      console.warn(
-        '🔥 PropertyList: First 3 properties:',
-        limitedProperties.slice(0, 3).map(p => ({ id: p.id, address: p.address, coordinates: p.coordinates })),
-      );
     }, 100); // 100ms delay to ensure clean state
   }, []);
 
@@ -299,37 +306,36 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
   // --- RENDER ---
   return (
-    <div className="flex flex-col lg:flex-row w-full h-full bg-gray-50">
+    <div className="flex flex-col lg:flex-row w-full h-full min-h-screen lg:min-h-full bg-gray-50">
       {/* --- Mobile View Toggle --- */}
-      <div className="lg:hidden flex justify-center gap-2 py-2 bg-white shadow-md z-20">
+      <div className="lg:hidden flex justify-center gap-2 py-3 bg-white shadow-md z-20 sticky top-0">
         <button
           onClick={() => setActiveView('map')}
-          className={`px-4 py-2 rounded text-sm font-medium ${
-            activeView === 'map' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            activeView === 'map' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
-          Carte
+          📍 Carte
         </button>
         <button
           onClick={() => setActiveView('list')}
-          className={`px-4 py-2 rounded text-sm font-medium ${
-            activeView === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            activeView === 'list' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
-          Liste ({properties.length})
+          📋 Liste ({properties.length})
         </button>
       </div>
 
       {/* --- List & Detail Panel --- */}
       <div
-        className={`w-full lg:flex-shrink-0 flex flex-col bg-white border-r border-gray-200 z-10 ${
+        className={`w-full lg:w-[456px] lg:flex-shrink-0 flex flex-col bg-white border-r border-gray-200 z-10 h-full min-h-[calc(100vh-60px)] lg:min-h-full ${
           activeView === 'map' ? 'hidden lg:flex' : 'flex'
         }`}
-        style={{ width: window.innerWidth >= 1024 ? '480px' : '100%' }}
       >
         {selectedProperty ? (
           <motion.div
-            className="h-full w-full bg-white overflow-hidden border-r border-gray-200 rounded-lg"
+            className="h-full w-full bg-white overflow-hidden lg:border-r border-gray-200 lg:rounded-lg"
             variants={sidebarVariants}
             initial="hidden"
             animate="visible"
@@ -337,7 +343,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
             key={`property-details-${selectedProperty.id}`}
           >
             <div className="w-full h-full overflow-y-auto custom-scroll">
-              <div className="p-4 space-y-4">
+              <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                 <div className="pt-2">
                   <div className="flex items-start justify-between">
                     <div className="space-y-2 p-2 w-full">
@@ -397,7 +403,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                         </ul>
                       </div>
                     </div>
-                    <button onClick={closeSidebar} className="text-gray-400 hover:text-gray-700 text-3xl">
+                    <button onClick={closeSidebar} className="text-gray-400 hover:text-gray-700 text-2xl sm:text-3xl p-1 sm:p-2">
                       &times;
                     </button>
                   </div>
@@ -407,7 +413,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
           </motion.div>
         ) : currentAddress ? (
           <motion.div
-            className="h-full w-full bg-white overflow-hidden border-r border-gray-200 rounded-lg p-4 space-y-4"
+            className="h-full w-full bg-white overflow-hidden lg:border-r border-gray-200 lg:rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4"
             variants={sidebarVariants}
             initial="hidden"
             animate="visible"
@@ -415,7 +421,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
             key={`address-details-${currentAddress.address}`}
           >
             <div className="flex items-start justify-end">
-              <button onClick={closeAddressSidebar} className="text-gray-500 hover:text-gray-700 text-lg">
+              <button onClick={closeAddressSidebar} className="text-gray-500 hover:text-gray-700 text-xl sm:text-2xl p-1 sm:p-2">
                 &times;
               </button>
             </div>
@@ -477,32 +483,32 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
         ) : (
           // --- List View ---
           <>
-            <div className="p-4 border-b">
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="font-semibold">Transactions à proximité</h2>
+            <div className="p-3 sm:p-4 border-b">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
+                <h2 className="font-semibold text-sm sm:text-base">Transactions à proximité</h2>
 
                 <select
                   value={sortOption}
                   onChange={e => setSortOption(e.target.value as SortOption)}
-                  className="w-1/2 border rounded-md px-2 py-1.5 text-sm bg-white"
+                  className="w-full sm:w-1/2 border rounded-md px-2 py-1.5 text-sm bg-white"
                 >
-                  <option value="date-desc">Plus récentes</option>
-                  <option value="date-asc">Plus anciennes</option>
-                  <option value="price-desc">Prix ↓</option>
-                  <option value="price-asc">Prix ↑</option>
-                  <option value="sqm-desc">€/m² ↓</option>
-                  <option value="sqm-asc">€/m² ↑</option>
+                  <option value="date-desc">Les plus récentes</option>
+                  <option value="date-asc">Les plus anciennes</option>
+                  <option value="price-desc">Prix le plus haut</option>
+                  <option value="price-asc">Prix le plus bas</option>
+                  <option value="sqm-desc">Prix au m² le plus haut</option>
+                  <option value="sqm-asc">Prix au m² le plus bas</option>
                 </select>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-2">
+            <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 max-h-[calc(100vh-120px)] lg:max-h-none">
               {sortedProperties.length > 0 ? (
                 sortedProperties.map(property => (
                   <PropertyCard
                     key={property.id}
                     property={property}
-                    onClick={() => handlePropertySelect(property)}
+                    onClick={() => {}} // Désactivé - pas de clic sur les cartes
                     isHovered={hoveredPropertyId === property.id}
                     isMapHovered={mapHoveredPropertyId === property.id}
                     onMouseEnter={() => setHoveredPropertyId(property.id)}
@@ -510,7 +516,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                   />
                 ))
               ) : (
-                <p className="p-4 text-center text-gray-500">Aucune transaction trouvée dans cette zone.</p>
+                <p className="p-4 text-center text-gray-500 text-sm">Aucune transaction trouvée dans cette zone.</p>
               )}
             </div>
           </>

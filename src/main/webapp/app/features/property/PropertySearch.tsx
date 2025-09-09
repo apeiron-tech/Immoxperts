@@ -124,7 +124,7 @@ const RecherchLouer: React.FC = () => {
       setApiProperties(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error fetching properties:', err);
+      // Error fetching properties
     } finally {
       setIsLoading(false);
     }

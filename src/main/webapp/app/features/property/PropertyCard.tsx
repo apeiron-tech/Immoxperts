@@ -54,7 +54,7 @@ const formatPropertyDetails = (rooms: any, surface: string, terrain?: string): s
   }
 
   if (hasValue(surface)) {
-    details.push(surface);
+    details.push(`Surface: ${surface}`);
   }
 
   if (hasValue(terrain)) {
@@ -66,11 +66,11 @@ const formatPropertyDetails = (rooms: any, surface: string, terrain?: string): s
 
 const getPropertyTypeColor = (propertyType: string) => {
   const colorMap = {
-    Appartement: '#6929CF',
-    Maison: '#121852',
-    Terrain: '#2971CF',
-    Local: '#862CC7',
-    'Bien Multiple': '#381EB0',
+    Appartement: '#504CC5', // #504CC5 - Violet
+    Maison: '#7A72D5', // #7A72D5 - Violet clair
+    Terrain: '#4F96D6', // #4F96D6 - Bleu
+    Local: '#205F9D', // #205F9D - Bleu foncé
+    'Bien Multiple': '#022060', // #022060 - Bleu très foncé
   };
   const shortType = getShortTypeName(propertyType);
   return colorMap[shortType as keyof typeof colorMap] || '#9CA3AF';
@@ -101,7 +101,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         padding: 24,
         fontFamily: `'Maven Pro', sans-serif`,
         borderRadius: 16,
-        cursor: 'pointer',
+        cursor: 'default', // Changé de 'pointer' à 'default'
         // 2. STYLING IS NOW DRIVEN BY THE `isHovered` PROP OR `isMapHovered`
         boxShadow: isHovered || isMapHovered ? '0 4px 20px rgba(36,28,131,0.18)' : '0 2px 12px rgba(36,28,131,0.08)',
         border: isHovered || isMapHovered ? '2px solid #4F46E5' : '1px solid #e5e7eb',
@@ -124,7 +124,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
         <div style={{ fontSize: 15, color: '#333', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
           <span style={{ color: getPropertyTypeColor(type), fontWeight: 900, fontSize: 15 }}>{getShortTypeName(type)}</span>
-          {propertyDetails && <span style={{ color: '#888', fontWeight: 500, fontSize: 14 }}>{propertyDetails}</span>}
+          {propertyDetails && <span style={{ color: '#1a1a1a', fontWeight: 500, fontSize: 14 }}>{propertyDetails}</span>}
         </div>
         <div
           style={{
@@ -154,7 +154,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         }}
       >
         <div style={{ color: '#241c83', fontWeight: 800, fontSize: 18, lineHeight: 1 }}>{priceFormatted}</div>
-        {pricePerSqmFormatted && <div style={{ color: '#888', fontSize: 14 }}>{pricePerSqmFormatted}</div>}
+        {pricePerSqmFormatted && <div style={{ color: '#1a1a1a', fontSize: 14 }}>{pricePerSqmFormatted}</div>}
       </div>
     </div>
   );

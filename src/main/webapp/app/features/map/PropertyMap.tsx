@@ -114,13 +114,22 @@ const getStatsShortTypeName = (type: string) => {
 
 // **NEW**: Function to calculate statistics from map data
 const calculateZoneStats = (mapFeatures: any[]) => {
-  console.warn('🔄 calculateZoneStats called with', mapFeatures.length, 'features');
-
-  const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Bien Multiple'];
+  const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
   const stats = [];
 
   propertyTypeNames.forEach(typeName => {
     const uniqueMutations = new Map(); // Use Map to track unique mutations by ID
+
+    // ✅ Mapping des noms pour correspondre aux données des mutations
+    const mutationTypeMap = {
+      Local: 'Local Commercial',
+      Appartement: 'Appartement',
+      Maison: 'Maison',
+      Terrain: 'Terrain',
+      'Bien Multiple': 'Bien Multiple',
+    };
+
+    const mutationTypeName = mutationTypeMap[typeName] || typeName;
 
     // Extract all mutations of this type from map features
     mapFeatures.forEach(feature => {
@@ -133,15 +142,10 @@ const calculateZoneStats = (mapFeatures: any[]) => {
             addresses.forEach(address => {
               if (address.mutations && Array.isArray(address.mutations)) {
                 address.mutations.forEach(mutation => {
-                  if (mutation.type_groupe === typeName) {
+                  if (mutation.type_groupe === mutationTypeName) {
                     // Only add if we haven't seen this mutation ID before
                     if (!uniqueMutations.has(mutation.id)) {
                       uniqueMutations.set(mutation.id, mutation);
-                      console.warn(
-                        `✅ Added unique mutation: ${mutation.id} (${mutation.type_groupe}) - Price: ${mutation.valeur}, Price/m²: ${mutation.prix_m2}`,
-                      );
-                    } else {
-                      console.warn(`🔄 Skipped duplicate mutation: ${mutation.id} (${mutation.type_groupe})`);
                     }
                   }
                 });
@@ -149,15 +153,13 @@ const calculateZoneStats = (mapFeatures: any[]) => {
             });
           }
         } catch (err) {
-          console.error('Error parsing addresses:', err);
+          // Error parsing addresses
         }
       }
     });
 
     // Convert Map values back to array
     const mutations = Array.from(uniqueMutations.values());
-
-    console.warn(`🔍 ${typeName}: Found ${uniqueMutations.size} unique mutations out of total processed`);
 
     // Calculate statistics for this property type
     if (mutations.length > 0) {
@@ -167,11 +169,6 @@ const calculateZoneStats = (mapFeatures: any[]) => {
       // Calculate medians
       const medianPrice = prices.length > 0 ? calculateMedian(prices) : 0;
       const medianPricePerM2 = pricesPerM2.length > 0 ? calculateMedian(pricesPerM2) : 0;
-
-      // Debug logging
-      console.warn(
-        `📊 ${typeName}: ${mutations.length} unique mutations, median price: ${medianPrice}, median price/m²: ${medianPricePerM2}`,
-      );
 
       stats.push({
         typeGroupe: typeName,
@@ -190,7 +187,6 @@ const calculateZoneStats = (mapFeatures: any[]) => {
     }
   });
 
-  console.warn('📊 Final zone stats calculated:', stats);
   return stats;
 };
 
@@ -229,7 +225,7 @@ const getINSEECodeFromCoords = async (lng: number, lat: number) => {
     }
     return null;
   } catch (err) {
-    console.error('Error getting INSEE code:', err);
+    // Error getting INSEE code
     return null;
   }
 };
@@ -251,12 +247,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
   // Stats panel state
-  const [showStatsPanel, setShowStatsPanel] = useState(true); // Show by default
+  const [showStatsPanel, setShowStatsPanel] = useState(false); // Closed by default
   const [activePropertyType, setActivePropertyType] = useState(0);
   const [propertyStats, setPropertyStats] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [statsError, setStatsError] = useState('');
   const [currentCity, setCurrentCity] = useState('AJACCIO');
+  const [currentMapStyle, setCurrentMapStyle] = useState('original'); // Track current map style
   const [selectedAddress, setSelectedAddress] = useState<[number, number] | null>(null);
   const [currentINSEE, setCurrentINSEE] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -274,11 +271,89 @@ const PropertyMap: React.FC<MapPageProps> = ({
   // Use a ref to store current active filters to prevent state reset issues
   const currentActiveFiltersRef = useRef<FilterState | null>(null);
 
+  // Ref to store hover popup for cleanup
+  const hoverPopupRef = useRef<mapboxgl.Popup | null>(null);
+
+  // Ref to store click popup for cleanup
+  const clickPopupRef = useRef<mapboxgl.Popup | null>(null);
+
   // Debug logging
   const debugLog = (message: string, data?: any) => {
-    if (debugging) {
-      console.warn(`[MapboxDebug] ${message}`, data || '');
+    // Debug logging disabled
+  };
+
+  // Function to clear hover popups
+  const clearHoverPopup = () => {
+    if (hoverPopupRef.current) {
+      hoverPopupRef.current.remove();
+      hoverPopupRef.current = null;
+      debugLog('Hover popup cleared');
     }
+  };
+
+  // Function to clear click popups
+  const clearClickPopup = () => {
+    if (clickPopupRef.current) {
+      clickPopupRef.current.remove();
+      clickPopupRef.current = null;
+      debugLog('Click popup cleared');
+    }
+  };
+
+  // Function to preserve all map data when changing styles
+  const preserveMapState = () => {
+    if (!mapRef.current) return null;
+
+    const map = mapRef.current;
+    const state = {
+      center: map.getCenter(),
+      zoom: map.getZoom(),
+      sources: {},
+      layers: [],
+    };
+
+    // Save all sources data
+    const sourceIds = ['mutations-live', 'hovered-circle', 'selected-address-marker', 'selected-address'];
+    sourceIds.forEach(sourceId => {
+      const source = map.getSource(sourceId);
+      if (source && source.type === 'geojson') {
+        state.sources[sourceId] = source._data;
+      }
+    });
+
+    debugLog('Map state preserved:', state);
+    return state;
+  };
+
+  // Function to restore all map data after style change
+  const restoreMapState = state => {
+    if (!mapRef.current || !state) return;
+
+    const map = mapRef.current;
+    debugLog('Restoring map state...');
+
+    // Restore center and zoom
+    map.setCenter(state.center);
+    map.setZoom(state.zoom);
+
+    // Wait a bit for style to be fully loaded, then restore data
+    setTimeout(() => {
+      // Restore sources data
+      Object.keys(state.sources).forEach(sourceId => {
+        const source = map.getSource(sourceId);
+        if (source && source.type === 'geojson') {
+          source.setData(state.sources[sourceId]);
+        }
+      });
+
+      debugLog('Map state restored successfully');
+    }, 100);
+  };
+
+  // Function to clear all popups
+  const clearAllPopups = () => {
+    clearHoverPopup();
+    clearClickPopup();
   };
 
   // Function to check WebGL support
@@ -407,35 +482,23 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
         // **NEW**: Notify PropertyList about new data
         if (onDataUpdate) {
-          console.warn('🔄 PropertyMap (initial): Calling onDataUpdate with', geojsonData.features.length, 'features');
           onDataUpdate(geojsonData.features);
-        } else {
-          console.warn('⚠️ PropertyMap (initial): onDataUpdate callback not provided!');
         }
 
         // **NEW**: Recalculate zone stats immediately after initial data is loaded
         if (statsScope === 'zone') {
           setTimeout(() => {
-            console.warn('📊 Recalculating zone stats after initial data load...');
-            console.warn('📊 Current statsScope:', statsScope);
-
             if (mapRef.current && mapRef.current.getSource('mutations-live')) {
               const features = mapRef.current.querySourceFeatures('mutations-live');
-              console.warn('📊 Found', features.length, 'features for initial zone stats calculation');
-
               const calculatedStats = calculateZoneStats(features);
-              console.warn('📊 Initial zone stats calculated:', calculatedStats);
-
               setZoneStats(calculatedStats);
-            } else {
-              console.warn('📊 ERROR: Map or source not available for initial zone stats calculation');
             }
           }, 200); // Increased delay to ensure map data is fully processed
         }
       }
     } catch (e) {
       debugLog('Failed to load initial data:', e);
-      console.error('Échec du chargement des données initiales:', e);
+      // Failed to load initial data
     }
   };
 
@@ -514,50 +577,32 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
         // **NEW**: Notify PropertyList about new data
         if (onDataUpdate) {
-          console.warn('🔄 PropertyMap (move): Calling onDataUpdate with', geojsonData.features.length, 'features');
           onDataUpdate(geojsonData.features);
 
           // **ADDITIONAL**: Force zone stats recalculation right after property list update
           if (statsScope === 'zone') {
             setTimeout(() => {
-              console.warn('📊 DIRECT: Force recalculating zone stats after property list update');
               const features = mapRef.current.querySourceFeatures('mutations-live');
-              console.warn('📊 DIRECT: Features found for calculation:', features.length);
               const calculatedStats = calculateZoneStats(features);
-              console.warn('📊 DIRECT: New zone stats calculated:', calculatedStats);
               setZoneStats(calculatedStats);
             }, 500); // Wait for property list to finish updating
           }
-        } else {
-          console.warn('⚠️ PropertyMap (move): onDataUpdate callback not provided!');
         }
 
         // **NEW**: Recalculate zone stats immediately after new data is loaded
         if (statsScope === 'zone') {
           setTimeout(() => {
-            console.warn('📊 Recalculating zone stats after new data load...');
-            console.warn('📊 Current statsScope:', statsScope);
-
             if (mapRef.current && mapRef.current.getSource('mutations-live')) {
               const features = mapRef.current.querySourceFeatures('mutations-live');
-              console.warn('📊 Found', features.length, 'features for zone stats recalculation');
-
               const calculatedStats = calculateZoneStats(features);
-              console.warn('📊 Newly calculated zone stats:', calculatedStats);
-
               setZoneStats(calculatedStats);
-              console.warn('📊 Zone stats state updated!');
-            } else {
-              console.warn('📊 ERROR: Map or source not available for zone stats recalculation');
             }
           }, 200); // Increased delay to ensure map data is fully processed
-        } else {
-          console.warn('📊 Not recalculating zone stats because statsScope is:', statsScope);
         }
       }
     } catch (e) {
       debugLog('Failed to load mutations:', e);
-      console.error('Échec du chargement des mutations:', e);
+      // Failed to load mutations
     }
   };
 
@@ -586,8 +631,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
         container: mapContainer.current,
         style: 'mapbox://styles/immoxpert/cmck83rh6001501r1dlt1fy8k',
         center: [8.73692, 41.9281], // Corsica center
-        zoom: 12,
-        minZoom: 13, // Limit zoom out to 1km maximum (zoom level 13 = ~1km scale)
+        zoom: 14,
+        minZoom: 12, // Limit zoom out to maximum 1km
         maxZoom: 18,
         antialias: true, // Enable antialiasing for better performance
         attributionControl: false, // Remove Mapbox attribution
@@ -599,7 +644,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
       // Enhanced error handling
       map.on('error', (e: mapboxgl.ErrorEvent) => {
         debugLog('Mapbox error occurred:', e.error);
-        console.error('Erreur Mapbox:', e.error);
+        // Mapbox error
         setMapError(`Mapbox error: ${e.error.message || 'Unknown error'}`);
       });
 
@@ -641,9 +686,26 @@ const PropertyMap: React.FC<MapPageProps> = ({
             source: 'parcelles-source',
             'source-layer': 'parcelles_pour_mapbox_final',
             paint: {
-              'fill-color': '#6e599f',
-              'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.5, 0.2],
-              'fill-outline-color': 'rgba(0, 0, 0, 0.5)',
+              'fill-color': [
+                'case',
+                ['boolean', ['feature-state', 'clicked'], false],
+                '#3B82F6', // Bleu quand cliqué
+                '#6e599f', // Violet par défaut
+              ],
+              'fill-opacity': [
+                'case',
+                ['boolean', ['feature-state', 'clicked'], false],
+                0.7, // Plus opaque quand cliqué
+                ['boolean', ['feature-state', 'hover'], false],
+                0.5, // Opacité hover
+                0.2, // Opacité par défaut
+              ],
+              'fill-outline-color': [
+                'case',
+                ['boolean', ['feature-state', 'clicked'], false],
+                '#1D4ED8', // Bordure bleue foncée quand cliqué
+                'rgba(0, 0, 0, 0.5)', // Bordure par défaut
+              ],
             },
           });
 
@@ -688,6 +750,38 @@ const PropertyMap: React.FC<MapPageProps> = ({
               );
             }
             hoveredParcelId = null;
+          });
+
+          // Parcel click functionality - make clicked parcels blue
+          let clickedParcelId: string | number | null = null;
+
+          map.on('click', 'parcelles-layer', (e: mapboxgl.MapMouseEvent) => {
+            if (e.features && e.features.length > 0) {
+              // Remove blue from previously clicked parcel
+              if (clickedParcelId !== null) {
+                map.setFeatureState(
+                  {
+                    source: 'parcelles-source',
+                    sourceLayer: 'parcelles_pour_mapbox_final',
+                    id: clickedParcelId,
+                  },
+                  { clicked: false },
+                );
+              }
+
+              // Set new clicked parcel to blue
+              clickedParcelId = e.features[0].id;
+              if (clickedParcelId !== null && clickedParcelId !== undefined) {
+                map.setFeatureState(
+                  {
+                    source: 'parcelles-source',
+                    sourceLayer: 'parcelles_pour_mapbox_final',
+                    id: clickedParcelId,
+                  },
+                  { clicked: true },
+                );
+              }
+            }
           });
 
           // ===================================================================
@@ -770,7 +864,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
           // ===================================================================
 
           // Mutation point interactivity with hover popup - CLEANED UP VERSION
-          let hoverPopup = null;
 
           // Simple hover detection - try a different approach
           let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -833,9 +926,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 debugLog('Feature found:', feature);
 
                 // Remove existing popup
-                if (hoverPopup) {
-                  hoverPopup.remove();
-                  hoverPopup = null;
+                if (hoverPopupRef.current) {
+                  hoverPopupRef.current.remove();
+                  hoverPopupRef.current = null;
                 }
 
                 // Create mutation data popup
@@ -847,14 +940,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       const firstAddress = addresses[0];
                       const mutations = firstAddress.mutations || [];
 
-                      // Helper functions for your styling
+                      // Helper functions for your styling - Nouvelles couleurs spécifiées
                       const getPropertyTypeColor = type => {
                         const colors = {
-                          Appartement: '#6929CF',
-                          Maison: '#121852',
-                          Terrain: '#2971CF',
-                          Local: '#862CC7',
-                          'Bien Multiple': '#381EB0',
+                          Appartement: '#504CC5', // #504CC5 - Violet
+                          Maison: '#7A72D5', // #7A72D5 - Violet clair
+                          Terrain: '#4F96D6', // #4F96D6 - Bleu
+                          Local: '#205F9D', // #205F9D - Bleu foncé
+                          'Bien Multiple': '#022060', // #022060 - Bleu très foncé
                         };
                         const shortType = getShortTypeName(type);
                         return colors[shortType] || '#9CA3AF';
@@ -890,10 +983,19 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         }).format(price);
                       };
 
-                      const formatPricePerSqm = (price, surface) => {
-                        if (!surface || surface === 0) return 'N/A';
-                        const pricePerSqm = Math.round(price / surface);
-                        return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+                      const formatPricePerSqm = (price, surface, terrain, propertyType) => {
+                        // For terrain, use terrain size (sterr)
+                        if (propertyType && propertyType.toLowerCase().includes('terrain')) {
+                          if (!terrain || terrain === 0) return 'N/A';
+                          const pricePerSqm = Math.round(price / terrain);
+                          return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+                        }
+                        // For other types (appartement, maison, etc.), use surface (sbati)
+                        else {
+                          if (!surface || surface === 0) return 'N/A';
+                          const pricePerSqm = Math.round(price / surface);
+                          return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+                        }
                       };
 
                       // Get the first mutation for display
@@ -914,7 +1016,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           const price = mutation.valeur || 0;
                           const soldDate = mutation.date || '';
                           const priceFormatted = formatPrice(price);
-                          const pricePerSqm = formatPricePerSqm(price, surface);
+                          const pricePerSqm = formatPricePerSqm(price, surface, terrain, propertyTypeLabel);
 
                           // Build the details string, only showing non-zero values
                           const details = [];
@@ -1024,7 +1126,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                         const popupContent = renderMutation(currentIndex);
 
-                        hoverPopup = new mapboxgl.Popup({
+                        hoverPopupRef.current = new mapboxgl.Popup({
                           closeButton: false,
                           closeOnClick: false,
                           maxWidth: '450px',
@@ -1038,7 +1140,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         // Function to add navigation event listeners
                         const addNavigationListeners = () => {
                           setTimeout(() => {
-                            const popupElement = hoverPopup.getElement();
+                            const popupElement = hoverPopupRef.current?.getElement();
                             const prevBtn = popupElement.querySelector('.prev-btn');
                             const nextBtn = popupElement.querySelector('.next-btn');
 
@@ -1046,7 +1148,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                               prevBtn.addEventListener('click', event => {
                                 event.stopPropagation();
                                 currentIndex = currentIndex > 0 ? currentIndex - 1 : allMutations.length - 1;
-                                hoverPopup.setHTML(renderMutation(currentIndex));
+                                hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
                                 addNavigationListeners(); // Re-add listeners after HTML update
                               });
                             }
@@ -1055,7 +1157,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                               nextBtn.addEventListener('click', event => {
                                 event.stopPropagation();
                                 currentIndex = currentIndex < allMutations.length - 1 ? currentIndex + 1 : 0;
-                                hoverPopup.setHTML(renderMutation(currentIndex));
+                                hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
                                 addNavigationListeners(); // Re-add listeners after HTML update
                               });
                             }
@@ -1070,7 +1172,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         debugLog('Mutation popup created with data');
                       } else {
                         // Fallback if no mutations
-                        hoverPopup = new mapboxgl.Popup({
+                        hoverPopupRef.current = new mapboxgl.Popup({
                           closeButton: false,
                           closeOnClick: false,
                           maxWidth: '200px',
@@ -1089,7 +1191,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       }
                     } else {
                       // Fallback if no addresses
-                      hoverPopup = new mapboxgl.Popup({
+                      hoverPopupRef.current = new mapboxgl.Popup({
                         closeButton: false,
                         closeOnClick: false,
                         maxWidth: '200px',
@@ -1109,7 +1211,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   } catch (err) {
                     debugLog('Error parsing addresses JSON:', err);
                     // Fallback popup on error
-                    hoverPopup = new mapboxgl.Popup({
+                    hoverPopupRef.current = new mapboxgl.Popup({
                       closeButton: false,
                       closeOnClick: false,
                       maxWidth: '200px',
@@ -1128,7 +1230,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   }
                 } else {
                   // Fallback if no properties
-                  hoverPopup = new mapboxgl.Popup({
+                  hoverPopupRef.current = new mapboxgl.Popup({
                     closeButton: false,
                     closeOnClick: false,
                     maxWidth: '200px',
@@ -1150,9 +1252,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 map.getCanvas().style.cursor = 'pointer';
               } else {
                 // No features under mouse
-                if (hoverPopup) {
-                  hoverPopup.remove();
-                  hoverPopup = null;
+                if (hoverPopupRef.current) {
+                  hoverPopupRef.current.remove();
+                  hoverPopupRef.current = null;
                   debugLog('Hover popup removed - no features');
                 }
                 map.getCanvas().style.cursor = '';
@@ -1167,10 +1269,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
               const feature = e.features[0];
 
               // Remove hover popup if it exists (click popup will replace it)
-              if (hoverPopup) {
-                hoverPopup.remove();
-                hoverPopup = null;
-              }
+              clearHoverPopup();
 
               if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
                 try {
@@ -1188,22 +1287,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           <div style="font-weight: bold; font-size: 14px; color: #3b82f6;">
                             ${address.adresse_complete}
                           </div>
-                          <div style="font-size: 11px; color: #666; margin-top: 3px;">
-                            ${address.commune} (${address.codepostal})
-                          </div>
-                          ${
-                            hasMutations
-                              ? `
-                            <div style="margin-top: 8px; font-size: 10px; color: #059669;">
-                              ${address.mutations.length} transaction(s) disponible(s)
-                            </div>
-                          `
-                              : `
-                            <div style="margin-top: 8px; font-size: 10px; color: #dc2626;">
-                              Aucune transaction récente
-                            </div>
-                          `
-                          }
+                        
+                   
                         </div>
                       `;
                     } else {
@@ -1270,11 +1355,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       };
                     }
 
+                    // Clear any existing click popup first
+                    clearClickPopup();
+
                     // Create click popup (this one has close button)
-                    const popup = new mapboxgl.Popup({
+                    clickPopupRef.current = new mapboxgl.Popup({
                       closeButton: true,
                       closeOnClick: true,
-                      maxWidth: '400px',
+                      maxWidth: window.innerWidth < 768 ? '250px' : '350px', // Made smaller
                       offset: [0, -5], // Reduced offset - closer to the point
                     })
                       .setLngLat(feature.geometry.coordinates)
@@ -1282,10 +1370,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       .addTo(map);
 
                     // Clean up global function when popup is closed
-                    popup.on('close', () => {
+                    clickPopupRef.current.on('close', () => {
                       if ((window as any).selectAddress) {
                         delete (window as any).selectAddress;
                       }
+                      // Clear the ref when popup is closed
+                      clickPopupRef.current = null;
                     });
 
                     // Call onAddressSelect when an address is clicked (only for single address with mutations)
@@ -1310,6 +1400,16 @@ const PropertyMap: React.FC<MapPageProps> = ({
           });
 
           debugLog('Mutation point event handlers set up successfully');
+
+          // Add click handler for map (not on any feature) to clear popups
+          map.on('click', e => {
+            const features = map.queryRenderedFeatures(e.point, { layers: ['mutation-point'] });
+            if (features.length === 0) {
+              // Clicked on empty area, clear all popups
+              clearAllPopups();
+              debugLog('Clicked on empty area, cleared all popups');
+            }
+          });
 
           // Add custom scale bar instead of default Mapbox scale control
           const createCustomScaleBar = () => {
@@ -1575,7 +1675,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         debugLog('Statistics loaded successfully:', response.data);
         setPropertyStats(response.data);
       } catch (err) {
-        console.error('Erreur récupération statistiques:', err);
+        // Error fetching statistics
         setError('Erreur chargement statistiques');
         setPropertyStats([]);
       } finally {
@@ -1591,13 +1691,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
     if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
       // Small delay to ensure map data is loaded
       setTimeout(() => {
-        console.warn('📊 Calculating zone statistics from current map data...');
-
         const features = mapRef.current.querySourceFeatures('mutations-live');
-        console.warn('📊 Found', features.length, 'features on map for zone stats');
-
         const calculatedStats = calculateZoneStats(features);
-        console.warn('📊 Calculated zone stats:', calculatedStats);
 
         setZoneStats(calculatedStats);
       }, 500); // 500ms delay to ensure data is loaded
@@ -1606,39 +1701,24 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // **NEW**: Recalculate zone stats when map moves (if zone scope is selected)
   const recalculateZoneStatsIfNeeded = useCallback(() => {
-    console.warn('🔄 recalculateZoneStatsIfNeeded called, statsScope:', statsScope);
     if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
       setTimeout(() => {
-        console.warn('📊 FORCE Recalculating zone stats after map move...');
         const features = mapRef.current.querySourceFeatures('mutations-live');
-        console.warn('📊 FORCE Found', features.length, 'features for recalculation');
         const calculatedStats = calculateZoneStats(features);
-        console.warn('📊 FORCE Recalculated zone stats after map move:', calculatedStats);
         setZoneStats(calculatedStats);
       }, 300); // Longer delay to ensure data is fully loaded
-    } else {
-      console.warn('📊 Not recalculating: statsScope =', statsScope, ', map ready =', !!mapRef.current);
     }
   }, [statsScope]);
 
   // **NEW**: Recalculate zone stats when data version changes (triggered by PropertyList)
   useEffect(() => {
     if (statsScope === 'zone' && dataVersion !== undefined && mapRef.current && mapRef.current.getSource('mutations-live')) {
-      console.warn('🚀 TRIGGERED: Zone stats recalculation by dataVersion change:', dataVersion);
-
       // Small delay to ensure map rendering is complete
       setTimeout(() => {
         const features = mapRef.current.querySourceFeatures('mutations-live');
-        console.warn('🚀 TRIGGERED: Found', features.length, 'features for zone stats');
-
         const calculatedStats = calculateZoneStats(features);
-        console.warn('🚀 TRIGGERED: Calculated new zone stats:', calculatedStats);
-
         setZoneStats(calculatedStats);
-        console.warn('🚀 TRIGGERED: Zone stats updated successfully!');
       }, 300);
-    } else {
-      console.warn('🚀 NOT TRIGGERED: statsScope =', statsScope, ', dataVersion =', dataVersion, ', map ready =', !!mapRef.current);
     }
   }, [dataVersion, statsScope]); // Trigger when dataVersion or statsScope changes
 
@@ -1655,11 +1735,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
     (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
 
     if (hoveredProperty) {
-      console.warn('🎯 PropertyMap: Looking for hovered property:', hoveredProperty.address, hoveredProperty.coordinates);
-
       // Find the corresponding feature on the map by matching coordinates
       const features = mapRef.current.querySourceFeatures('mutations-live');
-      console.warn('🎯 PropertyMap: Found', features.length, 'map features to check');
 
       for (const feature of features) {
         if (feature.geometry && feature.geometry.type === 'Point') {
@@ -1669,15 +1746,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           // Check if coordinates match exactly (they should be exactly the same)
           const coordsMatch = featureCoords[0] === propertyCoords[0] && featureCoords[1] === propertyCoords[1];
 
-          console.warn('🔍 Comparing coordinates:', {
-            featureCoords: [featureCoords[0], featureCoords[1]],
-            propertyCoords: [propertyCoords[0], propertyCoords[1]],
-            exactMatch: coordsMatch,
-          });
-
           if (coordsMatch) {
-            console.warn('🎯 PropertyMap: Found exact coordinate match!');
-
             // Show blue box shadow for this feature
             const hoveredFeatureData: GeoJSON.FeatureCollection = {
               type: 'FeatureCollection',
@@ -1686,7 +1755,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
             (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
-            console.warn('🎯 PropertyMap: Applied blue shadow to map point!');
+            // Applied blue shadow to map point
             break; // Exit early once found
           }
         }
@@ -1826,6 +1895,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // Stats panel toggle function
   const toggleStatsPanel = () => {
+    clearAllPopups(); // Clear all popups when opening stats panel
     setShowStatsPanel(!showStatsPanel);
   };
 
@@ -1864,7 +1934,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           }
           toggleStatsPanel();
         }}
-        className="absolute top-4 left-4 z-30 bg-white text-gray-600 px-2 py-1 rounded-lg flex items-center gap-1 text-xs hover:bg-gray-50 sm:text-sm"
+        className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 bg-white text-gray-600 px-2 py-1 sm:px-3 sm:py-2 rounded-lg flex items-center gap-1 text-xs sm:text-sm hover:bg-gray-50 shadow-md"
       >
         {showStatsPanel ? (
           <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24">
@@ -1878,7 +1948,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
       </button>
 
       {/* Custom Zoom Controls */}
-      <div className="absolute top-20 left-4 z-30 flex flex-col gap-1">
+      <div className="absolute top-16 left-2 sm:top-20 sm:left-4 z-30 flex flex-col gap-1">
         {/* Zoom In Button */}
         <button
           onClick={() => {
@@ -1886,7 +1956,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
               mapRef.current.zoomIn();
             }
           }}
-          className="bg-white text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-sm border border-gray-200"
+          className="bg-white text-gray-600 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200"
           title="Zoom in"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1901,7 +1971,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
               mapRef.current.zoomOut();
             }
           }}
-          className="bg-white text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-sm border border-gray-200"
+          className="bg-white text-gray-600 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200"
           title="Zoom out"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1909,36 +1979,73 @@ const PropertyMap: React.FC<MapPageProps> = ({
           </svg>
         </button>
 
-        {/* Reset View Button */}
+        {/* Map Style Toggle Button */}
         <button
           onClick={() => {
             if (mapRef.current) {
-              // Reset to search coordinates or default view
-              if (searchParams?.coordinates) {
-                mapRef.current.flyTo({
-                  center: searchParams.coordinates,
-                  zoom: 16,
-                  duration: 1000,
-                });
-              } else {
-                // Default to Paris if no search coordinates
-                mapRef.current.flyTo({
-                  center: [2.3522, 48.8566],
-                  zoom: 12,
-                  duration: 1000,
-                });
+              const map = mapRef.current;
+
+              try {
+                if (currentMapStyle === 'original') {
+                  // Change to satellite/alternative view by modifying layers
+                  debugLog('Switching to alternative style...');
+
+                  // Change the background layer or add satellite layer
+                  if (map.getLayer('satellite-layer')) {
+                    map.setLayoutProperty('satellite-layer', 'visibility', 'visible');
+                  } else {
+                    // Add satellite layer if it doesn't exist
+                    map.addLayer(
+                      {
+                        id: 'satellite-layer',
+                        type: 'raster',
+                        source: {
+                          type: 'raster',
+                          tiles: [
+                            'https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=' + mapboxgl.accessToken,
+                          ],
+                          tileSize: 512,
+                        },
+                        layout: {
+                          visibility: 'visible',
+                        },
+                        paint: {
+                          'raster-opacity': 0.8,
+                        },
+                      },
+                      'mutation-point',
+                    ); // Add below mutation points
+                  }
+
+                  setCurrentMapStyle('alternative');
+                } else {
+                  // Switch back to original style
+                  debugLog('Switching back to original style...');
+
+                  // Hide satellite layer
+                  if (map.getLayer('satellite-layer')) {
+                    map.setLayoutProperty('satellite-layer', 'visibility', 'none');
+                  }
+
+                  setCurrentMapStyle('original');
+                }
+
+                debugLog('Style change completed successfully');
+              } catch (err) {
+                // Error switching map style
+                setError('Erreur lors du changement de style de carte');
               }
             }
           }}
-          className="bg-white text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-sm border border-gray-200"
-          title="Reset to search location"
+          className="bg-white text-gray-600 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200"
+          title="Toggle map style"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth="2"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"
             />
           </svg>
         </button>
@@ -1947,23 +2054,22 @@ const PropertyMap: React.FC<MapPageProps> = ({
       {/* Stats Panel */}
       {showStatsPanel && (
         <div
-          className="fixed sm:absolute top-0 left-0 sm:top-4 sm:left-16 z-20 bg-white rounded-none sm:rounded-xl shadow-lg p-4 w-full sm:w-[520px] h-full sm:h-auto overflow-y-auto sm:overflow-visible border-t sm:border border-gray-100"
+          className="fixed sm:absolute top-0 left-0 sm:top-4 sm:left-16 z-20 bg-white rounded-none sm:rounded-xl shadow-lg p-3 sm:p-4 w-full sm:w-[520px] h-full sm:h-auto overflow-y-auto sm:overflow-visible border-t sm:border border-gray-100"
           onClick={e => e.stopPropagation()}
         >
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-semibold text-gray-800">Statistiques Marché</h3>
-            <div className="flex items-center gap-2">
-              <div className="text-sm font-medium text-gray-600 mr-2">{currentCity}</div>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-2">
+            <h3 className="text-sm sm:text-base font-semibold text-gray-800">Statistiques Marché</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <div>
                 <select
                   id="stats-scope"
                   value={statsScope}
                   onChange={e => setStatsScope(e.target.value as 'commune' | 'zone')}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer min-w-[120px]"
+                  className="border border-gray-300 rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer w-full sm:min-w-[120px]"
                   style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
                 >
-                  <option value="commune">Commune</option>
-                  Statistiques Marché <option value="zone">Zone affichée</option>
+                  <option value="commune">Commune ({currentCity})</option>
+                  <option value="zone">Zone affichée</option>
                 </select>
               </div>
             </div>
@@ -1973,17 +2079,37 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
           {(() => {
             // ✅ Adaptation pour les nouvelles données de l'API
-            const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Bien Multiple'];
-            const getIndigoShade = idx => ['bg-indigo-600', 'bg-violet-500', 'bg-blue-400', 'bg-blue-600'][idx];
+            const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
+            // ✅ Nouvelles couleurs spécifiées
+            const getPropertyTypeButtonColor = typeName => {
+              const colorMap = {
+                Appartement: 'bg-[#504CC5]', // #504CC5 - Violet
+                Maison: 'bg-[#7A72D5]', // #7A72D5 - Violet clair
+                Terrain: 'bg-[#4F96D6]', // #4F96D6 - Bleu
+                Local: 'bg-[#205F9D]', // #205F9D - Bleu foncé
+                'Bien Multiple': 'bg-[#022060]', // #022060 - Bleu très foncé
+              };
+              return colorMap[typeName] || 'bg-gray-500';
+            };
 
             // **NEW**: Choose data source based on selected scope
             const currentStatsData = statsScope === 'commune' ? propertyStats : zoneStats;
-            console.warn('📊 Using stats data:', { statsScope, currentStatsData });
 
             const normalizedStats = propertyTypeNames.map((typeName, index) => {
+              // ✅ Mapping des noms pour correspondre aux données API
+              const apiTypeMap = {
+                Local: 'Local Commercial',
+                Appartement: 'Appartement',
+                Maison: 'Maison',
+                Terrain: 'Terrain',
+                'Bien Multiple': 'Bien Multiple',
+              };
+
+              const apiTypeName = apiTypeMap[typeName] || typeName;
+
               // ✅ Recherche directe par typeGroupe depuis l'API ou zone data
               const match = currentStatsData.find(item => {
-                return item.typeGroupe === typeName;
+                return item.typeGroupe === apiTypeName;
               });
 
               return {
@@ -1996,12 +2122,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
             return (
               <>
-                <div className="flex flex-wrap sm:flex-nowrap mb-3 gap-2">
+                <div className="grid grid-cols-2 sm:flex sm:flex-nowrap mb-3 gap-1 sm:gap-2">
                   {normalizedStats.map((stat, index) => (
                     <button
                       key={stat.typeBien}
-                      className={`flex-1 py-2 px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
-                        activePropertyType === index ? `${getIndigoShade(index)} text-white` : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
+                      className={`flex-1 py-2 px-1 sm:px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
+                        activePropertyType === index
+                          ? `${getPropertyTypeButtonColor(stat.typeBien)} text-white`
+                          : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
                       }`}
                       onClick={() => setActivePropertyType(index)}
                     >
@@ -2017,21 +2145,23 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 ) : error ? (
                   <div className="text-red-500 text-center py-1 text-xs">⚠️ {error}</div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Number of sales</p>
-                      <p className="text-base font-semibold text-gray-900">{formatNumber(normalizedStats[activePropertyType]?.nombre)}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">Nombre de ventes</p>
+                      <p className="text-sm sm:text-base font-semibold text-gray-900">
+                        {formatNumber(normalizedStats[activePropertyType]?.nombre)}
+                      </p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Median Price</p>
-                      <p className="text-base font-semibold text-gray-900">
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">Prix médian</p>
+                      <p className="text-sm sm:text-base font-semibold text-gray-900">
                         {formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€
                       </p>
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Median Price per m²</p>
-                      <p className="text-base font-semibold text-gray-900">
-                        {formatNumber(normalizedStats[activePropertyType]?.prixM2Moyen)}€
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                      <p className="text-xs text-gray-600 mb-1">Prix médian au m²</p>
+                      <p className="text-sm sm:text-base font-semibold text-gray-900">
+                        {Math.round(normalizedStats[activePropertyType]?.prixM2Moyen || 0).toLocaleString('fr-FR')}€
                       </p>
                     </div>
                   </div>

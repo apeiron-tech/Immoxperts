@@ -331,7 +331,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
       {/* Min handle */}
       <div
-        className="absolute w-5 h-5 bg-white border-2 border-green-500 rounded-full cursor-pointer hover:shadow-lg transition-shadow z-10"
+        className="absolute w-4 h-4 bg-white border-2 border-green-500 rounded-full cursor-pointer hover:shadow-lg transition-shadow z-10"
         style={{
           left: `${minPosition}%`,
           top: '50%',
@@ -342,7 +342,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
       {/* Max handle */}
       <div
-        className="absolute w-5 h-5 bg-white border-2 border-green-500 rounded-full cursor-pointer hover:shadow-lg transition-shadow z-10"
+        className="absolute w-4 h-4 bg-white border-2 border-green-500 rounded-full cursor-pointer hover:shadow-lg transition-shadow z-10"
         style={{
           left: `${maxPosition}%`,
           top: '50%',
@@ -549,256 +549,258 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
 
   return (
     <div className="fixed inset-0 bg-white md:bg-black md:bg-opacity-50 flex items-start md:items-center justify-center z-50">
-      <div className="bg-white w-full max-w-6xl relative h-screen md:h-auto md:max-h-[90vh] md:rounded-3xl overflow-y-auto px-10 py-4">
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <h2 className="text-2xl font-bold">Filtres</h2>
-          <button onClick={onClose} className="text-black hover:text-gray-700">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
+      <div className="bg-white w-full max-w-5xl relative h-screen md:h-auto md:max-h-[95vh] md:rounded-2xl flex flex-col px-4 py-2">
+        <div className="flex-1 overflow-y-auto">
+          {/* Header */}
+          <div className="flex justify-between items-center p-2 border-b border-gray-200">
+            <h2 className="text-lg font-bold">Filtres</h2>
+            <button onClick={onClose} className="text-black hover:text-gray-700">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
 
-        {/* Content */}
-        <div className="p-4">
-          <div className="flex flex-col md:flex-row">
-            {/* Left Column */}
-            <div className="md:w-1/2 md:border-r md:pr-8 pb-6">
-              {/* Type de bien */}
-              <div className="mb-8">
-                <h3 className="text-xl font-bold mb-4">Type de bien</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="maison"
-                      className="w-5 h-5 rounded"
-                      style={{ accentColor: '#7069F9' }}
-                      checked={filters.propertyTypes.maison}
-                      onChange={() => handlePropertyTypeChange('maison')}
-                    />
-                    <label htmlFor="maison" className="ml-2 text-lg">
-                      Maison
-                    </label>
+          {/* Content */}
+          <div className="p-2">
+            <div className="flex flex-col md:flex-row">
+              {/* Left Column */}
+              <div className="md:w-1/2 md:border-r md:pr-4 pb-3">
+                {/* Type de bien */}
+                <div className="mb-4">
+                  <h3 className="text-base font-bold mb-2">Type de bien</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="maison"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.propertyTypes.maison}
+                        onChange={() => handlePropertyTypeChange('maison')}
+                      />
+                      <label htmlFor="maison" className="ml-1 text-sm">
+                        Maison
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="terrain"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.propertyTypes.terrain}
+                        onChange={() => handlePropertyTypeChange('terrain')}
+                      />
+                      <label htmlFor="terrain" className="ml-1 text-sm">
+                        Terrain
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="appartement"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.propertyTypes.appartement}
+                        onChange={() => handlePropertyTypeChange('appartement')}
+                      />
+                      <label htmlFor="appartement" className="ml-1 text-sm">
+                        Appartement
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="biens-multiples"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.propertyTypes.biensMultiples}
+                        onChange={() => handlePropertyTypeChange('biensMultiples')}
+                      />
+                      <label htmlFor="biens-multiples" className="ml-1 text-sm">
+                        Biens multiples
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="local-commercial"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.propertyTypes.localCommercial}
+                        onChange={() => handlePropertyTypeChange('localCommercial')}
+                      />
+                      <label htmlFor="local-commercial" className="ml-1 text-sm">
+                        Local commercial
+                      </label>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="terrain"
-                      className="w-5 h-5 rounded"
-                      style={{ accentColor: '#7069F9' }}
-                      checked={filters.propertyTypes.terrain}
-                      onChange={() => handlePropertyTypeChange('terrain')}
-                    />
-                    <label htmlFor="terrain" className="ml-2 text-lg">
-                      Terrain
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="appartement"
-                      className="w-5 h-5 rounded"
-                      style={{ accentColor: '#7069F9' }}
-                      checked={filters.propertyTypes.appartement}
-                      onChange={() => handlePropertyTypeChange('appartement')}
-                    />
-                    <label htmlFor="appartement" className="ml-2 text-lg">
-                      Appartement
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="biens-multiples"
-                      className="w-5 h-5 rounded"
-                      style={{ accentColor: '#7069F9' }}
-                      checked={filters.propertyTypes.biensMultiples}
-                      onChange={() => handlePropertyTypeChange('biensMultiples')}
-                    />
-                    <label htmlFor="biens-multiples" className="ml-2 text-lg">
-                      Biens multiples
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="local-commercial"
-                      className="w-5 h-5 rounded"
-                      style={{ accentColor: '#7069F9' }}
-                      checked={filters.propertyTypes.localCommercial}
-                      onChange={() => handlePropertyTypeChange('localCommercial')}
-                    />
-                    <label htmlFor="local-commercial" className="ml-2 text-lg">
-                      Local commercial
-                    </label>
+                </div>
+
+                {/* Nombre de pièces */}
+                <div>
+                  <h3 className="text-base font-bold mb-4">Nombre de pièces</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="studio"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.roomCounts.studio}
+                        onChange={() => handleRoomCountChange('studio')}
+                      />
+                      <label htmlFor="studio" className="ml-1 text-sm">
+                        Studio
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="2pieces"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.roomCounts.deuxPieces}
+                        onChange={() => handleRoomCountChange('deuxPieces')}
+                      />
+                      <label htmlFor="2pieces" className="ml-1 text-sm">
+                        2 pièces
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="3pieces"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.roomCounts.troisPieces}
+                        onChange={() => handleRoomCountChange('troisPieces')}
+                      />
+                      <label htmlFor="3pieces" className="ml-1 text-sm">
+                        3 pièces
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="4pieces"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.roomCounts.quatrePieces}
+                        onChange={() => handleRoomCountChange('quatrePieces')}
+                      />
+                      <label htmlFor="4pieces" className="ml-1 text-sm">
+                        4 pièces
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="5pieces"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.roomCounts.cinqPiecesPlus}
+                        onChange={() => handleRoomCountChange('cinqPiecesPlus')}
+                      />
+                      <label htmlFor="5pieces" className="ml-1 text-sm">
+                        5 pièces et +
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Nombre de pièces */}
-              <div>
-                <h3 className="text-xl font-bold mb-4">Nombre de pièces</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="studio"
-                      className="w-5 h-5 rounded"
-                      style={{ accentColor: '#7069F9' }}
-                      checked={filters.roomCounts.studio}
-                      onChange={() => handleRoomCountChange('studio')}
-                    />
-                    <label htmlFor="studio" className="ml-2 text-lg">
-                      Studio
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="2pieces"
-                      className="w-5 h-5 rounded"
-                      style={{ accentColor: '#7069F9' }}
-                      checked={filters.roomCounts.deuxPieces}
-                      onChange={() => handleRoomCountChange('deuxPieces')}
-                    />
-                    <label htmlFor="2pieces" className="ml-2 text-lg">
-                      2 pièces
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="3pieces"
-                      className="w-5 h-5 rounded"
-                      style={{ accentColor: '#7069F9' }}
-                      checked={filters.roomCounts.troisPieces}
-                      onChange={() => handleRoomCountChange('troisPieces')}
-                    />
-                    <label htmlFor="3pieces" className="ml-2 text-lg">
-                      3 pièces
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="4pieces"
-                      className="w-5 h-5 rounded"
-                      style={{ accentColor: '#7069F9' }}
-                      checked={filters.roomCounts.quatrePieces}
-                      onChange={() => handleRoomCountChange('quatrePieces')}
-                    />
-                    <label htmlFor="4pieces" className="ml-2 text-lg">
-                      4 pièces
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="5pieces"
-                      className="w-5 h-5 rounded"
-                      style={{ accentColor: '#7069F9' }}
-                      checked={filters.roomCounts.cinqPiecesPlus}
-                      onChange={() => handleRoomCountChange('cinqPiecesPlus')}
-                    />
-                    <label htmlFor="5pieces" className="ml-2 text-lg">
-                      5 pièces et +
-                    </label>
-                  </div>
+              {/* Right Column */}
+              <div className="md:w-1/2 md:pl-8 p-10">
+                {/* Prix */}
+                <div className="mb-3 space-y-1">
+                  <h3 className="text-base font-bold">Prix</h3>
+                  <p className="text-lg">{getPriceText()}</p>
+                  <RangeSlider
+                    type="price"
+                    minValue={0}
+                    maxValue={20000000}
+                    step={25000}
+                    onChange={(min, max) => handleRangeChange('priceRange', min, max)}
+                  />
                 </div>
-              </div>
-            </div>
 
-            {/* Right Column */}
-            <div className="md:w-1/2 md:pl-8 p-10">
-              {/* Prix */}
-              <div className="mb-6 space-y-2">
-                <h3 className="text-xl font-bold">Prix</h3>
-                <p className="text-lg">{getPriceText()}</p>
-                <RangeSlider
-                  type="price"
-                  minValue={0}
-                  maxValue={20000000}
-                  step={25000}
-                  onChange={(min, max) => handleRangeChange('priceRange', min, max)}
-                />
-              </div>
+                {/* Surface */}
+                <div className="mb-3 space-y-1">
+                  <h3 className="text-base font-bold">Surface</h3>
+                  <p className="text-lg">{getSurfaceText()}</p>
+                  <RangeSlider
+                    type="surface"
+                    minValue={0}
+                    maxValue={400}
+                    step={10}
+                    onChange={(min, max) => handleRangeChange('surfaceRange', min, max)}
+                  />
+                </div>
 
-              {/* Surface */}
-              <div className="mb-6 space-y-2">
-                <h3 className="text-xl font-bold">Surface</h3>
-                <p className="text-lg">{getSurfaceText()}</p>
-                <RangeSlider
-                  type="surface"
-                  minValue={0}
-                  maxValue={400}
-                  step={10}
-                  onChange={(min, max) => handleRangeChange('surfaceRange', min, max)}
-                />
-              </div>
+                {/* Terrain */}
+                <div className="mb-3 space-y-1">
+                  <h3 className="text-base font-bold">Terrain</h3>
+                  <p className="text-lg">{getTerrainText()}</p>
+                  <RangeSlider
+                    type="terrain"
+                    minValue={0}
+                    maxValue={50000}
+                    step={50}
+                    onChange={(min, max) => handleRangeChange('terrainRange', min, max)}
+                  />
+                </div>
 
-              {/* Terrain */}
-              <div className="mb-6 space-y-2">
-                <h3 className="text-xl font-bold">Terrain</h3>
-                <p className="text-lg">{getTerrainText()}</p>
-                <RangeSlider
-                  type="terrain"
-                  minValue={0}
-                  maxValue={50000}
-                  step={50}
-                  onChange={(min, max) => handleRangeChange('terrainRange', min, max)}
-                />
-              </div>
+                {/* Prix m² */}
+                <div className="mb-3 space-y-1">
+                  <h3 className="text-base font-bold">Prix m²</h3>
+                  <p className="text-lg">{getPricePerSqmText()}</p>
+                  <RangeSlider
+                    type="pricePerSqm"
+                    minValue={0}
+                    maxValue={40000}
+                    step={100}
+                    onChange={(min, max) => handleRangeChange('pricePerSqmRange', min, max)}
+                  />
+                </div>
 
-              {/* Prix m² */}
-              <div className="mb-6 space-y-2">
-                <h3 className="text-xl font-bold">Prix m²</h3>
-                <p className="text-lg">{getPricePerSqmText()}</p>
-                <RangeSlider
-                  type="pricePerSqm"
-                  minValue={0}
-                  maxValue={40000}
-                  step={100}
-                  onChange={(min, max) => handleRangeChange('pricePerSqmRange', min, max)}
-                />
-              </div>
-
-              {/* Date de vente */}
-              <div className="mb-6 space-y-2">
-                <h3 className="text-xl font-bold">Date de vente</h3>
-                <p className="text-lg">{getDateText()}</p>
-                <RangeSlider
-                  type="date"
-                  minValue={0}
-                  maxValue={130}
-                  step={1}
-                  onChange={(min, max) => handleRangeChange('dateRange', min, max)}
-                />
+                {/* Date de vente */}
+                <div className="mb-3 space-y-1">
+                  <h3 className="text-base font-bold">Date de vente</h3>
+                  <p className="text-lg">{getDateText()}</p>
+                  <RangeSlider
+                    type="date"
+                    minValue={0}
+                    maxValue={130}
+                    step={1}
+                    onChange={(min, max) => handleRangeChange('dateRange', min, max)}
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer with buttons */}
-        <div className="flex justify-end gap-4 p-4 border-t border-gray-200">
-          <button onClick={onClose} className="px-8 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-lg">
+        {/* Footer with buttons - Fixed at bottom */}
+        <div className="flex justify-end gap-2 p-2 border-t border-gray-200 flex-shrink-0">
+          <button onClick={onClose} className="px-3 py-1 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm">
             Annuler
           </button>
           <button
             onClick={() => onApply(filters)}
-            className="px-8 py-3 text-white rounded-lg hover:bg-opacity-90 text-lg transition-colors duration-200"
+            className="px-3 py-1 text-white rounded hover:bg-opacity-90 text-sm transition-colors duration-200"
             style={{ backgroundColor: '#7069F9' }}
           >
             Appliquer
