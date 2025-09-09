@@ -148,9 +148,6 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   // This function will be called by PropertyMap when it gets new mutation data
   // This function will be called by PropertyMap when it gets new mutation data
   const updatePropertiesFromMutations = useCallback((mutationData: any[]) => {
-    console.warn('🔥 PropertyList: Starting data update process with', mutationData?.length || 0, 'features');
-    console.warn('🔥 PropertyList: Current properties count before update:', properties.length);
-
     // Start loading state
     setIsLoadingProperties(true);
 
@@ -161,10 +158,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
     // Small delay to ensure state is cleared
     setTimeout(() => {
-      console.warn('PropertyList: Processing', mutationData?.length || 0, 'mutation features');
-
       if (!mutationData || mutationData.length === 0) {
-        console.warn('PropertyList: No data received, keeping list empty');
         setIsLoadingProperties(false);
         setDataVersion(prev => prev + 1);
         return;
@@ -175,7 +169,6 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
       mutationData.forEach((feature: any, featureIndex: number) => {
         if (!feature?.properties?.adresses) {
-          console.warn(`Feature ${featureIndex} has no addresses, skipping`);
           return;
         }
 
@@ -185,7 +178,6 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
             typeof feature.properties.adresses === 'string' ? JSON.parse(feature.properties.adresses) : feature.properties.adresses;
 
           if (!Array.isArray(addresses)) {
-            console.warn(`Feature ${featureIndex} addresses is not an array, skipping`);
             return;
           }
 
@@ -222,26 +214,17 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
             }
           });
         } catch (error) {
-          console.error(`Error parsing addresses for feature ${featureIndex}:`, error);
+          // Error parsing addresses
         }
       });
 
       // Limit to max 50 properties
       const limitedProperties = allProperties.slice(0, 50);
 
-      console.warn('PropertyList: Setting NEW property list with', limitedProperties.length, 'properties');
-      console.warn('PropertyList: Sample properties:', limitedProperties.slice(0, 3));
-
       // Set new properties and update version
       setProperties(limitedProperties);
       setDataVersion(prev => prev + 1);
       setIsLoadingProperties(false);
-
-      console.warn('🔥 PropertyList: FINISHED updating! New properties count:', limitedProperties.length);
-      console.warn(
-        '🔥 PropertyList: First 3 properties:',
-        limitedProperties.slice(0, 3).map(p => ({ id: p.id, address: p.address, coordinates: p.coordinates })),
-      );
     }, 100); // 100ms delay to ensure clean state
   }, []);
 
@@ -346,7 +329,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
       {/* --- List & Detail Panel --- */}
       <div
-        className={`w-full lg:w-[480px] lg:flex-shrink-0 flex flex-col bg-white border-r border-gray-200 z-10 h-full min-h-[calc(100vh-60px)] lg:min-h-full ${
+        className={`w-full lg:w-[456px] lg:flex-shrink-0 flex flex-col bg-white border-r border-gray-200 z-10 h-full min-h-[calc(100vh-60px)] lg:min-h-full ${
           activeView === 'map' ? 'hidden lg:flex' : 'flex'
         }`}
       >
@@ -509,12 +492,12 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                   onChange={e => setSortOption(e.target.value as SortOption)}
                   className="w-full sm:w-1/2 border rounded-md px-2 py-1.5 text-sm bg-white"
                 >
-                  <option value="date-desc">Plus récentes</option>
-                  <option value="date-asc">Plus anciennes</option>
-                  <option value="price-desc">Prix ↓</option>
-                  <option value="price-asc">Prix ↑</option>
-                  <option value="sqm-desc">€/m² ↓</option>
-                  <option value="sqm-asc">€/m² ↑</option>
+                  <option value="date-desc">Les plus récentes</option>
+                  <option value="date-asc">Les plus anciennes</option>
+                  <option value="price-desc">Prix le plus haut</option>
+                  <option value="price-asc">Prix le plus bas</option>
+                  <option value="sqm-desc">Prix au m² le plus haut</option>
+                  <option value="sqm-asc">Prix au m² le plus bas</option>
                 </select>
               </div>
             </div>
@@ -525,7 +508,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                   <PropertyCard
                     key={property.id}
                     property={property}
-                    onClick={() => handlePropertySelect(property)}
+                    onClick={() => {}} // Désactivé - pas de clic sur les cartes
                     isHovered={hoveredPropertyId === property.id}
                     isMapHovered={mapHoveredPropertyId === property.id}
                     onMouseEnter={() => setHoveredPropertyId(property.id)}

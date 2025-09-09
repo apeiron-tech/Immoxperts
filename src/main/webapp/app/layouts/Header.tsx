@@ -87,7 +87,8 @@ const Header: React.FC = () => {
             <div className="hidden md:flex items-center space-x-6 flex-shrink-0">
               {/* Bouton Se connecter */}
               <button
-                className="relative px-6 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 transform hover:scale-105 hover:shadow-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
+                className="relative px-6 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 transform hover:scale-105 hover:shadow-lg text-white  hover:from-blue-700 hover:to-purple-700 shadow-lg"
+                style={{ backgroundColor: '#7069F9' }}
                 onClick={() => navigate('/login')}
               >
                 <span className="relative">Se connecter</span>
@@ -96,7 +97,7 @@ const Header: React.FC = () => {
               {/* Bouton Pack Pro */}
               <div className="relative group">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300" />
-                <div className="relative text-sm font-bold border-2 border-transparent bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-border p-3 px-6 rounded-2xl backdrop-blur">
+                <div className="relative text-sm font-bold border-2 border-transparent bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-border p-2 px-6 rounded-2xl backdrop-blur transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-lg">
                   <div className="absolute inset-0 bg-white rounded-2xl" />
                   <div className="relative flex items-center space-x-2">
                     <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold">Pack</span>

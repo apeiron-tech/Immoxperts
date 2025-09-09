@@ -114,13 +114,22 @@ const getStatsShortTypeName = (type: string) => {
 
 // **NEW**: Function to calculate statistics from map data
 const calculateZoneStats = (mapFeatures: any[]) => {
-  console.warn('🔄 calculateZoneStats called with', mapFeatures.length, 'features');
-
-  const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Bien Multiple'];
+  const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
   const stats = [];
 
   propertyTypeNames.forEach(typeName => {
     const uniqueMutations = new Map(); // Use Map to track unique mutations by ID
+
+    // ✅ Mapping des noms pour correspondre aux données des mutations
+    const mutationTypeMap = {
+      Local: 'Local Commercial',
+      Appartement: 'Appartement',
+      Maison: 'Maison',
+      Terrain: 'Terrain',
+      'Bien Multiple': 'Bien Multiple',
+    };
+
+    const mutationTypeName = mutationTypeMap[typeName] || typeName;
 
     // Extract all mutations of this type from map features
     mapFeatures.forEach(feature => {
@@ -133,15 +142,10 @@ const calculateZoneStats = (mapFeatures: any[]) => {
             addresses.forEach(address => {
               if (address.mutations && Array.isArray(address.mutations)) {
                 address.mutations.forEach(mutation => {
-                  if (mutation.type_groupe === typeName) {
+                  if (mutation.type_groupe === mutationTypeName) {
                     // Only add if we haven't seen this mutation ID before
                     if (!uniqueMutations.has(mutation.id)) {
                       uniqueMutations.set(mutation.id, mutation);
-                      console.warn(
-                        `✅ Added unique mutation: ${mutation.id} (${mutation.type_groupe}) - Price: ${mutation.valeur}, Price/m²: ${mutation.prix_m2}`,
-                      );
-                    } else {
-                      console.warn(`🔄 Skipped duplicate mutation: ${mutation.id} (${mutation.type_groupe})`);
                     }
                   }
                 });
@@ -149,15 +153,13 @@ const calculateZoneStats = (mapFeatures: any[]) => {
             });
           }
         } catch (err) {
-          console.error('Error parsing addresses:', err);
+          // Error parsing addresses
         }
       }
     });
 
     // Convert Map values back to array
     const mutations = Array.from(uniqueMutations.values());
-
-    console.warn(`🔍 ${typeName}: Found ${uniqueMutations.size} unique mutations out of total processed`);
 
     // Calculate statistics for this property type
     if (mutations.length > 0) {
@@ -167,11 +169,6 @@ const calculateZoneStats = (mapFeatures: any[]) => {
       // Calculate medians
       const medianPrice = prices.length > 0 ? calculateMedian(prices) : 0;
       const medianPricePerM2 = pricesPerM2.length > 0 ? calculateMedian(pricesPerM2) : 0;
-
-      // Debug logging
-      console.warn(
-        `📊 ${typeName}: ${mutations.length} unique mutations, median price: ${medianPrice}, median price/m²: ${medianPricePerM2}`,
-      );
 
       stats.push({
         typeGroupe: typeName,
@@ -190,7 +187,6 @@ const calculateZoneStats = (mapFeatures: any[]) => {
     }
   });
 
-  console.warn('📊 Final zone stats calculated:', stats);
   return stats;
 };
 
@@ -229,7 +225,7 @@ const getINSEECodeFromCoords = async (lng: number, lat: number) => {
     }
     return null;
   } catch (err) {
-    console.error('Error getting INSEE code:', err);
+    // Error getting INSEE code
     return null;
   }
 };
@@ -283,9 +279,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // Debug logging
   const debugLog = (message: string, data?: any) => {
-    if (debugging) {
-      console.warn(`[MapboxDebug] ${message}`, data || '');
-    }
+    // Debug logging disabled
   };
 
   // Function to clear hover popups
@@ -304,6 +298,56 @@ const PropertyMap: React.FC<MapPageProps> = ({
       clickPopupRef.current = null;
       debugLog('Click popup cleared');
     }
+  };
+
+  // Function to preserve all map data when changing styles
+  const preserveMapState = () => {
+    if (!mapRef.current) return null;
+
+    const map = mapRef.current;
+    const state = {
+      center: map.getCenter(),
+      zoom: map.getZoom(),
+      sources: {},
+      layers: [],
+    };
+
+    // Save all sources data
+    const sourceIds = ['mutations-live', 'hovered-circle', 'selected-address-marker', 'selected-address'];
+    sourceIds.forEach(sourceId => {
+      const source = map.getSource(sourceId);
+      if (source && source.type === 'geojson') {
+        state.sources[sourceId] = source._data;
+      }
+    });
+
+    debugLog('Map state preserved:', state);
+    return state;
+  };
+
+  // Function to restore all map data after style change
+  const restoreMapState = state => {
+    if (!mapRef.current || !state) return;
+
+    const map = mapRef.current;
+    debugLog('Restoring map state...');
+
+    // Restore center and zoom
+    map.setCenter(state.center);
+    map.setZoom(state.zoom);
+
+    // Wait a bit for style to be fully loaded, then restore data
+    setTimeout(() => {
+      // Restore sources data
+      Object.keys(state.sources).forEach(sourceId => {
+        const source = map.getSource(sourceId);
+        if (source && source.type === 'geojson') {
+          source.setData(state.sources[sourceId]);
+        }
+      });
+
+      debugLog('Map state restored successfully');
+    }, 100);
   };
 
   // Function to clear all popups
@@ -438,35 +482,23 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
         // **NEW**: Notify PropertyList about new data
         if (onDataUpdate) {
-          console.warn('🔄 PropertyMap (initial): Calling onDataUpdate with', geojsonData.features.length, 'features');
           onDataUpdate(geojsonData.features);
-        } else {
-          console.warn('⚠️ PropertyMap (initial): onDataUpdate callback not provided!');
         }
 
         // **NEW**: Recalculate zone stats immediately after initial data is loaded
         if (statsScope === 'zone') {
           setTimeout(() => {
-            console.warn('📊 Recalculating zone stats after initial data load...');
-            console.warn('📊 Current statsScope:', statsScope);
-
             if (mapRef.current && mapRef.current.getSource('mutations-live')) {
               const features = mapRef.current.querySourceFeatures('mutations-live');
-              console.warn('📊 Found', features.length, 'features for initial zone stats calculation');
-
               const calculatedStats = calculateZoneStats(features);
-              console.warn('📊 Initial zone stats calculated:', calculatedStats);
-
               setZoneStats(calculatedStats);
-            } else {
-              console.warn('📊 ERROR: Map or source not available for initial zone stats calculation');
             }
           }, 200); // Increased delay to ensure map data is fully processed
         }
       }
     } catch (e) {
       debugLog('Failed to load initial data:', e);
-      console.error('Échec du chargement des données initiales:', e);
+      // Failed to load initial data
     }
   };
 
@@ -544,50 +576,32 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
         // **NEW**: Notify PropertyList about new data
         if (onDataUpdate) {
-          console.warn('🔄 PropertyMap (move): Calling onDataUpdate with', geojsonData.features.length, 'features');
           onDataUpdate(geojsonData.features);
 
           // **ADDITIONAL**: Force zone stats recalculation right after property list update
           if (statsScope === 'zone') {
             setTimeout(() => {
-              console.warn('📊 DIRECT: Force recalculating zone stats after property list update');
               const features = mapRef.current.querySourceFeatures('mutations-live');
-              console.warn('📊 DIRECT: Features found for calculation:', features.length);
               const calculatedStats = calculateZoneStats(features);
-              console.warn('📊 DIRECT: New zone stats calculated:', calculatedStats);
               setZoneStats(calculatedStats);
             }, 500); // Wait for property list to finish updating
           }
-        } else {
-          console.warn('⚠️ PropertyMap (move): onDataUpdate callback not provided!');
         }
 
         // **NEW**: Recalculate zone stats immediately after new data is loaded
         if (statsScope === 'zone') {
           setTimeout(() => {
-            console.warn('📊 Recalculating zone stats after new data load...');
-            console.warn('📊 Current statsScope:', statsScope);
-
             if (mapRef.current && mapRef.current.getSource('mutations-live')) {
               const features = mapRef.current.querySourceFeatures('mutations-live');
-              console.warn('📊 Found', features.length, 'features for zone stats recalculation');
-
               const calculatedStats = calculateZoneStats(features);
-              console.warn('📊 Newly calculated zone stats:', calculatedStats);
-
               setZoneStats(calculatedStats);
-              console.warn('📊 Zone stats state updated!');
-            } else {
-              console.warn('📊 ERROR: Map or source not available for zone stats recalculation');
             }
           }, 200); // Increased delay to ensure map data is fully processed
-        } else {
-          console.warn('📊 Not recalculating zone stats because statsScope is:', statsScope);
         }
       }
     } catch (e) {
       debugLog('Failed to load mutations:', e);
-      console.error('Échec du chargement des mutations:', e);
+      // Failed to load mutations
     }
   };
 
@@ -629,7 +643,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
       // Enhanced error handling
       map.on('error', (e: mapboxgl.ErrorEvent) => {
         debugLog('Mapbox error occurred:', e.error);
-        console.error('Erreur Mapbox:', e.error);
+        // Mapbox error
         setMapError(`Mapbox error: ${e.error.message || 'Unknown error'}`);
       });
 
@@ -671,9 +685,26 @@ const PropertyMap: React.FC<MapPageProps> = ({
             source: 'parcelles-source',
             'source-layer': 'parcelles_pour_mapbox_final',
             paint: {
-              'fill-color': '#6e599f',
-              'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.5, 0.2],
-              'fill-outline-color': 'rgba(0, 0, 0, 0.5)',
+              'fill-color': [
+                'case',
+                ['boolean', ['feature-state', 'clicked'], false],
+                '#3B82F6', // Bleu quand cliqué
+                '#6e599f', // Violet par défaut
+              ],
+              'fill-opacity': [
+                'case',
+                ['boolean', ['feature-state', 'clicked'], false],
+                0.7, // Plus opaque quand cliqué
+                ['boolean', ['feature-state', 'hover'], false],
+                0.5, // Opacité hover
+                0.2, // Opacité par défaut
+              ],
+              'fill-outline-color': [
+                'case',
+                ['boolean', ['feature-state', 'clicked'], false],
+                '#1D4ED8', // Bordure bleue foncée quand cliqué
+                'rgba(0, 0, 0, 0.5)', // Bordure par défaut
+              ],
             },
           });
 
@@ -718,6 +749,38 @@ const PropertyMap: React.FC<MapPageProps> = ({
               );
             }
             hoveredParcelId = null;
+          });
+
+          // Parcel click functionality - make clicked parcels blue
+          let clickedParcelId: string | number | null = null;
+
+          map.on('click', 'parcelles-layer', (e: mapboxgl.MapMouseEvent) => {
+            if (e.features && e.features.length > 0) {
+              // Remove blue from previously clicked parcel
+              if (clickedParcelId !== null) {
+                map.setFeatureState(
+                  {
+                    source: 'parcelles-source',
+                    sourceLayer: 'parcelles_pour_mapbox_final',
+                    id: clickedParcelId,
+                  },
+                  { clicked: false },
+                );
+              }
+
+              // Set new clicked parcel to blue
+              clickedParcelId = e.features[0].id;
+              if (clickedParcelId !== null && clickedParcelId !== undefined) {
+                map.setFeatureState(
+                  {
+                    source: 'parcelles-source',
+                    sourceLayer: 'parcelles_pour_mapbox_final',
+                    id: clickedParcelId,
+                  },
+                  { clicked: true },
+                );
+              }
+            }
           });
 
           // ===================================================================
@@ -876,14 +939,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       const firstAddress = addresses[0];
                       const mutations = firstAddress.mutations || [];
 
-                      // Helper functions for your styling
+                      // Helper functions for your styling - Nouvelles couleurs spécifiées
                       const getPropertyTypeColor = type => {
                         const colors = {
-                          Appartement: '#6929CF',
-                          Maison: '#121852',
-                          Terrain: '#2971CF',
-                          Local: '#862CC7',
-                          'Bien Multiple': '#381EB0',
+                          Appartement: '#504CC5', // #504CC5 - Violet
+                          Maison: '#7A72D5', // #7A72D5 - Violet clair
+                          Terrain: '#4F96D6', // #4F96D6 - Bleu
+                          Local: '#205F9D', // #205F9D - Bleu foncé
+                          'Bien Multiple': '#022060', // #022060 - Bleu très foncé
                         };
                         const shortType = getShortTypeName(type);
                         return colors[shortType] || '#9CA3AF';
@@ -1611,7 +1674,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         debugLog('Statistics loaded successfully:', response.data);
         setPropertyStats(response.data);
       } catch (err) {
-        console.error('Erreur récupération statistiques:', err);
+        // Error fetching statistics
         setError('Erreur chargement statistiques');
         setPropertyStats([]);
       } finally {
@@ -1627,13 +1690,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
     if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
       // Small delay to ensure map data is loaded
       setTimeout(() => {
-        console.warn('📊 Calculating zone statistics from current map data...');
-
         const features = mapRef.current.querySourceFeatures('mutations-live');
-        console.warn('📊 Found', features.length, 'features on map for zone stats');
-
         const calculatedStats = calculateZoneStats(features);
-        console.warn('📊 Calculated zone stats:', calculatedStats);
 
         setZoneStats(calculatedStats);
       }, 500); // 500ms delay to ensure data is loaded
@@ -1642,39 +1700,24 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // **NEW**: Recalculate zone stats when map moves (if zone scope is selected)
   const recalculateZoneStatsIfNeeded = useCallback(() => {
-    console.warn('🔄 recalculateZoneStatsIfNeeded called, statsScope:', statsScope);
     if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
       setTimeout(() => {
-        console.warn('📊 FORCE Recalculating zone stats after map move...');
         const features = mapRef.current.querySourceFeatures('mutations-live');
-        console.warn('📊 FORCE Found', features.length, 'features for recalculation');
         const calculatedStats = calculateZoneStats(features);
-        console.warn('📊 FORCE Recalculated zone stats after map move:', calculatedStats);
         setZoneStats(calculatedStats);
       }, 300); // Longer delay to ensure data is fully loaded
-    } else {
-      console.warn('📊 Not recalculating: statsScope =', statsScope, ', map ready =', !!mapRef.current);
     }
   }, [statsScope]);
 
   // **NEW**: Recalculate zone stats when data version changes (triggered by PropertyList)
   useEffect(() => {
     if (statsScope === 'zone' && dataVersion !== undefined && mapRef.current && mapRef.current.getSource('mutations-live')) {
-      console.warn('🚀 TRIGGERED: Zone stats recalculation by dataVersion change:', dataVersion);
-
       // Small delay to ensure map rendering is complete
       setTimeout(() => {
         const features = mapRef.current.querySourceFeatures('mutations-live');
-        console.warn('🚀 TRIGGERED: Found', features.length, 'features for zone stats');
-
         const calculatedStats = calculateZoneStats(features);
-        console.warn('🚀 TRIGGERED: Calculated new zone stats:', calculatedStats);
-
         setZoneStats(calculatedStats);
-        console.warn('🚀 TRIGGERED: Zone stats updated successfully!');
       }, 300);
-    } else {
-      console.warn('🚀 NOT TRIGGERED: statsScope =', statsScope, ', dataVersion =', dataVersion, ', map ready =', !!mapRef.current);
     }
   }, [dataVersion, statsScope]); // Trigger when dataVersion or statsScope changes
 
@@ -1691,11 +1734,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
     (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
 
     if (hoveredProperty) {
-      console.warn('🎯 PropertyMap: Looking for hovered property:', hoveredProperty.address, hoveredProperty.coordinates);
-
       // Find the corresponding feature on the map by matching coordinates
       const features = mapRef.current.querySourceFeatures('mutations-live');
-      console.warn('🎯 PropertyMap: Found', features.length, 'map features to check');
 
       for (const feature of features) {
         if (feature.geometry && feature.geometry.type === 'Point') {
@@ -1705,15 +1745,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           // Check if coordinates match exactly (they should be exactly the same)
           const coordsMatch = featureCoords[0] === propertyCoords[0] && featureCoords[1] === propertyCoords[1];
 
-          console.warn('🔍 Comparing coordinates:', {
-            featureCoords: [featureCoords[0], featureCoords[1]],
-            propertyCoords: [propertyCoords[0], propertyCoords[1]],
-            exactMatch: coordsMatch,
-          });
-
           if (coordsMatch) {
-            console.warn('🎯 PropertyMap: Found exact coordinate match!');
-
             // Show blue box shadow for this feature
             const hoveredFeatureData: GeoJSON.FeatureCollection = {
               type: 'FeatureCollection',
@@ -1722,7 +1754,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
             (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
-            console.warn('🎯 PropertyMap: Applied blue shadow to map point!');
+            // Applied blue shadow to map point
             break; // Exit early once found
           }
         }
@@ -1952,21 +1984,56 @@ const PropertyMap: React.FC<MapPageProps> = ({
             if (mapRef.current) {
               const map = mapRef.current;
 
-              if (currentMapStyle === 'original') {
-                // Switch to new style
-                map.setStyle('mapbox://styles/immoxpert/cmcvzcpf4002n01que0el1fsy');
-                setCurrentMapStyle('alternative');
-              } else {
-                // Switch back to original style
-                map.setStyle('mapbox://styles/immoxpert/cmck83rh6001501r1dlt1fy8k');
-                setCurrentMapStyle('original');
-              }
+              try {
+                if (currentMapStyle === 'original') {
+                  // Change to satellite/alternative view by modifying layers
+                  debugLog('Switching to alternative style...');
 
-              // Re-add essential elements after style loads
-              map.once('style.load', () => {
-                // Reload initial data
-                loadInitialData();
-              });
+                  // Change the background layer or add satellite layer
+                  if (map.getLayer('satellite-layer')) {
+                    map.setLayoutProperty('satellite-layer', 'visibility', 'visible');
+                  } else {
+                    // Add satellite layer if it doesn't exist
+                    map.addLayer(
+                      {
+                        id: 'satellite-layer',
+                        type: 'raster',
+                        source: {
+                          type: 'raster',
+                          tiles: [
+                            'https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=' + mapboxgl.accessToken,
+                          ],
+                          tileSize: 512,
+                        },
+                        layout: {
+                          visibility: 'visible',
+                        },
+                        paint: {
+                          'raster-opacity': 0.8,
+                        },
+                      },
+                      'mutation-point',
+                    ); // Add below mutation points
+                  }
+
+                  setCurrentMapStyle('alternative');
+                } else {
+                  // Switch back to original style
+                  debugLog('Switching back to original style...');
+
+                  // Hide satellite layer
+                  if (map.getLayer('satellite-layer')) {
+                    map.setLayoutProperty('satellite-layer', 'visibility', 'none');
+                  }
+
+                  setCurrentMapStyle('original');
+                }
+
+                debugLog('Style change completed successfully');
+              } catch (err) {
+                // Error switching map style
+                setError('Erreur lors du changement de style de carte');
+              }
             }
           }}
           className="bg-white text-gray-600 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200"
@@ -2011,16 +2078,37 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
           {(() => {
             // ✅ Adaptation pour les nouvelles données de l'API
-            const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Bien Multiple'];
-            const getIndigoShade = idx => ['bg-indigo-600', 'bg-violet-500', 'bg-blue-400', 'bg-blue-600'][idx];
+            const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
+            // ✅ Nouvelles couleurs spécifiées
+            const getPropertyTypeButtonColor = typeName => {
+              const colorMap = {
+                Appartement: 'bg-[#504CC5]', // #504CC5 - Violet
+                Maison: 'bg-[#7A72D5]', // #7A72D5 - Violet clair
+                Terrain: 'bg-[#4F96D6]', // #4F96D6 - Bleu
+                Local: 'bg-[#205F9D]', // #205F9D - Bleu foncé
+                'Bien Multiple': 'bg-[#022060]', // #022060 - Bleu très foncé
+              };
+              return colorMap[typeName] || 'bg-gray-500';
+            };
 
             // **NEW**: Choose data source based on selected scope
             const currentStatsData = statsScope === 'commune' ? propertyStats : zoneStats;
 
             const normalizedStats = propertyTypeNames.map((typeName, index) => {
+              // ✅ Mapping des noms pour correspondre aux données API
+              const apiTypeMap = {
+                Local: 'Local Commercial',
+                Appartement: 'Appartement',
+                Maison: 'Maison',
+                Terrain: 'Terrain',
+                'Bien Multiple': 'Bien Multiple',
+              };
+
+              const apiTypeName = apiTypeMap[typeName] || typeName;
+
               // ✅ Recherche directe par typeGroupe depuis l'API ou zone data
               const match = currentStatsData.find(item => {
-                return item.typeGroupe === typeName;
+                return item.typeGroupe === apiTypeName;
               });
 
               return {
@@ -2038,7 +2126,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     <button
                       key={stat.typeBien}
                       className={`flex-1 py-2 px-1 sm:px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
-                        activePropertyType === index ? `${getIndigoShade(index)} text-white` : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
+                        activePropertyType === index
+                          ? `${getPropertyTypeButtonColor(stat.typeBien)} text-white`
+                          : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
                       }`}
                       onClick={() => setActivePropertyType(index)}
                     >

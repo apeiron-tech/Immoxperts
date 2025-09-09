@@ -66,7 +66,7 @@ const AddressHighlighter: React.FC = () => {
           zoom: 18,
         });
       } else {
-        console.warn('Adresse non trouvée dans la couche');
+        // Address not found in layer
       }
     });
 

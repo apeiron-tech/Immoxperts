@@ -49,7 +49,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
             setShowSuggestions(true);
           }
         } catch (error) {
-          console.error('Error fetching address suggestions:', error);
+          // Error fetching address suggestions
           setSuggestions([]);
         } finally {
           setIsLoading(false);
