@@ -230,6 +230,30 @@ const getINSEECodeFromCoords = async (lng: number, lat: number) => {
   }
 };
 
+// Function to get quartier data from location API
+const getQuartierFromCoords = async (lng: number, lat: number) => {
+  try {
+    const response = await axios.get(`http://localhost:8080/api/location/detect-complete`, {
+      params: {
+        lng,
+        lat,
+      },
+    });
+
+    if (response.data && response.data.success && response.data.quartier) {
+      return {
+        quartier: response.data.quartier,
+        commune: response.data.commune,
+        adresse_complete: response.data.adresse_complete,
+      };
+    }
+    return null;
+  } catch (err) {
+    // Error getting quartier data
+    return null;
+  }
+};
+
 const PropertyMap: React.FC<MapPageProps> = ({
   selectedFeature,
   properties,
@@ -257,9 +281,11 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const [selectedAddress, setSelectedAddress] = useState<[number, number] | null>(null);
   const [currentINSEE, setCurrentINSEE] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // **NEW**: Stats scope selection (commune or zone)
-  const [statsScope, setStatsScope] = useState<'commune' | 'zone'>('commune');
+  // **NEW**: Stats scope selection (commune, zone, or quartier)
+  const [statsScope, setStatsScope] = useState<'commune' | 'zone' | 'quartier'>('commune');
   const [zoneStats, setZoneStats] = useState([]);
+  const [currentQuartier, setCurrentQuartier] = useState<string>('');
+  const [isLoadingQuartier, setIsLoadingQuartier] = useState(false);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -1553,6 +1579,25 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   setCurrentINSEE(locationData.insee);
                   debugLog('Initial INSEE code loaded:', locationData.insee);
                 }
+
+                // **NEW**: Load initial quartier data
+                const loadInitialQuartier = async () => {
+                  try {
+                    setIsLoadingQuartier(true);
+                    const quartierData = await getQuartierFromCoords(center.lng, center.lat);
+
+                    if (quartierData && quartierData.quartier) {
+                      setCurrentQuartier(quartierData.quartier);
+                      debugLog('Initial quartier loaded:', quartierData.quartier);
+                    }
+                  } catch (err) {
+                    debugLog('Error loading initial quartier:', err);
+                  } finally {
+                    setIsLoadingQuartier(false);
+                  }
+                };
+
+                loadInitialQuartier();
               } catch (err) {
                 debugLog('Error loading initial INSEE code:', err);
                 setError('Erreur géocodage initial');
@@ -1595,6 +1640,42 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   // ✅ SUPPRIMER cette ligne - les stats se chargent automatiquement via le useEffect ci-dessus
                   // await fetchPropertyStatsByINSEE(locationData.insee);
                 }
+
+                // **NEW**: Update quartier data when map moves
+                const updateQuartierData = async () => {
+                  try {
+                    setIsLoadingQuartier(true);
+                    const quartierData = await getQuartierFromCoords(center.lng, center.lat);
+
+                    if (quartierData && quartierData.quartier) {
+                      const newQuartier = quartierData.quartier;
+
+                      // Only update if quartier has actually changed
+                      if (newQuartier !== currentQuartier) {
+                        setCurrentQuartier(newQuartier);
+
+                        // Reset stats to zeros when quartier changes (if quartier scope is selected)
+                        if (statsScope === 'quartier') {
+                          // Reset property stats to show zeros temporarily
+                          const resetStats = [
+                            { typeGroupe: 'Appartement', nombre: 0, prixMoyen: 0, prixM2Moyen: 0 },
+                            { typeGroupe: 'Maison', nombre: 0, prixMoyen: 0, prixM2Moyen: 0 },
+                            { typeGroupe: 'Terrain', nombre: 0, prixMoyen: 0, prixM2Moyen: 0 },
+                            { typeGroupe: 'Local Commercial', nombre: 0, prixMoyen: 0, prixM2Moyen: 0 },
+                            { typeGroupe: 'Bien Multiple', nombre: 0, prixMoyen: 0, prixM2Moyen: 0 },
+                          ];
+                          setPropertyStats(resetStats);
+                        }
+                      }
+                    }
+                  } catch (err) {
+                    debugLog('Error updating quartier data:', err);
+                  } finally {
+                    setIsLoadingQuartier(false);
+                  }
+                };
+
+                updateQuartierData();
               } catch (err) {
                 setError('Erreur géocodage');
               }
@@ -1720,6 +1801,22 @@ const PropertyMap: React.FC<MapPageProps> = ({
       }, 300);
     }
   }, [dataVersion, statsScope]); // Trigger when dataVersion or statsScope changes
+
+  // **NEW**: Handle statsScope change to quartier - reset stats to zeros
+  useEffect(() => {
+    if (statsScope === 'quartier') {
+      // Reset property stats to show zeros when quartier scope is selected
+      const resetStats = [
+        { typeGroupe: 'Appartement', nombre: 0, prixMoyen: 0, prixM2Moyen: 0 },
+        { typeGroupe: 'Maison', nombre: 0, prixMoyen: 0, prixM2Moyen: 0 },
+        { typeGroupe: 'Terrain', nombre: 0, prixMoyen: 0, prixM2Moyen: 0 },
+        { typeGroupe: 'Local Commercial', nombre: 0, prixMoyen: 0, prixM2Moyen: 0 },
+        { typeGroupe: 'Bien Multiple', nombre: 0, prixMoyen: 0, prixM2Moyen: 0 },
+      ];
+      setPropertyStats(resetStats);
+      setIsLoading(false); // Stop loading state for quartier
+    }
+  }, [statsScope]); // Trigger when statsScope changes
 
   // **NEW**: Handle property card hover to highlight corresponding point on map
   useEffect(() => {
@@ -2063,12 +2160,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 <select
                   id="stats-scope"
                   value={statsScope}
-                  onChange={e => setStatsScope(e.target.value as 'commune' | 'zone')}
+                  onChange={e => setStatsScope(e.target.value as 'commune' | 'zone' | 'quartier')}
                   className="border border-gray-300 rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer w-full sm:min-w-[120px]"
                   style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
                 >
                   <option value="commune">Commune ({currentCity})</option>
                   <option value="zone">Zone affichée</option>
+                  <option value="quartier">Quartier ({currentQuartier || 'Chargement...'})</option>
                 </select>
               </div>
             </div>
@@ -2092,7 +2190,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
             };
 
             // **NEW**: Choose data source based on selected scope
-            const currentStatsData = statsScope === 'commune' ? propertyStats : zoneStats;
+            const currentStatsData =
+              statsScope === 'commune'
+                ? propertyStats
+                : statsScope === 'zone'
+                  ? zoneStats
+                  : // For quartier, use propertyStats but they will be zeros when quartier changes
+                    propertyStats;
 
             const normalizedStats = propertyTypeNames.map((typeName, index) => {
               // ✅ Mapping des noms pour correspondre aux données API
@@ -2137,7 +2241,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   ))}
                 </div>
 
-                {isLoading ? (
+                {isLoading || (statsScope === 'quartier' && isLoadingQuartier) ? (
                   <div className="flex justify-center py-2">
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent" />
                   </div>
