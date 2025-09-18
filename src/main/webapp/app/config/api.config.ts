@@ -1,6 +1,6 @@
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-export const API_BASE_URL = isDevelopment ? 'https://immoxperts.apeiron-tech.dev' : 'https://immoxperts.apeiron-tech.dev';
+export const API_BASE_URL = isDevelopment ? 'http://localhost:8080' : 'https://immoxperts.apeiron-tech.dev';
 
 // External service URLs
 export const EXTERNAL_URLS = {
