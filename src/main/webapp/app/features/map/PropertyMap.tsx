@@ -457,7 +457,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         limit: '500',
       });
 
-      const apiUrl = `https://immoxperts.apeiron-tech.dev/api/mutations/search?${params.toString()}`;
+      const apiUrl = `${API_ENDPOINTS.mutations.search}?${params.toString()}`;
       debugLog('Calling initial API:', apiUrl);
 
       const { data } = await axios.get(apiUrl);
@@ -551,8 +551,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         ...filterParams,
       });
 
-      const apiUrl = `https://immoxperts.apeiron-tech.dev/api/mutations/search?${params.toString()}`;
-
+      const apiUrl = `${API_ENDPOINTS.mutations.search}?${params.toString()}`;
       debugLog('Calling API:', apiUrl);
 
       const { data } = await axios.get(apiUrl);

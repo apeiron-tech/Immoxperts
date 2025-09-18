@@ -36,7 +36,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
         try {
           setIsLoading(true);
 
-          const response = await fetch(`https://immoxperts.apeiron-tech.dev/api/adresses/suggestions?q=${encodeURIComponent(searchQuery)}`);
+          const response = await fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(searchQuery)}`);
 
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
