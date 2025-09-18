@@ -32,7 +32,7 @@ spring:
       indent-output: true
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
-    url: jdbc:postgresql://localhost:5432/immoxperts?currentSchema=dvf
+    url: jdbc:postgresql://localhost:5432/immoxpert?currentSchema=dvf
     username: postgres
     password: postgres
     hikari:
