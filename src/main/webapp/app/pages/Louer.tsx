@@ -64,7 +64,7 @@ const Louer: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/louer/suggestions?q=${encodeURIComponent(query)}&limit=10`);
+      const response = await fetch(`https://immoxperts.apeiron-tech.dev/api/louer/suggestions?q=${encodeURIComponent(query)}&limit=10`);
       if (!response.ok) {
         throw new Error('Failed to fetch suggestions');
       }
