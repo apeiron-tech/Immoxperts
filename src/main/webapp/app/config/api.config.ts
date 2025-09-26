@@ -24,7 +24,8 @@ export const API_ENDPOINTS = {
     statsByCity: `${API_BASE_URL}/api/mutations/stats/by-city`,
   },
   louer: {
-    search: `${API_BASE_URL}/api/louer/search`,
+    search: `${API_BASE_URL}/api/louer/search-with-filters`,
+    suggestions: `${API_BASE_URL}/api/louer/suggestions`,
   },
   adresses: {
     suggestions: `${API_BASE_URL}/api/adresses/suggestions`,

@@ -2,25 +2,92 @@ package com.apeiron.immoxperts.service.dto;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.List;
 
 public class DvfLouerDto {
 
     private Long id;
-    private String postalCode;
+    private String source;
+    private String searchPostalCode;
+    private String department;
+    private String departmentName;
+    private String commune;
+    private String codeDepartment;
     private String propertyType;
+    private String priceText;
+    private BigDecimal price;
     private String address;
     private String details;
-    private BigDecimal price;
-    private String priceText;
-    private String images;
-    private Timestamp scrapedAt;
+    private String description;
+    private String propertyUrl;
+    private List<String> images;
 
-    public String getImages() {
-        return images;
+    // Default constructor
+    public DvfLouerDto() {}
+
+    // Getters and setters
+    public Long getId() {
+        return id;
     }
 
-    public void setImages(String images) {
-        this.images = images;
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getSearchPostalCode() {
+        return searchPostalCode;
+    }
+
+    public void setSearchPostalCode(String searchPostalCode) {
+        this.searchPostalCode = searchPostalCode;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getDepartmentName() {
+        return departmentName;
+    }
+
+    public void setDepartmentName(String departmentName) {
+        this.departmentName = departmentName;
+    }
+
+    public String getCommune() {
+        return commune;
+    }
+
+    public void setCommune(String commune) {
+        this.commune = commune;
+    }
+
+    public String getCodeDepartment() {
+        return codeDepartment;
+    }
+
+    public void setCodeDepartment(String codeDepartment) {
+        this.codeDepartment = codeDepartment;
+    }
+
+    public String getPropertyType() {
+        return propertyType;
+    }
+
+    public void setPropertyType(String propertyType) {
+        this.propertyType = propertyType;
     }
 
     public String getPriceText() {
@@ -47,30 +114,6 @@ public class DvfLouerDto {
         this.address = address;
     }
 
-    public String getPropertyType() {
-        return propertyType;
-    }
-
-    public void setPropertyType(String propertyType) {
-        this.propertyType = propertyType;
-    }
-
-    public String getPostalCode() {
-        return postalCode;
-    }
-
-    public void setPostalCode(String postalCode) {
-        this.postalCode = postalCode;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public String getDetails() {
         return details;
     }
@@ -79,11 +122,27 @@ public class DvfLouerDto {
         this.details = details;
     }
 
-    public Timestamp getScrapedAt() {
-        return scrapedAt;
+    public String getDescription() {
+        return description;
     }
 
-    public void setScrapedAt(Timestamp scrapedAt) {
-        this.scrapedAt = scrapedAt;
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPropertyUrl() {
+        return propertyUrl;
+    }
+
+    public void setPropertyUrl(String propertyUrl) {
+        this.propertyUrl = propertyUrl;
+    }
+
+    public List<String> getImages() {
+        return images;
+    }
+
+    public void setImages(List<String> images) {
+        this.images = images;
     }
 }

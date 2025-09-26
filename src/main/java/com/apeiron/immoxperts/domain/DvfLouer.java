@@ -4,7 +4,11 @@ import jakarta.persistence.*;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "dvf_louer")
@@ -15,25 +19,56 @@ public class DvfLouer implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String postalCode; // mapped from 'postal_code'
+    @Column(name = "source", length = 50)
+    private String source;
 
+    @Column(name = "search_postal_code", length = 10)
+    private String searchPostalCode;
+
+    @Column(name = "department", length = 100)
+    private String department;
+
+    @Column(name = "department_name", length = 100)
+    private String departmentName;
+
+    @Column(name = "commune", length = 100)
+    private String commune;
+
+    @Column(name = "code_department", length = 10)
+    private String codeDepartment;
+
+    @Column(name = "property_type", length = 100)
     private String propertyType;
 
-    @Column(columnDefinition = "text")
-    private String address;
-
-    @Column(columnDefinition = "text")
-    private String details;
-
-    private BigDecimal price;
-
+    @Column(name = "price_text", length = 50)
     private String priceText;
 
-    @Column(columnDefinition = "jsonb")
-    private String images;
+    @Column(name = "price", precision = 12, scale = 2)
+    private BigDecimal price;
 
-    private Timestamp scrapedAt;
+    @Column(name = "address", columnDefinition = "text")
+    private String address;
 
+    @Column(name = "details", columnDefinition = "text")
+    private String details;
+
+    @Column(name = "description", columnDefinition = "text")
+    private String description;
+
+    @Column(name = "property_url", columnDefinition = "text")
+    private String propertyUrl;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "images", columnDefinition = "jsonb")
+    private List<String> images;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    // Default constructor
+    public DvfLouer() {}
+
+    // Getters and setters
     public Long getId() {
         return id;
     }
@@ -42,20 +77,60 @@ public class DvfLouer implements Serializable {
         this.id = id;
     }
 
-    public Timestamp getScrapedAt() {
-        return scrapedAt;
+    public String getSource() {
+        return source;
     }
 
-    public void setScrapedAt(Timestamp scrapedAt) {
-        this.scrapedAt = scrapedAt;
+    public void setSource(String source) {
+        this.source = source;
     }
 
-    public String getImages() {
-        return images;
+    public String getSearchPostalCode() {
+        return searchPostalCode;
     }
 
-    public void setImages(String images) {
-        this.images = images;
+    public void setSearchPostalCode(String searchPostalCode) {
+        this.searchPostalCode = searchPostalCode;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getDepartmentName() {
+        return departmentName;
+    }
+
+    public void setDepartmentName(String departmentName) {
+        this.departmentName = departmentName;
+    }
+
+    public String getCommune() {
+        return commune;
+    }
+
+    public void setCommune(String commune) {
+        this.commune = commune;
+    }
+
+    public String getCodeDepartment() {
+        return codeDepartment;
+    }
+
+    public void setCodeDepartment(String codeDepartment) {
+        this.codeDepartment = codeDepartment;
+    }
+
+    public String getPropertyType() {
+        return propertyType;
+    }
+
+    public void setPropertyType(String propertyType) {
+        this.propertyType = propertyType;
     }
 
     public String getPriceText() {
@@ -64,14 +139,6 @@ public class DvfLouer implements Serializable {
 
     public void setPriceText(String priceText) {
         this.priceText = priceText;
-    }
-
-    public String getDetails() {
-        return details;
-    }
-
-    public void setDetails(String details) {
-        this.details = details;
     }
 
     public BigDecimal getPrice() {
@@ -90,19 +157,43 @@ public class DvfLouer implements Serializable {
         this.address = address;
     }
 
-    public String getPropertyType() {
-        return propertyType;
+    public String getDetails() {
+        return details;
     }
 
-    public void setPropertyType(String propertyType) {
-        this.propertyType = propertyType;
+    public void setDetails(String details) {
+        this.details = details;
     }
 
-    public String getPostalCode() {
-        return postalCode;
+    public String getDescription() {
+        return description;
     }
 
-    public void setPostalCode(String postalCode) {
-        this.postalCode = postalCode;
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getPropertyUrl() {
+        return propertyUrl;
+    }
+
+    public void setPropertyUrl(String propertyUrl) {
+        this.propertyUrl = propertyUrl;
+    }
+
+    public List<String> getImages() {
+        return images;
+    }
+
+    public void setImages(List<String> images) {
+        this.images = images;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

@@ -8,6 +8,7 @@ const seloger = `${EXTERNAL_URLS.seloger.mms}favicon.ico`; // Logo SeLoger offic
 const leboncoin = '/content/assets/leboncoin-e1561735918709.png'; // Logo LeBonCoin
 const avendrealouer = `${EXTERNAL_URLS.avendrealouer.website}favicon.ico`; // Logo AvendreA
 const figaroimmo = '/content/assets/figaroimmo.png'; // Logo Figaro Immo
+const century21 = '/content/assets/century-21-logo.png'; // Logo Century 21 local
 
 interface Property {
   id: number;
@@ -24,24 +25,38 @@ interface Property {
   Association: string[];
   Association_url: string[];
   images: string[];
+  dynamicAttributes?: { [key: string]: string }; // New property for dynamic attributes
 }
 
 interface ApiProperty {
   id: number;
-  postalCode: string;
+  source: string;
+  searchPostalCode: string;
+  department: string;
+  departmentName: string;
+  commune: string;
+  codeDepartment: string;
   propertyType: string;
-  address: string;
-  details: string;
-  price: number;
   priceText: string;
-  images: string;
-  scrapedAt: string;
+  price: number;
+  address: string | null;
+  details: string;
+  description: string | null;
+  propertyUrl: string | null;
+  images: string[];
 }
 
 interface SearchParams {
   location: string;
+  value: string;
+  type: string;
   maxBudget: string;
   propertyType: string;
+}
+
+interface LocationState {
+  searchResults: ApiProperty[];
+  searchParams: SearchParams;
 }
 
 interface ImageGalleryProps {
@@ -51,17 +66,20 @@ interface ImageGalleryProps {
 
 const RecherchLouer: React.FC = () => {
   const location = useLocation();
-  const searchParams = location.state as SearchParams;
+  const locationState = location.state as LocationState;
+  const searchParams = locationState?.searchParams;
+  const preloadedResults = locationState?.searchResults || [];
 
   const associationLogos = {
     seloger,
     leboncoin,
     avendrealouer,
     figaroimmo,
+    century21,
   };
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [apiProperties, setApiProperties] = useState<ApiProperty[]>([]);
+  const [apiProperties, setApiProperties] = useState<ApiProperty[]>(preloadedResults);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,71 +87,264 @@ const RecherchLouer: React.FC = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  // Function to extract all possible attributes from details
+  const extractAllAttributes = (allText: string) => {
+    const attributes: { [key: string]: string } = {};
+
+    // Surface attributes - only keep one surface (prioritize surface totale)
+    const surfaceTotale = extractSurfaceTotale(allText);
+    const surfaceHabitable = extractSurfaceHabitable(allText);
+
+    if (surfaceTotale !== 'N/A') {
+      attributes['Surface'] = surfaceTotale;
+    } else if (surfaceHabitable !== 'N/A') {
+      attributes['Surface'] = surfaceHabitable;
+    }
+
+    // Property type and rooms with exact format
+    const apartmentType = extractApartmentType(allText);
+    if (apartmentType !== 'N/A') attributes["Type d'appartement"] = apartmentType;
+
+    // Floor with exact format
+    const floor = extractFloor(allText);
+    if (floor !== 'N/A') attributes['Étage'] = floor;
+
+    // Construction info with exact format
+    const constructionType = extractConstructionType(allText);
+    if (constructionType !== 'N/A') attributes['Type de construction'] = constructionType;
+
+    const constructionYear = extractConstructionYear(allText);
+    if (constructionYear !== 'N/A') attributes['Année construction'] = constructionYear;
+
+    // Other amenities (only if apartment type not found)
+    if (apartmentType === 'N/A') {
+      const rooms = extractRooms(allText);
+      if (rooms !== 'N/A') attributes['Pièces'] = rooms;
+    }
+
+    const bathrooms = extractBathrooms(allText);
+    if (bathrooms !== 'N/A') attributes['Salles de bain'] = bathrooms;
+
+    const kitchen = extractKitchen(allText);
+    if (kitchen !== 'N/A') attributes['Cuisine'] = kitchen;
+
+    const balcony = extractBalcony(allText);
+    if (balcony !== 'N/A') attributes['Balcon/Terrasse'] = balcony;
+
+    const terrain = extractGardenTerrain(allText);
+    if (terrain !== 'N/A') attributes['Terrain'] = terrain;
+
+    const parking = extractParking(allText);
+    if (parking !== 'N/A') attributes['Parking'] = parking;
+
+    const energyClass = extractEnergyClass(allText);
+    if (energyClass !== 'N/A') attributes['Classe énergétique'] = energyClass;
+
+    return attributes;
+  };
+
   // Function to convert API property to display property
   const convertApiPropertyToProperty = (apiProp: ApiProperty): Property => {
-    const imagesArray = JSON.parse(apiProp.images || '[]');
+    const details = apiProp.details || '';
+    const description = apiProp.description || '';
+    const allText = `${details} ${description}`.trim();
+
+    // Extract all attributes dynamically
+    const attributes = extractAllAttributes(allText);
+
     return {
       id: apiProp.id,
       price: apiProp.priceText,
       type: apiProp.propertyType,
-      description: apiProp.details,
-      surface: extractSurface(apiProp.details),
-      rooms: extractRooms(apiProp.details),
-      bathrooms: '1', // Default value since not in API
-      kitchen: 'équipée', // Default value since not in API
-      balcony: 'Non', // Default value since not in API
-      address: apiProp.address,
-      tags: ['En vente'], // Default tag
-      Association: ['seloger'], // Default association - SeLoger
-      Association_url: [EXTERNAL_URLS.seloger.mms],
-      images: imagesArray.length > 0 ? imagesArray : ['/content/assets/logo.png'], // Image par défaut locale
+      description: '', // Remove description to avoid duplication with attributes
+      surface: attributes['Surface'] || 'N/A',
+      rooms: attributes['Pièces'] || 'N/A',
+      bathrooms: attributes['Salles de bain'] || 'N/A',
+      kitchen: attributes['Cuisine'] || 'N/A',
+      balcony: attributes['Balcon'] || 'N/A',
+      // Add dynamic attributes as a new property
+      dynamicAttributes: attributes,
+      address: apiProp.address || `${apiProp.commune}, ${apiProp.department}`,
+      tags: [extractFurnishing(allText), 'À louer'].filter(tag => tag !== 'N/A'), // Add furnishing info and rental tag
+      Association: [getAssociationFromSource(apiProp.source)], // Get association from source
+      Association_url: [getAssociationUrlFromSource(apiProp.source)],
+      images: apiProp.images && apiProp.images.length > 0 ? apiProp.images : ['/content/assets/logo.png'], // Images are now array
     };
   };
 
+  // Helper function to get association from source
+  const getAssociationFromSource = (source: string): string => {
+    if (source.toLowerCase().includes('century21')) return 'century21';
+    if (source.toLowerCase().includes('seloger')) return 'seloger';
+    if (source.toLowerCase().includes('leboncoin')) return 'leboncoin';
+    return 'seloger'; // Default
+  };
+
+  // Helper function to get association URL from source
+  const getAssociationUrlFromSource = (source: string): string => {
+    if (source.toLowerCase().includes('century21')) return 'https://www.century21.fr/';
+    if (source.toLowerCase().includes('seloger')) return EXTERNAL_URLS.seloger.mms;
+    if (source.toLowerCase().includes('leboncoin')) return 'https://www.leboncoin.fr/';
+    return EXTERNAL_URLS.seloger.mms; // Default
+  };
+
+  // Helper function to get logo URL from source
+  const getLogoFromSource = (source: string): string => {
+    if (source.toLowerCase().includes('century21')) return century21;
+    if (source.toLowerCase().includes('seloger')) return seloger;
+    if (source.toLowerCase().includes('leboncoin')) return leboncoin;
+    return seloger; // Default
+  };
+
   // Helper functions to extract data from details string
-  const extractSurface = (details: string): string => {
-    const match = details.match(/(\d+(?:,\d+)?)\s*m²/);
-    return match ? `${match[1]} m²` : 'N/A';
+  const extractSurfaceTotale = (details: string): string => {
+    // Extract "Surface totale : XX m2" with exact format
+    const totalMatch = details.match(/Surface totale\s*:\s*(\d+(?:\s?\d{3})*(?:[,.]\d+)?)\s*m2/i);
+    return totalMatch ? `${totalMatch[1].replace(/\s/g, '')} m²` : 'N/A';
+  };
+
+  const extractSurfaceHabitable = (details: string): string => {
+    // Extract "Surface habitable : XX m2" with exact format
+    const habitableMatch = details.match(/Surface habitable\s*:\s*(\d+(?:\s?\d{3})*(?:[,.]\d+)?)\s*m2/i);
+    return habitableMatch ? `${habitableMatch[1].replace(/\s/g, '')} m²` : 'N/A';
   };
 
   const extractRooms = (details: string): string => {
-    const match = details.match(/(\d+)\s*pièces/);
-    return match ? `${match[1]} pièces` : 'N/A';
+    // Look for T1, T2, T3, etc. patterns first
+    const tMatch = details.match(/T(\d+)/i);
+    if (tMatch) {
+      return `${tMatch[1]} pièces`;
+    }
+
+    // Look for F1, F2, F3, etc. patterns
+    const fMatch = details.match(/F(\d+)/i);
+    if (fMatch) {
+      return `${fMatch[1]} pièces`;
+    }
+
+    // Look for patterns like "3 pièces", "4 pieces", etc.
+    const piecesMatch = details.match(/(\d+)\s*pièces?/i);
+    return piecesMatch ? `${piecesMatch[1]} pièces` : 'N/A';
   };
 
-  // Function to fetch properties from API
-  const fetchProperties = async () => {
-    if (!searchParams) return;
+  const extractBathrooms = (details: string): string => {
+    // Look for patterns like "2 salles de bain", "1 salle de bain", "2 SDB"
+    const match = details.match(/(\d+)\s*(?:salles?\s*de\s*bains?|SDB)/i);
+    return match ? `${match[1]} ${parseInt(match[1], 10) > 1 ? 'salles de bain' : 'salle de bain'}` : 'N/A';
+  };
 
-    setIsLoading(true);
+  const extractKitchen = (details: string): string => {
+    // Look for kitchen information
+    if (/cuisine\s*équipée/i.test(details)) return 'Équipée';
+    if (/cuisine\s*aménagée/i.test(details)) return 'Aménagée';
+    if (/cuisine\s*ouverte/i.test(details)) return 'Ouverte';
+    if (/cuisine/i.test(details)) return 'Oui';
+    return 'N/A';
+  };
+
+  const extractBalcony = (details: string): string => {
+    // Look for balcony/terrace information
+    if (/balcon/i.test(details)) return 'Oui';
+    if (/terrasse/i.test(details)) return 'Terrasse';
+    if (/loggia/i.test(details)) return 'Loggia';
+    return 'N/A';
+  };
+
+  const extractFurnishing = (details: string): string => {
+    // Extract furnishing information
+    if (/meublée?/i.test(details)) return 'Meublé';
+    if (/non\s*meublée?/i.test(details)) return 'Non meublé';
+    return 'N/A';
+  };
+
+  const extractFloor = (details: string): string => {
+    // Extract floor information with exact format "Étage : XXX"
+    const match = details.match(/Étage\s*:\s*([^|]+)/i);
+    if (match) return match[1].trim();
+
+    // Fallback patterns
+    const floorMatch = details.match(/(\d+)(?:er|ème|e)\s*étage/i);
+    if (floorMatch) return `${floorMatch[1]}${floorMatch[1] === '1' ? 'er' : 'ème'}`;
+
+    if (/rez.de.chaussée/i.test(details)) return 'RDC';
+    return 'N/A';
+  };
+
+  const extractApartmentType = (details: string): string => {
+    // Extract apartment type with exact format "Type d'appartement : XXX"
+    const match = details.match(/Type\s*d'appartement\s*:\s*([^|]+)/i);
+    if (match) return match[1].trim();
+
+    // Fallback patterns
+    const directTMatch = details.match(/\b(T\d+)\b/i);
+    if (directTMatch) return directTMatch[1];
+
+    const directFMatch = details.match(/\b(F\d+)\b/i);
+    if (directFMatch) return directFMatch[1];
+
+    return 'N/A';
+  };
+
+  const extractConstructionType = (details: string): string => {
+    // Extract construction type
+    const match = details.match(/Type\s*de\s*construction\s*:\s*([^|]+)/i);
+    return match ? match[1].trim() : 'N/A';
+  };
+
+  const extractConstructionYear = (details: string): string => {
+    // Extract construction year
+    const match = details.match(/Année\s*construction\s*:\s*(\d{4})/i);
+    return match ? match[1] : 'N/A';
+  };
+
+  const extractGardenTerrain = (details: string): string => {
+    // Extract garden or terrain information
+    const terrainMatch = details.match(/Surface terrain\s*:\s*(\d+(?:\s?\d{3})*(?:[,.]\d+)?)\s*m2?/i);
+    if (terrainMatch) return `${terrainMatch[1].replace(/\s/g, '')} m² terrain`;
+
+    if (/jardin/i.test(details)) return 'Jardin';
+    if (/terrasse/i.test(details)) return 'Terrasse';
+
+    return 'N/A';
+  };
+
+  const extractParking = (details: string): string => {
+    // Extract parking information
+    if (/garage/i.test(details)) return 'Garage';
+    if (/parking/i.test(details)) return 'Parking';
+    if (/place\s*de\s*stationnement/i.test(details)) return 'Stationnement';
+
+    return 'N/A';
+  };
+
+  const extractEnergyClass = (details: string): string => {
+    // Extract energy class (DPE)
+    const match = details.match(/DPE\s*[:\s]*([A-G])/i);
+    if (match) return `DPE ${match[1]}`;
+
+    const classMatch = details.match(/Classe\s*énergétique\s*[:\s]*([A-G])/i);
+    if (classMatch) return `Classe ${classMatch[1]}`;
+
+    return 'N/A';
+  };
+
+  // Initialize with preloaded results - no need to fetch from API
+  useEffect(() => {
+    if (preloadedResults.length > 0) {
+      setApiProperties(preloadedResults);
+    }
+  }, [preloadedResults]);
+
+  // Simple retry function for error cases
+  const handleRetry = () => {
     setError(null);
-
-    try {
-      const { location: searchLocation, maxBudget, propertyType } = searchParams;
-      const apiPropertyType = propertyType === 'appartement' ? 'Appartement' : 'Maison';
-
-      const url = `${API_ENDPOINTS.louer.search}?propertyType=${encodeURIComponent(apiPropertyType)}&postalCode=${encodeURIComponent(searchLocation)}&price=${encodeURIComponent(maxBudget)}`;
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setApiProperties(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      // Error fetching properties
-    } finally {
-      setIsLoading(false);
+    if (preloadedResults.length > 0) {
+      setApiProperties(preloadedResults);
+    } else {
+      // If no preloaded results, redirect back to search
+      window.history.back();
     }
   };
-
-  // Fetch properties when component mounts or search params change
-  useEffect(() => {
-    fetchProperties();
-  }, [searchParams]);
 
   // Convert API properties to display properties
   const properties: Property[] = apiProperties.map(convertApiPropertyToProperty);
@@ -444,7 +655,7 @@ const RecherchLouer: React.FC = () => {
           >
             <p className="text-red-800">Erreur lors de la recherche: {error}</p>
             <button
-              onClick={fetchProperties}
+              onClick={handleRetry}
               className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200"
             >
               Réessayer
@@ -491,14 +702,16 @@ const RecherchLouer: React.FC = () => {
                     >
                       {property.type}
                     </motion.p>
-                    <motion.p
-                      className="text-gray-600 text-sm mt-1 line-clamp-2"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3, delay: 0.5 }}
-                    >
-                      {property.description}
-                    </motion.p>
+                    {property.description && property.description.trim() && (
+                      <motion.p
+                        className="text-gray-600 text-sm mt-1 line-clamp-2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.5 }}
+                      >
+                        {property.description}
+                      </motion.p>
+                    )}
 
                     <motion.div
                       className="mt-3 grid grid-cols-2 gap-2 text-sm"
@@ -506,26 +719,48 @@ const RecherchLouer: React.FC = () => {
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.3, delay: 0.6 }}
                     >
-                      <div>
-                        <span className="text-gray-500">Surface: </span>
-                        <span className="font-medium">{property.surface}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Pièces: </span>
-                        <span className="font-medium">{property.rooms}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Salles de bain: </span>
-                        <span className="font-medium">{property.bathrooms}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Cuisine: </span>
-                        <span className="font-medium">{property.kitchen}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Balcon: </span>
-                        <span className="font-medium">{property.balcony}</span>
-                      </div>
+                      {property.dynamicAttributes &&
+                        Object.entries(property.dynamicAttributes).map(([key, value]) => (
+                          <div key={key}>
+                            <span className="text-gray-500">{key}: </span>
+                            <span className="font-medium">{value}</span>
+                          </div>
+                        ))}
+                      {/* Fallback to old attributes if no dynamic attributes */}
+                      {(!property.dynamicAttributes || Object.keys(property.dynamicAttributes).length === 0) && (
+                        <>
+                          {property.surface !== 'N/A' && (
+                            <div>
+                              <span className="text-gray-500">Surface: </span>
+                              <span className="font-medium">{property.surface}</span>
+                            </div>
+                          )}
+                          {property.rooms !== 'N/A' && (
+                            <div>
+                              <span className="text-gray-500">Pièces: </span>
+                              <span className="font-medium">{property.rooms}</span>
+                            </div>
+                          )}
+                          {property.bathrooms !== 'N/A' && (
+                            <div>
+                              <span className="text-gray-500">Salles de bain: </span>
+                              <span className="font-medium">{property.bathrooms}</span>
+                            </div>
+                          )}
+                          {property.kitchen !== 'N/A' && (
+                            <div>
+                              <span className="text-gray-500">Cuisine: </span>
+                              <span className="font-medium">{property.kitchen}</span>
+                            </div>
+                          )}
+                          {property.balcony !== 'N/A' && (
+                            <div>
+                              <span className="text-gray-500">Balcon: </span>
+                              <span className="font-medium">{property.balcony}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </motion.div>
 
                     <motion.div

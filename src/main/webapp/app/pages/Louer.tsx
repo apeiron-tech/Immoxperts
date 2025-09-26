@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiHome, FiCheckSquare, FiSquare, FiSearch, FiMapPin, FiDollarSign } from 'react-icons/fi';
 
@@ -20,11 +20,178 @@ interface Testimonial {
   text: string;
 }
 
+interface LocationSuggestion {
+  value: string;
+  adresse: string;
+  type: 'commune' | 'postal_code' | 'department';
+  count: number;
+}
+
+interface PropertySearchResult {
+  id: number;
+  source: string;
+  searchPostalCode: string;
+  department: string;
+  departmentName: string;
+  commune: string;
+  codeDepartment: string;
+  propertyType: string;
+  priceText: string;
+  price: number;
+  address: string | null;
+  details: string;
+  description: string | null;
+  propertyUrl: string | null;
+  images: string[];
+}
+
 const Louer: React.FC = () => {
   const navigate = useNavigate();
   const [propertyType, setPropertyType] = useState<'maison' | 'appartement'>('maison');
   const [location, setLocation] = useState<string>('');
   const [maxBudget, setMaxBudget] = useState<string>('');
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<LocationSuggestion | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // API function to fetch location suggestions
+  const fetchLocationSuggestions = async (query: string): Promise<LocationSuggestion[]> => {
+    if (!query || query.length < 1) {
+      return [];
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/louer/suggestions?q=${encodeURIComponent(query)}&limit=10`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch suggestions');
+      }
+      const data: LocationSuggestion[] = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching location suggestions:', error);
+      return [];
+    }
+  };
+
+  // API function to search properties with filters
+  const searchPropertiesWithFilters = async (
+    value: string,
+    type: string,
+    budget: string,
+    propType: string,
+  ): Promise<PropertySearchResult[]> => {
+    try {
+      const params = new URLSearchParams();
+      params.append('value', value);
+      params.append('type', type);
+      if (budget) params.append('maxBudget', budget);
+      params.append('propertyType', propType === 'maison' ? 'Maison' : 'Appartement');
+
+      const response = await fetch(`http://localhost:8080/api/louer/search-with-filters?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to search properties');
+      }
+      const data: PropertySearchResult[] = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error searching properties:', error);
+      return [];
+    }
+  };
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (location.trim()) {
+        setIsLoading(true);
+        const results = await fetchLocationSuggestions(location.trim());
+        setSuggestions(results);
+        setShowSuggestions(true);
+        setIsLoading(false);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [location]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Handle input change
+  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocation(e.target.value);
+    // Clear selected suggestion when user types manually
+    if (selectedSuggestion && e.target.value !== selectedSuggestion.adresse) {
+      setSelectedSuggestion(null);
+    }
+  };
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = (suggestion: LocationSuggestion) => {
+    setLocation(suggestion.adresse);
+    setSelectedSuggestion(suggestion);
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
+  // Handle input focus
+  const handleInputFocus = () => {
+    if (suggestions.length > 0) {
+      setShowSuggestions(true);
+    }
+  };
+
+  // Handle search button click
+  const handleSearch = async () => {
+    if (!selectedSuggestion) {
+      alert('Veuillez sélectionner une localisation dans la liste de suggestions');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const searchResults = await searchPropertiesWithFilters(selectedSuggestion.value, selectedSuggestion.type, maxBudget, propertyType);
+
+      // Navigate to results page with search data
+      navigate('/RecherchLouer', {
+        state: {
+          searchResults,
+          searchParams: {
+            location: selectedSuggestion.adresse,
+            value: selectedSuggestion.value,
+            type: selectedSuggestion.type,
+            maxBudget,
+            propertyType,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Search error:', error);
+      alert("Une erreur s'est produite lors de la recherche. Veuillez réessayer.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const cities: City[] = [
     { name: 'Paris', url: '#' },
@@ -121,12 +288,50 @@ const Louer: React.FC = () => {
                         <FiMapPin className="h-5 w-5 text-gray-400" />
                       </div>
                       <input
+                        ref={inputRef}
                         type="text"
                         placeholder="Ville, quartier, région"
                         value={location}
-                        onChange={e => setLocation(e.target.value)}
+                        onChange={handleLocationChange}
+                        onFocus={handleInputFocus}
                         className="w-full py-2.5 pl-10 pr-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        autoComplete="off"
                       />
+
+                      {/* Suggestions Dropdown */}
+                      {showSuggestions && (
+                        <div
+                          ref={dropdownRef}
+                          className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                        >
+                          {isLoading ? (
+                            <div className="px-4 py-3 text-gray-500 text-sm">Recherche en cours...</div>
+                          ) : suggestions.length > 0 ? (
+                            suggestions.map((suggestion, index) => (
+                              <div
+                                key={`${suggestion.value}-${suggestion.type}-${index}`}
+                                className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-center justify-between"
+                                onClick={() => handleSuggestionSelect(suggestion)}
+                              >
+                                <div className="flex items-center">
+                                  <FiMapPin className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">{suggestion.adresse}</div>
+                                    <div className="text-xs text-gray-500 capitalize">
+                                      {suggestion.type === 'commune' && 'Commune'}
+                                      {suggestion.type === 'postal_code' && 'Code postal'}
+                                      {suggestion.type === 'department' && 'Département'}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">{suggestion.count}</div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-gray-500 text-sm">Aucune suggestion trouvée</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -174,18 +379,12 @@ const Louer: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => {
-                      const searchParams = {
-                        location,
-                        maxBudget,
-                        propertyType,
-                      };
-                      navigate('/RecherchLouer', { state: searchParams });
-                    }}
-                    className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition duration-200 ease-in-out flex items-center justify-center font-medium"
+                    onClick={handleSearch}
+                    disabled={isLoading}
+                    className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition duration-200 ease-in-out flex items-center justify-center font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <FiSearch className="mr-2 h-5 w-5" />
-                    Rechercher
+                    {isLoading ? 'Recherche en cours...' : 'Rechercher'}
                   </button>
                 </div>
               </div>

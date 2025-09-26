@@ -2,8 +2,10 @@ package com.apeiron.immoxperts.web.rest;
 
 import com.apeiron.immoxperts.service.DvfLouerService;
 import com.apeiron.immoxperts.service.dto.DvfLouerDto;
+import com.apeiron.immoxperts.service.dto.SuggestionDto;
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,22 +21,29 @@ public class DvfLouerController {
         this.service = service;
     }
 
-    @GetMapping
-    public List<DvfLouerDto> getAll() {
-        return service.getAllLouers();
+    @GetMapping("/by-location")
+    public ResponseEntity<List<DvfLouerDto>> getByLocation(@RequestParam("value") String value, @RequestParam("type") String type) {
+        List<DvfLouerDto> louers = service.getLouersByLocation(value, type);
+        return ResponseEntity.ok(louers);
     }
 
-    @GetMapping("/by-postal")
-    public List<DvfLouerDto> getByPostalCode(@RequestParam("postalCode") String postalCode) {
-        return service.getLouersByPostalCode(postalCode);
-    }
-
-    @GetMapping("/search")
-    public List<DvfLouerDto> searchLouers(
-        @RequestParam(value = "postalCode", required = false) String postalCode,
-        @RequestParam(value = "price", required = false) BigDecimal price,
-        @RequestParam(value = "propertyType") String propertyType
+    @GetMapping("/suggestions")
+    public ResponseEntity<List<SuggestionDto>> getSuggestions(
+        @RequestParam("q") String query,
+        @RequestParam(value = "limit", defaultValue = "10") int limit
     ) {
-        return service.searchLouers(postalCode, price, propertyType);
+        List<SuggestionDto> suggestions = service.getSuggestions(query, limit);
+        return ResponseEntity.ok(suggestions);
+    }
+
+    @GetMapping("/search-with-filters")
+    public ResponseEntity<List<DvfLouerDto>> searchWithFilters(
+        @RequestParam("value") String value,
+        @RequestParam("type") String type,
+        @RequestParam(value = "maxBudget", required = false) BigDecimal maxBudget,
+        @RequestParam(value = "propertyType", required = false) String propertyType
+    ) {
+        List<DvfLouerDto> louers = service.getLouersByLocationAndFilters(value, type, maxBudget, propertyType);
+        return ResponseEntity.ok(louers);
     }
 }
