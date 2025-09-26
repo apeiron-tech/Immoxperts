@@ -90,7 +90,7 @@ const Louer: React.FC = () => {
       if (budget) params.append('maxBudget', budget);
       params.append('propertyType', propType === 'maison' ? 'Maison' : 'Appartement');
 
-      const response = await fetch(`http://localhost:8080/api/louer/search-with-filters?${params.toString()}`);
+      const response = await fetch(`https://immoxperts.apeiron-tech.dev/api/louer/search-with-filters?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to search properties');
       }
