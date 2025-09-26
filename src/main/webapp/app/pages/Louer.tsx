@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiHome, FiCheckSquare, FiSquare, FiSearch, FiMapPin, FiDollarSign } from 'react-icons/fi';
+import { API_ENDPOINTS } from 'app/config/api.config';
 
 interface City {
   name: string;
@@ -64,7 +65,7 @@ const Louer: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/louer/suggestions?q=${encodeURIComponent(query)}&limit=10`);
+      const response = await fetch(`${API_ENDPOINTS.louer.suggestions}?q=${encodeURIComponent(query)}&limit=10`);
       if (!response.ok) {
         throw new Error('Failed to fetch suggestions');
       }
@@ -90,7 +91,7 @@ const Louer: React.FC = () => {
       if (budget) params.append('maxBudget', budget);
       params.append('propertyType', propType === 'maison' ? 'Maison' : 'Appartement');
 
-      const response = await fetch(`http://localhost:8080/api/louer/search-with-filters?${params.toString()}`);
+      const response = await fetch(`${API_ENDPOINTS.louer.search}?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to search properties');
       }
