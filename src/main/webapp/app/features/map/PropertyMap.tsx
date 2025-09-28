@@ -5,6 +5,7 @@ import './styles/mapbox-popup.css';
 import { API_ENDPOINTS } from 'app/config/api.config';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { FilterState } from '../../types/filters';
+import MobilePropertyBottomSheet from '../property/MobilePropertyBottomSheet';
 
 // Types definitions
 interface Feature {
@@ -309,10 +310,64 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const [debugging, setDebugging] = useState<boolean>(true); // Enable debugging
   const hoveredSelectedId = useRef<string | number | null>(null);
   const [currentActiveFilters, setCurrentActiveFilters] = useState<FilterState | null>(null);
+
+  // Mobile bottom sheet state
+  const [showMobileBottomSheet, setShowMobileBottomSheet] = useState(false);
+  const [mobileSheetProperty, setMobileSheetProperty] = useState<any>(null);
+  const [mobileSheetIndex, setMobileSheetIndex] = useState(0);
+  const [mobileSheetMutations, setMobileSheetMutations] = useState<any[]>([]);
   // Save filter parameters locally so they persist between map moves
   const [savedFilterParams, setSavedFilterParams] = useState<any>(null);
   // Use a ref to store current active filters to prevent state reset issues
   const currentActiveFiltersRef = useRef<FilterState | null>(null);
+
+  // Mobile bottom sheet navigation functions
+  const handleMobileSheetPrevious = () => {
+    if (mobileSheetIndex > 0) {
+      const newIndex = mobileSheetIndex - 1;
+      setMobileSheetIndex(newIndex);
+
+      // Update property data
+      const mutation = mobileSheetMutations[newIndex];
+      setMobileSheetProperty({
+        address: mobileSheetProperty.address,
+        city: mobileSheetProperty.city,
+        price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
+        pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
+        type: mutation.type_groupe || 'Type inconnu',
+        rooms: mutation.nbpprinc || '',
+        surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
+        soldDate: mutation.date ? new Date(mutation.date).toLocaleDateString('fr-FR') : '',
+      });
+    }
+  };
+
+  const handleMobileSheetNext = () => {
+    if (mobileSheetIndex < mobileSheetMutations.length - 1) {
+      const newIndex = mobileSheetIndex + 1;
+      setMobileSheetIndex(newIndex);
+
+      // Update property data
+      const mutation = mobileSheetMutations[newIndex];
+      setMobileSheetProperty({
+        address: mobileSheetProperty.address,
+        city: mobileSheetProperty.city,
+        price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
+        pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
+        type: mutation.type_groupe || 'Type inconnu',
+        rooms: mutation.nbpprinc || '',
+        surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
+        soldDate: mutation.date ? new Date(mutation.date).toLocaleDateString('fr-FR') : '',
+      });
+    }
+  };
+
+  const handleMobileSheetClose = () => {
+    setShowMobileBottomSheet(false);
+    setMobileSheetProperty(null);
+    setMobileSheetMutations([]);
+    setMobileSheetIndex(0);
+  };
 
   // Ref to store hover popup for cleanup
   const hoverPopupRef = useRef<mapboxgl.Popup | null>(null);
@@ -1166,54 +1221,115 @@ const PropertyMap: React.FC<MapPageProps> = ({
            `;
                         };
 
-                        const popupContent = renderMutation(currentIndex);
+                        // Check if mobile device for hover popup
+                        const isMobile = window.innerWidth < 768;
 
-                        hoverPopupRef.current = new mapboxgl.Popup({
-                          closeButton: false,
-                          closeOnClick: false,
-                          maxWidth: '450px',
-                          offset: [0, -5],
-                          className: 'mutation-hover-popup',
-                        })
-                          .setLngLat(feature.geometry.coordinates)
-                          .setHTML(popupContent)
-                          .addTo(map);
+                        if (isMobile) {
+                          // Use mobile bottom sheet for hover on mobile
+                          setMobileSheetMutations(allMutations);
+                          setMobileSheetIndex(currentIndex);
 
-                        // Function to add navigation event listeners
-                        const addNavigationListeners = () => {
-                          setTimeout(() => {
-                            const popupElement = hoverPopupRef.current?.getElement();
-                            const prevBtn = popupElement.querySelector('.prev-btn');
-                            const nextBtn = popupElement.querySelector('.next-btn');
+                          // Convert current mutation to property format
+                          const currentMutation = allMutations[currentIndex];
+                          // Get the address from the parent address object, not from mutation
+                          const parentAddress = addresses && addresses.length > 0 ? addresses[0] : null;
+                          setMobileSheetProperty({
+                            address: parentAddress?.adresse_complete || 'Adresse non disponible',
+                            city: parentAddress?.commune || 'Ville non disponible',
+                            price: `${(currentMutation.valeur || 0).toLocaleString('fr-FR')} €`,
+                            pricePerSqm: currentMutation.prix_m2
+                              ? `${Math.round(currentMutation.prix_m2).toLocaleString('fr-FR')} €/m²`
+                              : '',
+                            type: currentMutation.type_groupe || 'Type inconnu',
+                            rooms: currentMutation.nbpprinc || '',
+                            surface: currentMutation.sbati ? `${currentMutation.sbati.toLocaleString('fr-FR')} m²` : '',
+                            terrain: currentMutation.sterr ? `${currentMutation.sterr.toLocaleString('fr-FR')} m²` : '',
+                            soldDate: currentMutation.date ? new Date(currentMutation.date).toLocaleDateString('fr-FR') : '',
+                          });
 
-                            if (prevBtn) {
-                              prevBtn.addEventListener('click', event => {
-                                event.stopPropagation();
-                                currentIndex = currentIndex > 0 ? currentIndex - 1 : allMutations.length - 1;
-                                hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
-                                addNavigationListeners(); // Re-add listeners after HTML update
-                              });
-                            }
+                          setShowMobileBottomSheet(true);
+                        } else {
+                          // Desktop: use original popup
+                          const popupContent = renderMutation(currentIndex);
 
-                            if (nextBtn) {
-                              nextBtn.addEventListener('click', event => {
-                                event.stopPropagation();
-                                currentIndex = currentIndex < allMutations.length - 1 ? currentIndex + 1 : 0;
-                                hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
-                                addNavigationListeners(); // Re-add listeners after HTML update
-                              });
-                            }
-                          }, 100);
-                        };
+                          hoverPopupRef.current = new mapboxgl.Popup({
+                            closeButton: false,
+                            closeOnClick: false,
+                            maxWidth: '450px',
+                            offset: [0, -5],
+                            className: 'mutation-hover-popup',
+                          })
+                            .setLngLat(feature.geometry.coordinates)
+                            .setHTML(popupContent)
+                            .addTo(map);
+                        }
 
-                        // Add navigation event listeners if multiple mutations
-                        if (allMutations.length > 1) {
-                          addNavigationListeners();
+                        // Function to add navigation event listeners (only for desktop)
+                        if (!isMobile) {
+                          const addNavigationListeners = () => {
+                            setTimeout(() => {
+                              const popupElement = hoverPopupRef.current?.getElement();
+                              const prevBtn = popupElement.querySelector('.prev-btn');
+                              const nextBtn = popupElement.querySelector('.next-btn');
+
+                              if (prevBtn) {
+                                prevBtn.addEventListener('click', event => {
+                                  event.stopPropagation();
+                                  currentIndex = currentIndex > 0 ? currentIndex - 1 : allMutations.length - 1;
+                                  hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
+                                  addNavigationListeners(); // Re-add listeners after HTML update
+                                });
+                              }
+
+                              if (nextBtn) {
+                                nextBtn.addEventListener('click', event => {
+                                  event.stopPropagation();
+                                  currentIndex = currentIndex < allMutations.length - 1 ? currentIndex + 1 : 0;
+                                  hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
+                                  addNavigationListeners(); // Re-add listeners after HTML update
+                                });
+                              }
+                            }, 100);
+                          };
+
+                          // Add navigation event listeners if multiple mutations
+                          if (allMutations.length > 1) {
+                            addNavigationListeners();
+                          }
                         }
 
                         debugLog('Mutation popup created with data');
                       } else {
                         // Fallback if no mutations
+                        const isMobile = window.innerWidth < 768;
+
+                        if (!isMobile) {
+                          // Desktop: show fallback popup
+                          hoverPopupRef.current = new mapboxgl.Popup({
+                            closeButton: false,
+                            closeOnClick: false,
+                            maxWidth: '200px',
+                            offset: [0, -10],
+                          })
+                            .setLngLat(e.lngLat)
+                            .setHTML(
+                              `
+                              <div style="padding: 10px; background: #ffaa00; color: white; border-radius: 4px;">
+                                <strong>No Mutation Data</strong><br>
+                                Feature ID: ${feature.id || 'No ID'}
+                              </div>
+                            `,
+                            )
+                            .addTo(map);
+                        }
+                        // Mobile: don't show anything for addresses without mutations
+                      }
+                    } else {
+                      // Fallback if no addresses
+                      const isMobile = window.innerWidth < 768;
+
+                      if (!isMobile) {
+                        // Desktop: show fallback popup
                         hoverPopupRef.current = new mapboxgl.Popup({
                           closeButton: false,
                           closeOnClick: false,
@@ -1224,15 +1340,22 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           .setHTML(
                             `
                             <div style="padding: 10px; background: #ffaa00; color: white; border-radius: 4px;">
-                              <strong>No Mutation Data</strong><br>
+                              <strong>No Address Data</strong><br>
                               Feature ID: ${feature.id || 'No ID'}
                             </div>
                           `,
                           )
                           .addTo(map);
                       }
-                    } else {
-                      // Fallback if no addresses
+                      // Mobile: don't show anything for features without addresses
+                    }
+                  } catch (err) {
+                    debugLog('Error parsing addresses JSON:', err);
+                    // Fallback popup on error
+                    const isMobile = window.innerWidth < 768;
+
+                    if (!isMobile) {
+                      // Desktop: show error popup
                       hoverPopupRef.current = new mapboxgl.Popup({
                         closeButton: false,
                         closeOnClick: false,
@@ -1242,17 +1365,22 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         .setLngLat(e.lngLat)
                         .setHTML(
                           `
-                          <div style="padding: 10px; background: #ffaa00; color: white; border-radius: 4px;">
-                            <strong>No Address Data</strong><br>
-                            Feature ID: ${feature.id || 'No ID'}
+                          <div style="padding: 10px; background: #ff0000; color: white; border-radius: 4px;">
+                            <strong>Error Parsing Data</strong><br>
+                            ${err.message}
                           </div>
                         `,
                         )
                         .addTo(map);
                     }
-                  } catch (err) {
-                    debugLog('Error parsing addresses JSON:', err);
-                    // Fallback popup on error
+                    // Mobile: don't show error popups
+                  }
+                } else {
+                  // Fallback if no properties
+                  const isMobile = window.innerWidth < 768;
+
+                  if (!isMobile) {
+                    // Desktop: show fallback popup
                     hoverPopupRef.current = new mapboxgl.Popup({
                       closeButton: false,
                       closeOnClick: false,
@@ -1262,47 +1390,152 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       .setLngLat(e.lngLat)
                       .setHTML(
                         `
-                        <div style="padding: 10px; background: #ff0000; color: white; border-radius: 4px;">
-                          <strong>Error Parsing Data</strong><br>
-                          ${err.message}
+                        <div style="padding: 10px; background: #ffaa00; color: white; border-radius: 4px;">
+                          <strong>No Properties</strong><br>
+                          Feature ID: ${feature.id || 'No ID'}
                         </div>
                       `,
                       )
                       .addTo(map);
                   }
-                } else {
-                  // Fallback if no properties
-                  hoverPopupRef.current = new mapboxgl.Popup({
-                    closeButton: false,
-                    closeOnClick: false,
-                    maxWidth: '200px',
-                    offset: [0, -10],
-                  })
-                    .setLngLat(e.lngLat)
-                    .setHTML(
-                      `
-                      <div style="padding: 10px; background: #ffaa00; color: white; border-radius: 4px;">
-                        <strong>No Properties</strong><br>
-                        Feature ID: ${feature.id || 'No ID'}
-                      </div>
-                    `,
-                    )
-                    .addTo(map);
+                  // Mobile: don't show anything for features without properties
                 }
 
                 debugLog('Hover popup created at:', e.lngLat);
                 map.getCanvas().style.cursor = 'pointer';
               } else {
                 // No features under mouse
-                if (hoverPopupRef.current) {
-                  hoverPopupRef.current.remove();
-                  hoverPopupRef.current = null;
-                  debugLog('Hover popup removed - no features');
+                const isMobile = window.innerWidth < 768;
+
+                if (isMobile) {
+                  // Mobile: close bottom sheet when moving away from features
+                  if (showMobileBottomSheet) {
+                    setShowMobileBottomSheet(false);
+                    setMobileSheetProperty(null);
+                    setMobileSheetMutations([]);
+                    setMobileSheetIndex(0);
+                  }
+                } else {
+                  // Desktop: remove hover popup
+                  if (hoverPopupRef.current) {
+                    hoverPopupRef.current.remove();
+                    hoverPopupRef.current = null;
+                    debugLog('Hover popup removed - no features');
+                  }
                 }
                 map.getCanvas().style.cursor = '';
               }
             }, 100); // 100ms delay
           });
+
+          // Helper function to create popup content
+          const createPopupContent = (addresses: any[]) => {
+            if (addresses.length === 1) {
+              const address = addresses[0];
+              return `
+                <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
+                  <div style="font-weight: bold; font-size: 14px; color: #3b82f6;">
+                    ${address.adresse_complete}
+                  </div>
+                </div>
+              `;
+            } else {
+              return `
+                <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
+                  <div style="margin-bottom: 8px; font-weight: bold; color: #3b82f6;">
+                    ${addresses.length} adresses:
+                  </div>
+                  ${addresses
+                    .map((address, index) => {
+                      const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
+                      return `
+                    <div 
+                      style="
+                        margin: 4px 0; 
+                        padding: 6px; 
+                        background: #f8f9fa; 
+                        border-radius: 4px;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                        ${index > 0 ? 'border-top: 1px solid #e0e0e0;' : ''}
+                      "
+                      onmouseover="this.style.backgroundColor='#e5f3ff'"
+                      onmouseout="this.style.backgroundColor='#f8f9fa'"
+                      onclick="window.selectAddress && window.selectAddress(${index})"
+                    >
+                      <div style="font-weight: bold;">${address.adresse_complete}</div>
+                      <div style="font-size: 11px; color: #666;">${address.commune} (${address.codepostal})</div>
+                      ${
+                        hasMutations
+                          ? `
+                        <div style="font-size: 10px; color: #059669; margin-top: 2px;">
+                          ${address.mutations.length} transaction(s)
+                        </div>
+                      `
+                          : `
+                        <div style="font-size: 10px; color: #dc2626; margin-top: 2px;">
+                          Aucune transaction
+                        </div>
+                      `
+                      }
+                    </div>
+                  `;
+                    })
+                    .join('')}
+                </div>
+              `;
+            }
+          };
+
+          // Helper function to handle mobile bottom sheet
+          const handleMobileBottomSheet = (addresses: any[]) => {
+            if (addresses.length === 1) {
+              const address = addresses[0];
+              const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
+
+              if (hasMutations) {
+                setMobileSheetMutations(address.mutations);
+                setMobileSheetIndex(0);
+
+                const firstMutation = address.mutations[0];
+                setMobileSheetProperty({
+                  address: address.adresse_complete, // Use the address object, not mutation
+                  city: address.commune, // Use the address object, not mutation
+                  price: `${(firstMutation.valeur || 0).toLocaleString('fr-FR')} €`,
+                  pricePerSqm: firstMutation.prix_m2 ? `${Math.round(firstMutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
+                  type: firstMutation.type_groupe || 'Type inconnu',
+                  rooms: firstMutation.nbpprinc || '',
+                  surface: firstMutation.sbati ? `${firstMutation.sbati.toLocaleString('fr-FR')} m²` : '',
+                  terrain: firstMutation.sterr ? `${firstMutation.sterr.toLocaleString('fr-FR')} m²` : '',
+                  soldDate: firstMutation.date ? new Date(firstMutation.date).toLocaleDateString('fr-FR') : '',
+                });
+
+                setShowMobileBottomSheet(true);
+              }
+            } else if (addresses.length > 1) {
+              const addressWithMutations = addresses.find(addr => addr.mutations && addr.mutations.length > 0);
+
+              if (addressWithMutations) {
+                setMobileSheetMutations(addressWithMutations.mutations);
+                setMobileSheetIndex(0);
+
+                const firstMutation = addressWithMutations.mutations[0];
+                setMobileSheetProperty({
+                  address: addressWithMutations.adresse_complete, // Use the address object, not mutation
+                  city: addressWithMutations.commune, // Use the address object, not mutation
+                  price: `${(firstMutation.valeur || 0).toLocaleString('fr-FR')} €`,
+                  pricePerSqm: firstMutation.prix_m2 ? `${Math.round(firstMutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
+                  type: firstMutation.type_groupe || 'Type inconnu',
+                  rooms: firstMutation.nbpprinc || '',
+                  surface: firstMutation.sbati ? `${firstMutation.sbati.toLocaleString('fr-FR')} m²` : '',
+                  terrain: firstMutation.sterr ? `${firstMutation.sterr.toLocaleString('fr-FR')} m²` : '',
+                  soldDate: firstMutation.date ? new Date(firstMutation.date).toLocaleDateString('fr-FR') : '',
+                });
+
+                setShowMobileBottomSheet(true);
+              }
+            }
+          };
 
           // Click handler for mutations (separate from hover)
           map.on('click', 'mutation-point', e => {
@@ -1318,68 +1551,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   const addresses = JSON.parse(feature.properties.adresses);
 
                   if (addresses && addresses.length > 0) {
-                    let popupContent = '';
-
-                    if (addresses.length === 1) {
-                      const address = addresses[0];
-                      const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
-
-                      popupContent = `
-                        <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
-                          <div style="font-weight: bold; font-size: 14px; color: #3b82f6;">
-                            ${address.adresse_complete}
-                          </div>
-                        
-                   
-                        </div>
-                      `;
-                    } else {
-                      popupContent = `
-                        <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
-                          <div style="margin-bottom: 8px; font-weight: bold; color: #3b82f6;">
-                            ${addresses.length} adresses:
-                          </div>
-                          ${addresses
-                            .map((address, index) => {
-                              const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
-                              return `
-                            <div 
-                              style="
-                                margin: 4px 0; 
-                                padding: 6px; 
-                                background: #f8f9fa; 
-                                border-radius: 4px;
-                                cursor: pointer;
-                                transition: background-color 0.2s;
-                                ${index > 0 ? 'border-top: 1px solid #e0e0e0;' : ''}
-                              "
-                              onmouseover="this.style.backgroundColor='#e5f3ff'"
-                              onmouseout="this.style.backgroundColor='#f8f9fa'"
-                              onclick="window.selectAddress && window.selectAddress(${index})"
-                            >
-                              <div style="font-weight: bold;">${address.adresse_complete}</div>
-                              <div style="font-size: 11px; color: #666;">${address.commune} (${address.codepostal})</div>
-                              ${
-                                hasMutations
-                                  ? `
-                                <div style="font-size: 10px; color: #059669; margin-top: 2px;">
-                                  ${address.mutations.length} transaction(s)
-                                </div>
-                              `
-                                  : `
-                                <div style="font-size: 10px; color: #dc2626; margin-top: 2px;">
-                                  Aucune transaction
-                                </div>
-                              `
-                              }
-                            </div>
-                          `;
-                            })
-                            .join('')}
-                        </div>
-                      `;
-                    }
-
                     // Set up global function for address selection in multi-address popups
                     if (addresses.length > 1) {
                       (window as any).selectAddress = (index: number) => {
@@ -1400,12 +1571,21 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     // Clear any existing click popup first
                     clearClickPopup();
 
-                    // Create click popup (this one has close button)
+                    // Check if mobile device
+                    const isMobile = window.innerWidth < 768;
+
+                    if (isMobile) {
+                      handleMobileBottomSheet(addresses);
+                      return; // Don't create Mapbox popup on mobile
+                    }
+
+                    // Create click popup for desktop
+                    const popupContent = createPopupContent(addresses);
                     clickPopupRef.current = new mapboxgl.Popup({
                       closeButton: true,
                       closeOnClick: true,
-                      maxWidth: window.innerWidth < 768 ? '250px' : '350px', // Made smaller
-                      offset: [0, -5], // Reduced offset - closer to the point
+                      maxWidth: '350px',
+                      offset: [0, -5],
                     })
                       .setLngLat(feature.geometry.coordinates)
                       .setHTML(popupContent)
@@ -1416,7 +1596,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       if ((window as any).selectAddress) {
                         delete (window as any).selectAddress;
                       }
-                      // Clear the ref when popup is closed
                       clickPopupRef.current = null;
                     });
 
@@ -2189,130 +2368,340 @@ const PropertyMap: React.FC<MapPageProps> = ({
       {/* Stats Panel */}
       {showStatsPanel && (
         <div
-          className="fixed sm:absolute top-0 left-0 sm:top-4 sm:left-16 z-20 bg-white rounded-none sm:rounded-xl shadow-lg p-3 sm:p-4 w-full sm:w-[520px] h-full sm:h-auto overflow-y-auto sm:overflow-visible border-t sm:border border-gray-100"
+          className="absolute top-0 left-0 right-0 sm:top-4 sm:left-16 sm:right-auto z-50 bg-white rounded-none sm:rounded-xl shadow-xl p-2 sm:p-4 w-full sm:w-[520px] max-h-64 sm:h-auto overflow-y-auto sm:overflow-visible border sm:border border-gray-200"
           onClick={e => e.stopPropagation()}
         >
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-2">
-            <h3 className="text-sm sm:text-base font-semibold text-gray-800">Statistiques Marché</h3>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <div>
-                <select
-                  id="stats-scope"
-                  value={statsScope}
-                  onChange={e => setStatsScope(e.target.value as 'commune' | 'zone' | 'quartier')}
-                  className="border border-gray-300 rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer w-full sm:min-w-[120px]"
-                  style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
-                >
-                  <option value="commune">Commune ({currentCity})</option>
-                  <option value="zone">Zone affichée</option>
-                  {hasQuartier && <option value="quartier">Quartier ({currentQuartier || 'Chargement...'})</option>}
-                </select>
+          {/* Mobile Version - ImmoData Style */}
+          <div className="block sm:hidden">
+            <div className="flex flex-col w-full px-2 py-1 gap-1 lg:gap-1">
+              <div className="flex lg:flex-row flex-col justify-between items-center gap-2">
+                <div className="flex flex-row w-full items-center py-1.5">
+                  <h2 className="text-sm font-semibold text-gray-900 w-full whitespace-nowrap">Statistiques de marché</h2>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowStatsPanel(false)}
+                      className="z-10 w-6 h-6 text-xs rounded-full bg-gray-50 text-gray-400 hover:bg-gray-100 border border-gray-200"
+                    >
+                      <svg className="w-3 h-3 mx-auto" fill="currentColor" viewBox="0 0 384 512">
+                        <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-row items-center w-full gap-2">
+                  <div className="w-full">
+                    <div className="relative flex lg:justify-end">
+                      <select
+                        value={statsScope === 'commune' ? currentCity : statsScope === 'zone' ? 'Zone affichée' : currentQuartier}
+                        onChange={e => {
+                          if (e.target.value === 'Zone affichée') {
+                            setStatsScope('zone');
+                          } else if (e.target.value === currentQuartier) {
+                            setStatsScope('quartier');
+                          } else {
+                            setStatsScope('commune');
+                          }
+                        }}
+                        className="bg-white font-medium relative w-full border border-gray-300 rounded-md shadow-sm pl-3 pr-10 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm py-2"
+                      >
+                        <option value={currentCity}>{currentCity}</option>
+                        <option value="Zone affichée">Zone affichée</option>
+                        {hasQuartier && <option value={currentQuartier}>{currentQuartier}</option>}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                        <svg className="h-4 w-4 text-gray-400 transition-transform duration-200" fill="currentColor" viewBox="0 0 512 512">
+                          <path d="M267.3 395.3c-6.2 6.2-16.4 6.2-22.6 0l-192-192c-6.2-6.2-6.2-16.4 0-22.6s16.4-6.2 22.6 0L256 361.4 436.7 180.7c6.2-6.2 16.4-6.2 22.6 0s6.2 16.4 0 22.6l-192 192z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {/* Property Type Buttons */}
+                <div className="flex space-x-1 rounded-lg bg-gray-100 p-1 gap-2">
+                  {(() => {
+                    const propertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
+
+                    // Use the same background colors as desktop version
+                    const getPropertyTypeButtonColor = typeName => {
+                      const colorMap = {
+                        Maison: '#7A72D5', // #7A72D5 - Violet clair
+                        Appartement: '#504CC5', // #504CC5 - Violet
+                        'Local Commercial': '#205F9D', // #205F9D - Bleu foncé
+                        Terrain: '#4F96D6', // #4F96D6 - Bleu
+                        'Biens Multiples': '#022060', // #022060 - Bleu très foncé
+                      };
+                      return colorMap[typeName] || '#6B7280';
+                    };
+
+                    const propertyIcons = [
+                      // Maison icon - same style as reference
+                      <svg key="maison-icon" className="text-white" fill="currentColor" viewBox="0 0 576 512">
+                        <path d="M298.6 4c-6-5.3-15.1-5.3-21.2 0L5.4 244c-6.6 5.8-7.3 16-1.4 22.6s16 7.3 22.6 1.4L64 235V432c0 44.2 35.8 80 80 80H432c44.2 0 80-35.8 80-80V235l37.4 33c6.6 5.8 16.7 5.2 22.6-1.4s5.2-16.7-1.4-22.6L298.6 4zM96 432V206.7L288 37.3 480 206.7V432c0 26.5-21.5 48-48 48H368V320c0-17.7-14.3-32-32-32H240c-17.7 0-32 14.3-32 32V480H144c-26.5 0-48-21.5-48-48zm144 48V320h96V480H240z" />
+                      </svg>,
+                      // Appartement icon - same style
+                      <svg key="appartement-icon" className="text-white" fill="currentColor" viewBox="0 0 384 512">
+                        <path d="M0 48C0 21.5 21.5 0 48 0H336c26.5 0 48 21.5 48 48V464c0 26.5-21.5 48-48 48H240V432c0-26.5-21.5-48-48-48s-48 21.5-48 48v80H48c-26.5 0-48-21.5-48-48V48zM80 224c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H80zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H176c-8.8 0-16 7.2-16 16zm112-16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H272z" />
+                      </svg>,
+                      // Local Commercial icon - same style
+                      <svg key="local-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
+                        <path d="M603.2 192H36.8C16.5 192 0 175.5 0 155.2c0-7.3 2.2-14.4 6.2-20.4L81.8 21.4C90.7 8 105.6 0 121.7 0H518.3c16.1 0 31 8 39.9 21.4l75.6 113.3c4 6.1 6.2 13.2 6.2 20.4c0 20.3-16.5 36.8-36.8 36.8z" />
+                      </svg>,
+                      // Terrain icon - same style
+                      <svg key="terrain-icon" className="text-white" fill="currentColor" viewBox="0 0 448 512">
+                        <path d="M64 128a32 32 0 1 0 0-64 32 32 0 1 0 0 64zm0-96c29.8 0 54.9 20.4 62 48H322c7.1-27.6 32.2-48 62-48c35.3 0 64 28.7 64 64c0 29.8-20.4 54.9-48 62V354c27.6 7.1 48 32.2 48 62c0 35.3-28.7 64-64 64c-29.8 0-54.9-20.4-62-48H126c-7.1 27.6-32.2 48-62 48c-35.3 0-64-28.7-64-64c0-29.8 20.4-54.9 48-62V158C20.4 150.9 0 125.8 0 96C0 60.7 28.7 32 64 32zm62 368H322c5.8-22.5 23.5-40.2 46-46V158c-22.5-5.8-40.2-23.5-46-46H126c-5.8 22.5-23.5 40.2-46 46V354c22.5 5.8 40.2 23.5 46 46zM96 416a32 32 0 1 0 -64 0 32 32 0 1 0 64 0zm256 0a32 32 0 1 0 64 0 32 32 0 1 0 -64 0zm32-288a32 32 0 1 0 0-64 32 32 0 1 0 0 64z" />
+                      </svg>,
+                      // Biens Multiples icon - same style
+                      <svg key="biens-multiples-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
+                        <path d="M0 464V277.1c0-13.5 5.6-26.3 15.6-35.4l144-132c18.4-16.8 46.5-16.8 64.9 0l144 132c9.9 9.1 15.6 21.9 15.6 35.4V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48z" />
+                      </svg>,
+                    ];
+
+                    return propertyTypeNames.map((typeName, index) => (
+                      <div
+                        key={typeName}
+                        className={`flex justify-center w-full rounded-md py-2 text-xs leading-4 px-3 ring-white/60 ring-offset-0 ring-offset-blue-400 focus:outline-none focus:ring-2 hover:cursor-pointer transition-all duration-200 ${
+                          activePropertyType === index
+                            ? 'text-white shadow font-medium'
+                            : 'text-gray-500 hover:bg-white/[0.12] hover:text-gray-900'
+                        }`}
+                        style={activePropertyType === index ? { backgroundColor: getPropertyTypeButtonColor(typeName) } : {}}
+                        onClick={() => setActivePropertyType(index)}
+                      >
+                        <p className="flex items-center justify-center group">
+                          <span className="w-4 h-4">{propertyIcons[index]}</span>
+                          <span
+                            className={`overflow-hidden whitespace-nowrap pl-1.5 ${activePropertyType === index ? 'inline-block' : 'w-0 hidden'}`}
+                          >
+                            {typeName}
+                          </span>
+                        </p>
+                      </div>
+                    ));
+                  })()}
+                </div>
+
+                {/* Statistics Display - Cards like Desktop */}
+                <div className="grid grid-cols-3 gap-2">
+                  {(() => {
+                    const propertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
+                    const apiTypeMap = {
+                      'Local Commercial': 'Local Commercial',
+                      Appartement: 'Appartement',
+                      Maison: 'Maison',
+                      Terrain: 'Terrain',
+                      'Biens Multiples': 'Bien Multiple',
+                    };
+
+                    const currentStatsData = statsScope === 'commune' ? propertyStats : statsScope === 'zone' ? zoneStats : propertyStats;
+                    const selectedTypeName = propertyTypeNames[activePropertyType];
+                    const apiTypeName = apiTypeMap[selectedTypeName] || selectedTypeName;
+
+                    const match = currentStatsData.find(item => item.typeGroupe === apiTypeName);
+                    const currentStat = {
+                      nombre: match?.nombreMutations || match?.nombre || 0,
+                      prixMoyen: match?.prixMedian || match?.prixMoyen || 0,
+                      prixM2Moyen: match?.prixM2Median || match?.prixM2Moyen || 0,
+                    };
+
+                    if (isLoading || (statsScope === 'quartier' && isLoadingQuartier)) {
+                      return (
+                        <div className="flex justify-center w-full py-4">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                        </div>
+                      );
+                    }
+
+                    if (error) {
+                      return (
+                        <div className="text-center w-full py-4">
+                          <p className="text-red-500 text-sm">⚠️ {error}</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-600 mb-1">Nombre de ventes</p>
+                          <p className="text-sm font-semibold text-gray-900">{formatNumber(currentStat.nombre)}</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-600 mb-1">Prix médian</p>
+                          <p className="text-sm font-semibold text-gray-900">{formatNumber(currentStat.prixMoyen)}€</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-600 mb-1">Prix médian au m²</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {Math.round(currentStat.prixM2Moyen || 0).toLocaleString('fr-FR')}€
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="h-px bg-gray-200 w-full mb-3" />
+          {/* Desktop Version - Original Style */}
+          <div className="hidden sm:block">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-2">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-800">Statistiques Marché</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div>
+                  <select
+                    id="stats-scope"
+                    value={statsScope}
+                    onChange={e => setStatsScope(e.target.value as 'commune' | 'zone' | 'quartier')}
+                    className="border border-gray-300 rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer w-full sm:min-w-[120px]"
+                    style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+                  >
+                    <option value="commune">Commune ({currentCity})</option>
+                    <option value="zone">Zone affichée</option>
+                    {hasQuartier && <option value="quartier">Quartier ({currentQuartier || 'Chargement...'})</option>}
+                  </select>
+                </div>
+              </div>
+            </div>
 
-          {(() => {
-            // ✅ Adaptation pour les nouvelles données de l'API
-            const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
-            // ✅ Nouvelles couleurs spécifiées
-            const getPropertyTypeButtonColor = typeName => {
-              const colorMap = {
-                Appartement: 'bg-[#504CC5]', // #504CC5 - Violet
-                Maison: 'bg-[#7A72D5]', // #7A72D5 - Violet clair
-                Terrain: 'bg-[#4F96D6]', // #4F96D6 - Bleu
-                Local: 'bg-[#205F9D]', // #205F9D - Bleu foncé
-                'Bien Multiple': 'bg-[#022060]', // #022060 - Bleu très foncé
+            <div className="h-px bg-gray-200 w-full mb-3" />
+
+            {(() => {
+              // ✅ Adaptation pour les nouvelles données de l'API
+              const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
+              // ✅ Nouvelles couleurs spécifiées
+              const getPropertyTypeButtonColor = typeName => {
+                const colorMap = {
+                  Appartement: 'bg-[#504CC5]', // #504CC5 - Violet
+                  Maison: 'bg-[#7A72D5]', // #7A72D5 - Violet clair
+                  Terrain: 'bg-[#4F96D6]', // #4F96D6 - Bleu
+                  Local: 'bg-[#205F9D]', // #205F9D - Bleu foncé
+                  'Bien Multiple': 'bg-[#022060]', // #022060 - Bleu très foncé
+                };
+                return colorMap[typeName] || 'bg-gray-500';
               };
-              return colorMap[typeName] || 'bg-gray-500';
-            };
 
-            // **NEW**: Choose data source based on selected scope
-            const currentStatsData =
-              statsScope === 'commune'
-                ? propertyStats
-                : statsScope === 'zone'
-                  ? zoneStats
-                  : // For quartier, use propertyStats but they will be zeros when quartier changes
-                    propertyStats;
+              // **NEW**: Choose data source based on selected scope
+              const currentStatsData =
+                statsScope === 'commune'
+                  ? propertyStats
+                  : statsScope === 'zone'
+                    ? zoneStats
+                    : // For quartier, use propertyStats but they will be zeros when quartier changes
+                      propertyStats;
 
-            const normalizedStats = propertyTypeNames.map((typeName, index) => {
-              // ✅ Mapping des noms pour correspondre aux données API
-              const apiTypeMap = {
-                Local: 'Local Commercial',
-                Appartement: 'Appartement',
-                Maison: 'Maison',
-                Terrain: 'Terrain',
-                'Bien Multiple': 'Bien Multiple',
-              };
+              const normalizedStats = propertyTypeNames.map((typeName, index) => {
+                // ✅ Mapping des noms pour correspondre aux données API
+                const apiTypeMap = {
+                  Local: 'Local Commercial',
+                  Appartement: 'Appartement',
+                  Maison: 'Maison',
+                  Terrain: 'Terrain',
+                  'Bien Multiple': 'Bien Multiple',
+                };
 
-              const apiTypeName = apiTypeMap[typeName] || typeName;
+                const apiTypeName = apiTypeMap[typeName] || typeName;
 
-              // ✅ Recherche directe par typeGroupe depuis l'API ou zone data
-              const match = currentStatsData.find(item => {
-                return item.typeGroupe === apiTypeName;
+                // ✅ Recherche directe par typeGroupe depuis l'API ou zone data
+                const match = currentStatsData.find(item => {
+                  return item.typeGroupe === apiTypeName;
+                });
+
+                return {
+                  typeBien: typeName,
+                  nombre: match?.nombreMutations || match?.nombre || 0,
+                  prixMoyen: match?.prixMedian || match?.prixMoyen || 0,
+                  prixM2Moyen: match?.prixM2Median || match?.prixM2Moyen || 0,
+                };
               });
 
-              return {
-                typeBien: typeName,
-                nombre: match?.nombreMutations || match?.nombre || 0,
-                prixMoyen: match?.prixMedian || match?.prixMoyen || 0,
-                prixM2Moyen: match?.prixM2Median || match?.prixM2Moyen || 0,
-              };
-            });
-
-            return (
-              <>
-                <div className="grid grid-cols-2 sm:flex sm:flex-nowrap mb-3 gap-1 sm:gap-2">
-                  {normalizedStats.map((stat, index) => (
-                    <button
-                      key={stat.typeBien}
-                      className={`flex-1 py-2 px-1 sm:px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
-                        activePropertyType === index
-                          ? `${getPropertyTypeButtonColor(stat.typeBien)} text-white`
-                          : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
-                      }`}
-                      onClick={() => setActivePropertyType(index)}
-                    >
-                      {stat.typeBien}
-                    </button>
-                  ))}
-                </div>
-
-                {isLoading || (statsScope === 'quartier' && isLoadingQuartier) ? (
-                  <div className="flex justify-center py-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent" />
+              return (
+                <>
+                  <div className="grid grid-cols-2 sm:flex sm:flex-nowrap mb-3 gap-1 sm:gap-2">
+                    {normalizedStats.map((stat, index) => (
+                      <button
+                        key={stat.typeBien}
+                        className={`flex-1 py-2 px-1 sm:px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
+                          activePropertyType === index
+                            ? `${getPropertyTypeButtonColor(stat.typeBien)} text-white`
+                            : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
+                        }`}
+                        onClick={() => setActivePropertyType(index)}
+                      >
+                        {stat.typeBien}
+                      </button>
+                    ))}
                   </div>
-                ) : error ? (
-                  <div className="text-red-500 text-center py-1 text-xs">⚠️ {error}</div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Nombre de ventes</p>
-                      <p className="text-sm sm:text-base font-semibold text-gray-900">
-                        {formatNumber(normalizedStats[activePropertyType]?.nombre)}
-                      </p>
+
+                  {isLoading || (statsScope === 'quartier' && isLoadingQuartier) ? (
+                    <div className="flex justify-center py-2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent" />
                     </div>
-                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Prix médian</p>
-                      <p className="text-sm sm:text-base font-semibold text-gray-900">
-                        {formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€
-                      </p>
+                  ) : error ? (
+                    <div className="text-red-500 text-center py-1 text-xs">⚠️ {error}</div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                        <p className="text-xs text-gray-600 mb-1">Nombre de ventes</p>
+                        <p className="text-sm sm:text-base font-semibold text-gray-900">
+                          {formatNumber(normalizedStats[activePropertyType]?.nombre)}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                        <p className="text-xs text-gray-600 mb-1">Prix médian</p>
+                        <p className="text-sm sm:text-base font-semibold text-gray-900">
+                          {formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                        <p className="text-xs text-gray-600 mb-1">Prix médian au m²</p>
+                        <p className="text-sm sm:text-base font-semibold text-gray-900">
+                          {Math.round(normalizedStats[activePropertyType]?.prixM2Moyen || 0).toLocaleString('fr-FR')}€
+                        </p>
+                      </div>
                     </div>
-                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                      <p className="text-xs text-gray-600 mb-1">Prix médian au m²</p>
-                      <p className="text-sm sm:text-base font-semibold text-gray-900">
-                        {Math.round(normalizedStats[activePropertyType]?.prixM2Moyen || 0).toLocaleString('fr-FR')}€
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </>
-            );
-          })()}
+                  )}
+                </>
+              );
+            })()}
+
+            <button
+              onClick={() => setShowStatsPanel(false)}
+              className="absolute top-2 right-2 sm:top-3 sm:right-3 text-gray-400 hover:text-gray-600 transition-colors duration-150"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
         </div>
       )}
+
+      {/* Mobile Bottom Sheet */}
+      <MobilePropertyBottomSheet
+        isOpen={showMobileBottomSheet}
+        onClose={handleMobileSheetClose}
+        property={mobileSheetProperty}
+        currentIndex={mobileSheetIndex}
+        totalCount={mobileSheetMutations.length}
+        onPrevious={handleMobileSheetPrevious}
+        onNext={handleMobileSheetNext}
+      />
     </div>
   );
 };

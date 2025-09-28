@@ -58,21 +58,20 @@ const AppRoutes = () => {
           path="/PrixImmobliers"
           element={
             <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden">
-              {/* **UPDATED**: Pass the filter change handler to SearchBar */}
-              <SearchBar
-                onSearch={handleSearchParamsChange}
-                onFilterApply={setFilterState}
-                currentFilters={filterState}
-                // Removed onClearFilters prop because it's not defined in SearchBarProps
-              />
+              {/* Mobile-first Search Bar */}
+              <SearchBar onSearch={handleSearchParamsChange} onFilterApply={setFilterState} currentFilters={filterState} />
 
-              <div className="flex h-full shadow-lg border border-gray-200 rounded-lg overflow-hidden bg-white">
-                {/* **UPDATED**: Pass the filter change handler to PropertyList */}
-                <PropertyList
-                  searchParams={searchParams}
-                  filterState={filterState}
-                  onFiltersChange={handleFiltersChange} // **KEY**: Handle filter changes from PropertyList
-                />
+              {/* Mobile: Full-screen map only, Desktop: Split view */}
+              <div className="flex h-full">
+                {/* Mobile Layout - Map Only */}
+                <div className="block md:hidden w-full h-full">
+                  <PropertyList searchParams={searchParams} filterState={filterState} onFiltersChange={handleFiltersChange} />
+                </div>
+
+                {/* Desktop Layout - Split View */}
+                <div className="hidden md:flex w-full h-full shadow-lg border border-gray-200 rounded-lg overflow-hidden bg-white">
+                  <PropertyList searchParams={searchParams} filterState={filterState} onFiltersChange={handleFiltersChange} />
+                </div>
               </div>
             </div>
           }
