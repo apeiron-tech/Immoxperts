@@ -2472,7 +2472,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         onClick={() => setActivePropertyType(index)}
                       >
                         <p className="flex items-center justify-center group">
-                          <span className="w-4 h-4">{propertyIcons[index]}</span>
+                          <span className={`w-4 h-4 ${activePropertyType === index ? 'text-white' : ''}`}>
+                            {React.cloneElement(propertyIcons[index], {
+                              className: activePropertyType === index ? 'text-white' : '',
+                              style: activePropertyType === index ? { color: 'white' } : { color: getPropertyTypeButtonColor(typeName) },
+                            })}
+                          </span>
                           <span
                             className={`overflow-hidden whitespace-nowrap pl-1.5 ${activePropertyType === index ? 'inline-block' : 'w-0 hidden'}`}
                           >
