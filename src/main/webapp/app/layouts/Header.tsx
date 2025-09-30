@@ -108,6 +108,7 @@ const Header: React.FC = () => {
             </div>
           </div>
         </div>
+        <div className="w-full h-[3px] bg-gradient-to-r from-blue-500 via-purple-500 to-yellow-300" />
       </header>
 
       {/* Mobile Navigation Menu */}

@@ -52,7 +52,6 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [hoveredPropertyId, setHoveredPropertyId] = useState<number | null>(null);
   const [mapHoveredPropertyId, setMapHoveredPropertyId] = useState<number | null>(null);
-  const [activeView, setActiveView] = useState<'map' | 'list'>('map');
   const [sortOption, setSortOption] = useState<SortOption>('date-desc');
 
   // **KEY ADDITION**: Store the currently active filters in this component
@@ -241,10 +240,6 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
     );
     setSimilarProperties(similar);
     setCurrentIndex(0);
-
-    if (window.innerWidth < 1024) {
-      setActiveView('list');
-    }
   };
 
   const closeSidebar = () => {
@@ -307,32 +302,8 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   // --- RENDER ---
   return (
     <div className="flex flex-col lg:flex-row w-full h-full min-h-screen lg:min-h-full bg-gray-50">
-      {/* --- Mobile View Toggle --- */}
-      <div className="lg:hidden flex justify-center gap-2 py-3 bg-white shadow-md z-20 sticky top-0">
-        <button
-          onClick={() => setActiveView('map')}
-          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            activeView === 'map' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          📍 Carte
-        </button>
-        <button
-          onClick={() => setActiveView('list')}
-          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            activeView === 'list' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          📋 Liste ({properties.length})
-        </button>
-      </div>
-
-      {/* --- List & Detail Panel --- */}
-      <div
-        className={`w-full lg:w-[456px] lg:flex-shrink-0 flex flex-col bg-white border-r border-gray-200 z-10 h-full min-h-[calc(100vh-60px)] lg:min-h-full ${
-          activeView === 'map' ? 'hidden lg:flex' : 'flex'
-        }`}
-      >
+      {/* --- List & Detail Panel - HIDDEN ON MOBILE for ImmoData experience --- */}
+      <div className="hidden lg:flex lg:w-[456px] lg:flex-shrink-0 flex-col bg-white border-r border-gray-200 z-10 h-full min-h-[calc(100vh-60px)] lg:min-h-full">
         {selectedProperty ? (
           <motion.div
             className="h-full w-full bg-white overflow-hidden lg:border-r border-gray-200 lg:rounded-lg"
@@ -523,8 +494,8 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
         )}
       </div>
 
-      {/* --- Map Container --- */}
-      <div className={`flex-1 relative ${activeView === 'list' ? 'hidden lg:block' : 'block'}`}>
+      {/* --- Map Container - Full screen on mobile like ImmoData --- */}
+      <div className="flex-1 relative w-full h-full">
         <PropertyMap
           properties={properties}
           onPropertySelect={handlePropertySelect}

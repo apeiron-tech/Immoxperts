@@ -23,6 +23,9 @@ export const API_ENDPOINTS = {
     statistics: `${API_BASE_URL}/api/mutations/statistics`,
     statsByCity: `${API_BASE_URL}/api/mutations/stats/by-city`,
   },
+  location: {
+    detectComplete: `${API_BASE_URL}/api/location/detect-complete`,
+  },
   louer: {
     search: `${API_BASE_URL}/api/louer/search-with-filters`,
     suggestions: `${API_BASE_URL}/api/louer/suggestions`,
