@@ -34,7 +34,7 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
   if (!isOpen || !property) return null;
 
   return (
-    <div className="md:hidden fixed bottom-0 z-20 w-full bg-white" style={{ borderRadius: '16px 16px 0 0' }}>
+    <div className="md:hidden fixed bottom-0 z-20 w-full bg-white">
       <div className="relative" style={{ fontFamily: "'Maven Pro', sans-serif", padding: '16px 0px 0px 0px' }}>
         {/* Close Button */}
         <div className="absolute -top-2 right-0">
@@ -67,7 +67,7 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
                   <span style={{ marginLeft: '8px', color: '#666' }}>• {property.rooms} pièces</span>
                 )}
                 {property.surface && property.surface !== '' && property.surface !== '0 m²' && (
-                  <span style={{ marginLeft: '8px', color: '#666' }}>• {property.surface}</span>
+                  <span style={{ marginLeft: '8px', color: '#666' }}>• surface {property.surface}</span>
                 )}
                 {property.terrain && property.terrain !== '' && property.terrain !== '0 m²' && (
                   <span style={{ marginLeft: '8px', color: '#666' }}>• Terrain {property.terrain.replace('m²', '')} m²</span>
@@ -105,21 +105,6 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
               <div style={{ color: '#888', fontSize: '14px' }}>{property.pricePerSqm}</div>
             </div>
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 justify-end pt-1">
-          <div>
-            <button
-              type="button"
-              className="whitespace-nowrap border shadow-sm focus:outline-none disabled:cursor-not-allowed duration-300 text-center relative justify-between text-xs font-medium rounded px-2 py-1.5 bg-white hover:bg-gray-50 text-gray-600 disabled:bg-gray-50 disabled:text-gray-300"
-            >
-              + Détails
-            </button>
-          </div>
-          <button className="whitespace-nowrap border shadow-sm focus:outline-none disabled:cursor-not-allowed duration-300 text-center relative justify-between text-xs font-medium rounded px-2 py-1.5 text-white border-transparent bg-blue-500 hover:bg-blue-600 disabled:bg-blue-200 inline-block">
-            Analyser ce bien
-          </button>
         </div>
 
         {/* Navigation Footer */}

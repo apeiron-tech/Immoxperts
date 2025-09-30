@@ -25,7 +25,6 @@ const MainContent = () => {
     <div className="flex flex-col min-h-screen" style={{ background: '#F9FAFB' }}>
       <div className="fixed top-0 left-0 right-0 z-50">
         <Header />
-        <div className="w-full h-[3px] bg-gradient-to-r from-blue-500 via-purple-500 to-yellow-300" />
       </div>
 
       <div className={`flex-grow pt-20 ${hideFooter ? 'h-screen overflow-hidden' : 'mb-10'}`}>

@@ -1118,7 +1118,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           // Build the details string, only showing non-zero values
                           const details = [];
                           if (rooms > 0) details.push(`${rooms} pièces`);
-                          if (surface > 0) details.push(`${surface.toLocaleString('fr-FR')} m²`);
+                          if (surface > 0) details.push(`surface ${surface.toLocaleString('fr-FR')} m²`);
                           if (terrain > 0) details.push(`Terrain ${terrain.toLocaleString('fr-FR')} m²`);
 
                           const detailsText = details.length > 0 ? details.join(' – ') : 'N/A';
@@ -2409,11 +2409,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         <option value="Zone affichée">Zone affichée</option>
                         {hasQuartier && <option value={currentQuartier}>{currentQuartier}</option>}
                       </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                        <svg className="h-4 w-4 text-gray-400 transition-transform duration-200" fill="currentColor" viewBox="0 0 512 512">
-                          <path d="M267.3 395.3c-6.2 6.2-16.4 6.2-22.6 0l-192-192c-6.2-6.2-6.2-16.4 0-22.6s16.4-6.2 22.6 0L256 361.4 436.7 180.7c6.2-6.2 16.4-6.2 22.6 0s6.2 16.4 0 22.6l-192 192z" />
-                        </svg>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -2439,24 +2434,46 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                     const propertyIcons = [
                       // Maison icon - same style as reference
-                      <svg key="maison-icon" className="text-white" fill="currentColor" viewBox="0 0 576 512">
+                      <svg key="maison-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
                         <path d="M298.6 4c-6-5.3-15.1-5.3-21.2 0L5.4 244c-6.6 5.8-7.3 16-1.4 22.6s16 7.3 22.6 1.4L64 235V432c0 44.2 35.8 80 80 80H432c44.2 0 80-35.8 80-80V235l37.4 33c6.6 5.8 16.7 5.2 22.6-1.4s5.2-16.7-1.4-22.6L298.6 4zM96 432V206.7L288 37.3 480 206.7V432c0 26.5-21.5 48-48 48H368V320c0-17.7-14.3-32-32-32H240c-17.7 0-32 14.3-32 32V480H144c-26.5 0-48-21.5-48-48zm144 48V320h96V480H240z" />
                       </svg>,
                       // Appartement icon - same style
-                      <svg key="appartement-icon" className="text-white" fill="currentColor" viewBox="0 0 384 512">
-                        <path d="M0 48C0 21.5 21.5 0 48 0H336c26.5 0 48 21.5 48 48V464c0 26.5-21.5 48-48 48H240V432c0-26.5-21.5-48-48-48s-48 21.5-48 48v80H48c-26.5 0-48-21.5-48-48V48zM80 224c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H80zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H176c-8.8 0-16 7.2-16 16zm112-16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H272z" />
+                      <svg key="appartement-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
+                        <g className="fa-duotone-group">
+                          <path
+                            className="fa-secondary"
+                            fill="currentColor"
+                            d="M0 48C0 21.5 21.5 0 48 0H336c26.5 0 48 21.5 48 48V464c0 26.5-21.5 48-48 48H240V432c0-26.5-21.5-48-48-48s-48 21.5-48 48v80H48c-26.5 0-48-21.5-48-48V48zM80 224c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H80zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H176c-8.8 0-16 7.2-16 16zm112-16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H272zM64 112v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H80c-8.8 0-16 7.2-16 16zM176 96c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H176zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H272c-8.8 0-16 7.2-16 16z"
+                          ></path>
+                          <path
+                            className="fa-primary"
+                            fill="currentColor"
+                            d="M80 96c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H80zm0 128c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H80zm96 0c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H176zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H272c-8.8 0-16 7.2-16 16zM160 112v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H176c-8.8 0-16 7.2-16 16zM272 96c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H272z"
+                          ></path>
+                        </g>
                       </svg>,
                       // Local Commercial icon - same style
                       <svg key="local-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
-                        <path d="M603.2 192H36.8C16.5 192 0 175.5 0 155.2c0-7.3 2.2-14.4 6.2-20.4L81.8 21.4C90.7 8 105.6 0 121.7 0H518.3c16.1 0 31 8 39.9 21.4l75.6 113.3c4 6.1 6.2 13.2 6.2 20.4c0 20.3-16.5 36.8-36.8 36.8z" />
+                        <g className="fa-duotone-group">
+                          <path
+                            className="fa-secondary"
+                            fill="currentColor"
+                            d="M64 192H96h32H320h64H512h32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V224H384V384v80c0 26.5-21.5 48-48 48H112c-26.5 0-48-21.5-48-48V384 192zm256 32H128V384H320V224z"
+                          ></path>
+                          <path
+                            className="fa-primary"
+                            fill="currentColor"
+                            d="M603.2 192H36.8C16.5 192 0 175.5 0 155.2c0-7.3 2.2-14.4 6.2-20.4L81.8 21.4C90.7 8 105.6 0 121.7 0H518.3c16.1 0 31 8 39.9 21.4l75.6 113.3c4 6.1 6.2 13.2 6.2 20.4c0 20.3-16.5 36.8-36.8 36.8z"
+                          ></path>
+                        </g>
                       </svg>,
                       // Terrain icon - same style
-                      <svg key="terrain-icon" className="text-white" fill="currentColor" viewBox="0 0 448 512">
-                        <path d="M64 128a32 32 0 1 0 0-64 32 32 0 1 0 0 64zm0-96c29.8 0 54.9 20.4 62 48H322c7.1-27.6 32.2-48 62-48c35.3 0 64 28.7 64 64c0 29.8-20.4 54.9-48 62V354c27.6 7.1 48 32.2 48 62c0 35.3-28.7 64-64 64c-29.8 0-54.9-20.4-62-48H126c-7.1 27.6-32.2 48-62 48c-35.3 0-64-28.7-64-64c0-29.8 20.4-54.9 48-62V158C20.4 150.9 0 125.8 0 96C0 60.7 28.7 32 64 32zm62 368H322c5.8-22.5 23.5-40.2 46-46V158c-22.5-5.8-40.2-23.5-46-46H126c-5.8 22.5-23.5 40.2-46 46V354c22.5 5.8 40.2 23.5 46 46zM96 416a32 32 0 1 0 -64 0 32 32 0 1 0 64 0zm256 0a32 32 0 1 0 64 0 32 32 0 1 0 -64 0zm32-288a32 32 0 1 0 0-64 32 32 0 1 0 0 64z" />
+                      <svg key="terrain-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
+                        <path d="M235.3 4.7c-6.2-6.2-16.4-6.2-22.6 0L72 145.4c-5.1 5.1-8 12.1-8 19.3C64 179.8 76.2 192 91.3 192h17.9L38.7 274.3c-4.3 5-6.7 11.4-6.7 18C32 307.6 44.4 320 59.7 320H77.2L6.7 402.3c-4.3 5-6.7 11.4-6.7 18C0 435.6 12.4 448 27.7 448H160h48v48c0 8.8 7.2 16 16 16s16-7.2 16-16V448h48H420.3c15.3 0 27.7-12.4 27.7-27.7c0-6.6-2.4-13-6.7-18L370.8 320h17.5c15.3 0 27.7-12.4 27.7-27.7c0-6.6-2.4-13-6.7-18L338.8 192h17.9c15.1 0 27.3-12.2 27.3-27.3c0-7.2-2.9-14.2-8-19.3L235.3 4.7zM240 416V208c0-8.8-7.2-16-16-16s-16 7.2-16 16V416H160 37.1l87.1-101.6c4.1-4.7 5-11.4 2.4-17.1s-8.3-9.3-14.5-9.3H69.1l87.1-101.6c4.1-4.7 5-11.4 2.4-17.1s-8.3-9.3-14.5-9.3H102.6L224 38.6 345.4 160H304c-6.2 0-11.9 3.6-14.5 9.3s-1.7 12.4 2.4 17.1L378.9 288H336c-6.2 0-11.9 3.6-14.5 9.3s-1.7 12.4 2.4 17.1L410.9 416H288 240z" />
                       </svg>,
                       // Biens Multiples icon - same style
                       <svg key="biens-multiples-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
-                        <path d="M0 464V277.1c0-13.5 5.6-26.3 15.6-35.4l144-132c18.4-16.8 46.5-16.8 64.9 0l144 132c9.9 9.1 15.6 21.9 15.6 35.4V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48z" />
+                        <path d="M320 32H576c17.7 0 32 14.3 32 32V448c0 17.7-14.3 32-32 32H414.4c-2.4 11.8-7.4 22.7-14.4 32H576c35.3 0 64-28.7 64-64V64c0-35.3-28.7-64-64-64H320c-35.3 0-64 28.7-64 64V95.3l32 29.3V64c0-17.7 14.3-32 32-32zM496 208c-17.7 0-32 14.3-32 32v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V240c0-17.7-14.3-32-32-32H496zm0 32h32v32H496V240zM464 368v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V368c0-17.7-14.3-32-32-32H496c-17.7 0-32 14.3-32 32zm64 0v32H496V368h32zM368 80c-17.7 0-32 14.3-32 32v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V112c0-17.7-14.3-32-32-32H368zm0 32h32v32H368V112zm96 0v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V112c0-17.7-14.3-32-32-32H496c-17.7 0-32 14.3-32 32zm64 0v32H496V112h32zM32 284.2c0-9 3.8-17.5 10.4-23.6l128-117.3c12.2-11.2 31-11.2 43.2 0l128 117.3c6.6 6.1 10.4 14.6 10.4 23.6V448c0 17.7-14.3 32-32 32H64c-17.7 0-32-14.3-32-32V284.2zM0 448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V284.2c0-17.9-7.5-35.1-20.8-47.2l-128-117.3c-24.5-22.4-62-22.4-86.5 0L20.8 237C7.5 249.1 0 266.2 0 284.2V448zM224 288v64H160V288h64zm-64-32c-17.7 0-32 14.3-32 32v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V288c0-17.7-14.3-32-32-32H160z" />
                       </svg>,
                     ];
 
@@ -2673,26 +2690,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 </>
               );
             })()}
-
-            <button
-              onClick={() => setShowStatsPanel(false)}
-              className="absolute top-2 right-2 sm:top-3 sm:right-3 text-gray-400 hover:text-gray-600 transition-colors duration-150"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
           </div>
         </div>
       )}

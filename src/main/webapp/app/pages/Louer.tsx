@@ -72,7 +72,7 @@ const Louer: React.FC = () => {
       const data: LocationSuggestion[] = await response.json();
       return data;
     } catch (error) {
-      console.error('Error fetching location suggestions:', error);
+      console.warn('Error fetching location suggestions:', error);
       return [];
     }
   };
@@ -98,7 +98,7 @@ const Louer: React.FC = () => {
       const data: PropertySearchResult[] = await response.json();
       return data;
     } catch (error) {
-      console.error('Error searching properties:', error);
+      console.warn('Error searching properties:', error);
       return [];
     }
   };
@@ -187,7 +187,7 @@ const Louer: React.FC = () => {
         },
       });
     } catch (error) {
-      console.error('Search error:', error);
+      console.warn('Search error:', error);
       alert("Une erreur s'est produite lors de la recherche. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
