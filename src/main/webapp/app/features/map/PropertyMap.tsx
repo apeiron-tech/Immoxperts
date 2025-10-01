@@ -305,6 +305,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const [isLoadingQuartier, setIsLoadingQuartier] = useState(false);
   const [hasQuartier, setHasQuartier] = useState<boolean>(false);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const scaleBarRef = useRef<HTMLDivElement | null>(null); // Reference for scale bar to keep it persistent
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [debugging, setDebugging] = useState<boolean>(true); // Enable debugging
@@ -578,6 +579,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
         source.setData(geojsonData);
         debugLog(`Updated mutations source with ${geojsonData.features.length} initial features`);
 
+        // **NEW**: Ensure scale bar remains attached after data update
+        if (scaleBarRef.current && !mapRef.current.getContainer().contains(scaleBarRef.current)) {
+          mapRef.current.getContainer().appendChild(scaleBarRef.current);
+          debugLog('Scale bar re-attached after initial data update');
+        }
+
         // **NEW**: Notify PropertyList about new data
         if (onDataUpdate) {
           onDataUpdate(geojsonData.features);
@@ -671,6 +678,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
       if (source && 'setData' in source) {
         source.setData(geojsonData);
         debugLog(`Updated mutations source with ${geojsonData.features.length} features`);
+
+        // **NEW**: Ensure scale bar remains attached after data update
+        if (scaleBarRef.current && !mapRef.current.getContainer().contains(scaleBarRef.current)) {
+          mapRef.current.getContainer().appendChild(scaleBarRef.current);
+          debugLog('Scale bar re-attached after mutations data update');
+        }
 
         // **NEW**: Notify PropertyList about new data
         if (onDataUpdate) {
@@ -1632,129 +1645,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
             }
           });
 
-          // Add custom scale bar instead of default Mapbox scale control
-          const createCustomScaleBar = () => {
-            const scaleBarContainer = document.createElement('div');
-            scaleBarContainer.style.cssText = `
-               position: absolute;
-               z-index: 10;
-               box-shadow: none;
-               border: none;
-               inset: auto 10px 10px auto;
-               background-color: rgb(255, 255, 255);
-               opacity: 0.9;
-               display: flex;
-               flex-direction: row;
-               align-items: baseline;
-               padding: 0px 6px;
-               border-radius: 0.2rem;
-             `;
-
-            const updateScaleBar = () => {
-              const bounds = map.getBounds();
-              const width = map.getContainer().offsetWidth;
-
-              // Calculate the distance represented by the current view using zoom level
-              const zoom = map.getZoom();
-              const metersPerPixel = (156543.03392 * Math.cos((bounds.getCenter().lat * Math.PI) / 180)) / Math.pow(2, zoom);
-              const distance = (metersPerPixel * width) / 1000; // Convert to km
-
-              // Fixed width for the scale bar (60px)
-              const fixedWidth = 60;
-
-              // Calculate the distance represented by the fixed width scale bar
-              const scaleDistance = (distance * fixedWidth) / width;
-
-              // Round to a nice number with better precision
-              let niceDistance = 1;
-              let unit = 'km';
-
-              if (scaleDistance >= 1) {
-                // If we're at 1km or more, show in km
-                if (scaleDistance >= 2) {
-                  niceDistance = Math.round(scaleDistance);
-                } else {
-                  niceDistance = 1;
-                }
-                unit = 'km';
-              } else {
-                // Show in meters for distances less than 1km
-                if (scaleDistance >= 0.9) {
-                  niceDistance = 900;
-                } else if (scaleDistance >= 0.8) {
-                  niceDistance = 800;
-                } else if (scaleDistance >= 0.7) {
-                  niceDistance = 700;
-                } else if (scaleDistance >= 0.6) {
-                  niceDistance = 600;
-                } else if (scaleDistance >= 0.5) {
-                  niceDistance = 500;
-                } else if (scaleDistance >= 0.4) {
-                  niceDistance = 400;
-                } else if (scaleDistance >= 0.3) {
-                  niceDistance = 300;
-                } else if (scaleDistance >= 0.2) {
-                  niceDistance = 200;
-                } else if (scaleDistance >= 0.1) {
-                  niceDistance = 100;
-                } else if (scaleDistance >= 0.05) {
-                  niceDistance = 50;
-                } else if (scaleDistance >= 0.02) {
-                  niceDistance = 20;
-                } else {
-                  niceDistance = 10;
-                }
-                unit = 'm';
-              }
-
-              // Use fixed width instead of calculating actual width
-              const actualWidth = fixedWidth;
-
-              // Clear previous content
-              scaleBarContainer.innerHTML = '';
-
-              // Create scale bar element
-              const scaleBar = document.createElement('div');
-              scaleBar.style.cssText = `
-                border-top: none;
-                border-right: 2px solid rgb(126, 132, 144);
-                border-bottom: 2px solid rgb(126, 132, 144);
-                border-left: 2px solid rgb(126, 132, 144);
-                box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 4px;
-                height: 7px;
-                border-bottom-left-radius: 1px;
-                border-bottom-right-radius: 1px;
-                width: ${actualWidth}px;
-              `;
-
-              // Create label
-              const label = document.createElement('div');
-              label.style.cssText = `
-                padding-left: 10px;
-                font-family: Arial, sans-serif;
-                font-size: 12px;
-                color: #333;
-              `;
-              label.textContent = `${niceDistance} ${unit}`;
-
-              scaleBarContainer.appendChild(scaleBar);
-              scaleBarContainer.appendChild(label);
-            };
-
-            // Update scale bar on map events
-            map.on('zoom', updateScaleBar);
-            map.on('move', updateScaleBar);
-
-            // Initial update
-            updateScaleBar();
-
-            return scaleBarContainer;
-          };
-
-          // Add custom scale bar to map
-          const customScaleBar = createCustomScaleBar();
-          map.getContainer().appendChild(customScaleBar);
-
           // Navigation controls will be added manually in JSX for better positioning
 
           // Load initial data after a short delay to ensure map is fully ready
@@ -1913,6 +1803,212 @@ const PropertyMap: React.FC<MapPageProps> = ({
           });
 
           debugLog('Map event handlers set up successfully');
+
+          // Add scale bar at the very end of map loading
+          if (!scaleBarRef.current) {
+            const createCustomScaleBar = () => {
+              const scaleBarContainer = document.createElement('div');
+              scaleBarContainer.style.cssText = `
+               position: absolute;
+               z-index: 10;
+               box-shadow: none;
+               background: rgba(255, 255, 255, 0.8);
+               border: 1px solid #ccc;
+               bottom: 10px;
+               left: 10px;
+               padding: 5px;
+               border-radius: 0.2rem;
+             `;
+
+              const updateScaleBar = () => {
+                const bounds = map.getBounds();
+                const width = map.getContainer().offsetWidth;
+                const zoom = map.getZoom();
+
+                const metersPerPixel = (156543.03392 * Math.cos((bounds.getCenter().lat * Math.PI) / 180)) / Math.pow(2, zoom);
+                const distance = (metersPerPixel * width) / 1000; // Convert to km
+
+                // Fixed width for the scale bar (60px)
+                const fixedWidth = 60;
+
+                // Calculate the distance represented by the fixed width scale bar
+                const scaleDistance = (distance * fixedWidth) / width;
+
+                // Round to a nice number with better precision
+                let niceDistance: number;
+                let unit: string;
+
+                if (scaleDistance >= 1000) {
+                  niceDistance = Math.round(scaleDistance / 100) * 100;
+                  unit = 'km';
+                } else if (scaleDistance >= 100) {
+                  niceDistance = Math.round(scaleDistance / 10) * 10;
+                  unit = 'm';
+                } else if (scaleDistance >= 10) {
+                  niceDistance = Math.round(scaleDistance);
+                  unit = 'm';
+                } else {
+                  niceDistance = Math.round(scaleDistance * 10) / 10;
+                  unit = 'm';
+                }
+
+                // Use fixed width instead of calculating actual width
+                const actualWidth = fixedWidth;
+
+                // Update existing elements instead of recreating them
+                let scaleBar = scaleBarContainer.querySelector('.scale-bar-line');
+                let label = scaleBarContainer.querySelector('.scale-bar-label');
+
+                if (!scaleBar) {
+                  // Create scale bar element only if it doesn't exist
+                  scaleBar = document.createElement('div');
+                  scaleBar.className = 'scale-bar-line';
+                  (scaleBar as HTMLElement).style.cssText = `
+                    border-top: none;
+                    border-right: 2px solid rgb(126, 132, 144);
+                    border-bottom: 2px solid rgb(126, 132, 144);
+                    border-left: 2px solid rgb(126, 132, 144);
+                    box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 4px;
+                    height: 7px;
+                    border-bottom-left-radius: 1px;
+                    border-bottom-right-radius: 1px;
+                  `;
+                  scaleBarContainer.appendChild(scaleBar);
+                }
+
+                if (!label) {
+                  // Create label only if it doesn't exist
+                  label = document.createElement('div');
+                  label.className = 'scale-bar-label';
+                  (label as HTMLElement).style.cssText = `
+                    padding-left: 10px;
+                    font-family: Arial, sans-serif;
+                    font-size: 12px;
+                    color: #333;
+                  `;
+                  scaleBarContainer.appendChild(label);
+                }
+
+                // Update only the width and text content
+                (scaleBar as HTMLElement).style.width = `${actualWidth}px`;
+                (label as HTMLElement).textContent = `${niceDistance} ${unit}`;
+              };
+
+              // Update scale bar on map events
+              map.on('zoom', updateScaleBar);
+              map.on('move', updateScaleBar);
+
+              // Initial update
+              updateScaleBar();
+
+              return scaleBarContainer;
+            };
+
+            // Add custom scale bar to map and store reference
+            const customScaleBar = createCustomScaleBar();
+            scaleBarRef.current = customScaleBar;
+            map.getContainer().appendChild(customScaleBar);
+            debugLog('Scale bar created and added to map at end of loading');
+          } else {
+            // Scale bar already exists, just ensure it's attached
+            if (scaleBarRef.current && !map.getContainer().contains(scaleBarRef.current)) {
+              map.getContainer().appendChild(scaleBarRef.current);
+              debugLog('Scale bar re-attached to map');
+            }
+          }
+
+          // Add second scale control (top right)
+          const secondScaleContainer = document.createElement('div');
+          secondScaleContainer.style.cssText = `
+            position: absolute;
+            z-index: 10;
+            box-shadow: none;
+            border: none;
+            inset: 10px 10px auto auto;
+            background-color: rgb(255, 255, 255);
+            opacity: 0.9;
+            display: flex;
+            flex-direction: row;
+            align-items: baseline;
+            padding: 0px 6px;
+            border-radius: 0.2rem;
+          `;
+
+          const updateSecondScale = () => {
+            const bounds = map.getBounds();
+            const width = map.getContainer().offsetWidth;
+            const zoom = map.getZoom();
+
+            const metersPerPixel = (156543.03392 * Math.cos((bounds.getCenter().lat * Math.PI) / 180)) / Math.pow(2, zoom);
+            const distance = (metersPerPixel * width) / 1000; // Convert to km
+
+            // Fixed width for the scale bar (60px) - same as original
+            const fixedWidth = 60;
+
+            // Calculate the distance represented by the fixed width scale bar
+            const scaleDistance = (distance * fixedWidth) / width;
+
+            // Round to a nice number in meters only, max 1km
+            let niceDistance: number;
+            let unit: string;
+
+            // Convert to meters
+            const distanceInMeters = scaleDistance * 1000;
+
+            if (distanceInMeters >= 1000) {
+              // Max 1km, show as 1km
+              niceDistance = 1;
+              unit = 'km';
+            } else if (distanceInMeters >= 100) {
+              niceDistance = Math.round(distanceInMeters / 10) * 10;
+              unit = 'm';
+            } else if (distanceInMeters >= 10) {
+              niceDistance = Math.round(distanceInMeters);
+              unit = 'm';
+            } else {
+              niceDistance = Math.round(distanceInMeters * 10) / 10;
+              unit = 'm';
+            }
+
+            // Use fixed width instead of calculating actual width
+            const actualWidth = fixedWidth;
+
+            // Clear and recreate the scale
+            secondScaleContainer.innerHTML = '';
+
+            const scaleBar = document.createElement('div');
+            scaleBar.style.cssText = `
+              border-top: none;
+              border-right: 2px solid rgb(126, 132, 144);
+              border-bottom: 2px solid rgb(126, 132, 144);
+              border-left: 2px solid rgb(126, 132, 144);
+              box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 4px;
+              height: 7px;
+              border-bottom-left-radius: 1px;
+              border-bottom-right-radius: 1px;
+              width: ${actualWidth}px;
+            `;
+
+            const label = document.createElement('div');
+            label.style.cssText = `
+              padding-left: 10px;
+            `;
+            label.textContent = `${niceDistance} ${unit}`;
+
+            secondScaleContainer.appendChild(scaleBar);
+            secondScaleContainer.appendChild(label);
+          };
+
+          // Update on map events
+          map.on('zoom', updateSecondScale);
+          map.on('move', updateSecondScale);
+
+          // Initial update
+          updateSecondScale();
+
+          // Add to map
+          map.getContainer().appendChild(secondScaleContainer);
+          debugLog('Second scale control added to map');
         } catch (err) {
           debugLog('Error during map setup:', err);
           setMapError(`Map setup error: ${err}`);
@@ -1983,6 +2079,26 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
     fetchStatsByINSEE();
   }, [currentINSEE]);
+
+  // **NEW**: Keep scale bar attached at all times
+  useEffect(() => {
+    if (!mapRef.current || !scaleBarRef.current) return;
+
+    const ensureScaleBarAttached = () => {
+      if (scaleBarRef.current && mapRef.current && !mapRef.current.getContainer().contains(scaleBarRef.current)) {
+        mapRef.current.getContainer().appendChild(scaleBarRef.current);
+        debugLog('Scale bar re-attached to map container');
+      }
+    };
+
+    // Check immediately
+    ensureScaleBarAttached();
+
+    // Check periodically to ensure scale bar stays attached
+    const intervalId = setInterval(ensureScaleBarAttached, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [mapLoaded]);
 
   // **NEW**: Calculate zone statistics when scope is "zone" and map has data
   useEffect(() => {
@@ -2239,6 +2355,24 @@ const PropertyMap: React.FC<MapPageProps> = ({
         </div>
       )}
       <div ref={mapContainer} className="h-full w-full" />
+
+      {/* Map Attribution - Fixed at bottom right */}
+      <div className="fixed bottom-2 right-2 z-40 bg-white bg-opacity-70 rounded px-0.5 py-0.5 text-[8px] shadow-sm sm:z-[9999]">
+        <div className="mapboxgl-ctrl-attrib-inner" role="list">
+          <a href="https://www.mapbox.com/about/maps/" target="_blank" title="Mapbox" aria-label="Mapbox" rel="noopener noreferrer">
+            © Mapbox
+          </a>{' '}
+          <a
+            href="https://www.openstreetmap.org/copyright/"
+            target="_blank"
+            title="OpenStreetMap"
+            aria-label="OpenStreetMap"
+            rel="noopener noreferrer"
+          >
+            © OpenStreetMap
+          </a>
+        </div>
+      </div>
 
       {/* Stats Panel Toggle Button */}
       <button
