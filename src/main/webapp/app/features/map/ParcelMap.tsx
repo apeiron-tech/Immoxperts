@@ -24,7 +24,7 @@ const AddressHighlighter: React.FC = () => {
       style: 'mapbox://styles/immoxpert/cmck83rh6001501r1dlt1fy8k',
       center: [8.73692, 41.9281], // Coordonnées d'Ajaccio
       zoom: 16,
-      attributionControl: false, // Remove Mapbox attribution
+      attributionControl: true, // Enable Mapbox attribution
     });
 
     map.current.on('load', () => {

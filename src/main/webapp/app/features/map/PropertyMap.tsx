@@ -745,7 +745,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         minZoom: 12, // Limit zoom out to maximum 1km
         maxZoom: 18,
         antialias: true, // Enable antialiasing for better performance
-        attributionControl: false, // Remove Mapbox attribution
+        attributionControl: true, // Enable Mapbox attribution
       });
 
       const map = mapRef.current;

@@ -34,13 +34,13 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
   if (!isOpen || !property) return null;
 
   return (
-    <div className="md:hidden fixed bottom-0 z-20 w-full bg-white">
+    <div className="md:hidden fixed bottom-0 z-[9500] w-full bg-white shadow-2xl">
       <div className="relative" style={{ fontFamily: "'Maven Pro', sans-serif", padding: '16px 0px 0px 0px' }}>
         {/* Close Button */}
-        <div className="absolute -top-2 right-0">
+        <div className="absolute -top-2 right-2">
           <div className="cursor-pointer flex items-center" onClick={onClose}>
             <svg
-              className="rounded-full w-3 h-3 bg-gray-400/50 hover:bg-gray-600/50 text-white p-1"
+              className="rounded-full w-8 h-8 bg-gray-400/50 hover:bg-gray-600/50 text-white p-2"
               fill="currentColor"
               viewBox="0 0 384 512"
             >

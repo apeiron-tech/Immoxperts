@@ -100,6 +100,80 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     }
   };
 
+  // Touch event handlers for mobile
+  const handleTouchStart = (thumb: string) => (e: React.TouchEvent) => {
+    e.preventDefault();
+    setDragging(thumb);
+
+    const handleGlobalTouchMove = (event: TouchEvent) => {
+      handleTouchMove(event, thumb);
+    };
+
+    const handleGlobalTouchEnd = () => {
+      setDragging(null);
+      document.removeEventListener('touchmove', handleGlobalTouchMove);
+      document.removeEventListener('touchend', handleGlobalTouchEnd);
+    };
+
+    document.addEventListener('touchmove', handleGlobalTouchMove);
+    document.addEventListener('touchend', handleGlobalTouchEnd);
+  };
+
+  const handleTouchMove = (e: TouchEvent, thumb: string) => {
+    if (!sliderRef.current || !e.touches[0]) return;
+
+    const rect = sliderRef.current.getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(100, ((e.touches[0].clientX - rect.left) / rect.width) * 100));
+
+    let currentStep: number;
+    let rangeMin: number;
+    let rangeMax: number;
+
+    if (isPriceSlider) {
+      rangeMin = priceMinValue;
+      rangeMax = priceMaxValue;
+      currentStep = priceStep;
+    } else if (isSurfaceSlider) {
+      rangeMin = surfaceMinValue;
+      rangeMax = surfaceMaxValue;
+      currentStep = surfaceStep;
+    } else if (isTerrainSlider) {
+      rangeMin = terrainMinValue;
+      rangeMax = terrainMaxValue;
+      currentStep = terrainStep;
+    } else if (isPricePerSqmSlider) {
+      rangeMin = pricePerSqmMinValue;
+      rangeMax = pricePerSqmMaxValue;
+      currentStep = pricePerSqmStep;
+    } else if (isDateSlider) {
+      rangeMin = dateMinValue;
+      rangeMax = dateMaxValue;
+      currentStep = dateStep;
+    } else {
+      rangeMin = 0;
+      rangeMax = 100;
+      currentStep = step;
+    }
+
+    const valueRange = rangeMax - rangeMin;
+    const newValue = rangeMin + (percentage / 100) * valueRange;
+    const steppedValue = Math.round(newValue / currentStep) * currentStep;
+
+    if (thumb === 'min') {
+      const newMin = Math.max(rangeMin, Math.min(steppedValue, max - currentStep));
+      if (newMin !== min) {
+        setMin(newMin);
+        onChange?.(newMin, max);
+      }
+    } else if (thumb === 'max') {
+      const newMax = Math.min(rangeMax, Math.max(steppedValue, min + currentStep));
+      if (newMax !== max) {
+        setMax(newMax);
+        onChange?.(min, newMax);
+      }
+    }
+  };
+
   // Slider-specific logic
   const isPriceSlider = type === 'price';
   const isSurfaceSlider = type === 'surface';
@@ -336,6 +410,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
           transform: 'translate(-50%, -50%)',
         }}
         onMouseDown={handleMouseDown('min')}
+        onTouchStart={handleTouchStart('min')}
       />
 
       {/* Max handle */}
@@ -347,6 +422,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
           transform: 'translate(-50%, -50%)',
         }}
         onMouseDown={handleMouseDown('max')}
+        onTouchStart={handleTouchStart('max')}
       />
     </div>
   );
@@ -546,7 +622,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-white md:bg-black md:bg-opacity-50 flex items-start md:items-center justify-center z-50">
+    <div className="fixed inset-0 bg-white md:bg-black md:bg-opacity-50 flex items-start md:items-center justify-center z-[10000]">
       <div className="bg-white w-full max-w-5xl relative h-screen md:h-auto md:max-h-[95vh] md:rounded-2xl flex flex-col px-4 py-2">
         <div className="flex-1 overflow-y-auto">
           {/* Header */}

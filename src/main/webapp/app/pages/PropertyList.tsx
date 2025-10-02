@@ -364,9 +364,9 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
   // --- RENDER ---
   return (
-    <div className="flex flex-col lg:flex-row w-full h-full min-h-screen lg:min-h-full bg-gray-50">
+    <div className="flex flex-col lg:flex-row w-full h-screen bg-gray-50">
       {/* --- List & Detail Panel - HIDDEN ON MOBILE for ImmoData experience --- */}
-      <div className="hidden lg:flex lg:w-[456px] lg:flex-shrink-0 flex-col bg-white border-r border-gray-200 z-50 h-full min-h-[calc(100vh-60px)] lg:min-h-full">
+      <div className="hidden lg:flex lg:w-[456px] lg:flex-shrink-0 flex-col bg-white border-r border-gray-200 z-10 h-[80vh]">
         {selectedProperty ? (
           <motion.div
             className="h-full w-full bg-white overflow-hidden lg:border-r border-gray-200 lg:rounded-lg"
@@ -537,7 +537,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 pb-4">
+            <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 pb-16 h-full">
               {sortedProperties.length > 0 ? (
                 sortedProperties.map(property => (
                   <PropertyCard
@@ -559,7 +559,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
       </div>
 
       {/* --- Map Container - Full screen on mobile like ImmoData --- */}
-      <div className="flex-1 relative w-full h-full">
+      <div className="flex-1 relative w-full h-screen">
         <PropertyMap
           properties={properties}
           onPropertySelect={handlePropertySelect}
