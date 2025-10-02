@@ -71,51 +71,112 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
     exit: { x: -100, opacity: 0 },
   };
 
+  // Helper function to parse dates in various formats
+  const parseDate = (dateString: string): Date => {
+    if (!dateString || dateString.trim() === '') {
+      return new Date(0); // Return epoch for empty dates
+    }
+
+    // Try to parse DD/MM/YYYY format (French format)
+    if (dateString.includes('/')) {
+      const parts = dateString.split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed in JavaScript
+        const year = parseInt(parts[2], 10);
+
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          const date = new Date(year, month, day);
+          if (!isNaN(date.getTime())) {
+            return date;
+          }
+        }
+      }
+    }
+
+    // Try to parse YYYY-MM-DD format (ISO format)
+    if (dateString.includes('-')) {
+      const parts = dateString.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          const date = new Date(year, month, day);
+          if (!isNaN(date.getTime())) {
+            return date;
+          }
+        }
+      }
+    }
+
+    // Try standard JavaScript Date parsing
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+
+    // If all parsing fails, return epoch
+    return new Date(0);
+  };
+
   // --- DERIVED STATE (MEMOIZED) ---
   const sortedProperties = useMemo(() => {
-    const props = [...properties];
+    if (!properties || properties.length === 0) {
+      return [];
+    }
+
+    // Create a copy and sort based on the selected option
+    let result = [...properties];
+
     switch (sortOption) {
       case '':
-        return props;
-      case 'date-desc':
-        return props.sort((a, b) => {
-          const dateA = new Date(a.soldDate);
-          const dateB = new Date(b.soldDate);
-          // Handle invalid dates by putting them at the end
-          if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-          if (isNaN(dateA.getTime())) return 1;
-          if (isNaN(dateB.getTime())) return -1;
-          return dateB.getTime() - dateA.getTime();
+        // Return unsorted copy
+        break;
+      case 'date-desc': {
+        result = result.sort((a, b) => {
+          const dateA = parseDate(a.soldDate);
+          const dateB = parseDate(b.soldDate);
+          const sortResult = dateB.getTime() - dateA.getTime();
+          return sortResult;
         });
-      case 'date-asc':
-        return props.sort((a, b) => {
-          const dateA = new Date(a.soldDate);
-          const dateB = new Date(b.soldDate);
-          // Handle invalid dates by putting them at the end
-          if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-          if (isNaN(dateA.getTime())) return 1;
-          if (isNaN(dateB.getTime())) return -1;
+        break;
+      }
+      case 'date-asc': {
+        result = result.sort((a, b) => {
+          const dateA = parseDate(a.soldDate);
+          const dateB = parseDate(b.soldDate);
           return dateA.getTime() - dateB.getTime();
         });
+        break;
+      }
       case 'price-desc':
-        return props.sort((a, b) => b.numericPrice - a.numericPrice);
+        result = result.sort((a, b) => b.numericPrice - a.numericPrice);
+        break;
       case 'price-asc':
-        return props.sort((a, b) => a.numericPrice - b.numericPrice);
+        result = result.sort((a, b) => a.numericPrice - b.numericPrice);
+        break;
       case 'sqm-desc':
-        return props.sort((a, b) => {
+        result = result.sort((a, b) => {
           const pricePerSqmA = a.numericSurface > 0 ? a.numericPrice / a.numericSurface : 0;
           const pricePerSqmB = b.numericSurface > 0 ? b.numericPrice / b.numericSurface : 0;
           return pricePerSqmB - pricePerSqmA;
         });
+        break;
       case 'sqm-asc':
-        return props.sort((a, b) => {
+        result = result.sort((a, b) => {
           const pricePerSqmA = a.numericSurface > 0 ? a.numericPrice / a.numericSurface : 0;
           const pricePerSqmB = b.numericSurface > 0 ? b.numericPrice / b.numericSurface : 0;
           return pricePerSqmA - pricePerSqmB;
         });
+        break;
       default:
-        return props;
+        // Return unsorted copy
+        break;
     }
+
+    return result;
   }, [properties, sortOption]);
 
   const hoveredProperty = useMemo(() => {
@@ -199,7 +260,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                   price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
                   surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
                   type: mutation.type_groupe || 'Type inconnu',
-                  soldDate: mutation.date ? new Date(mutation.date).toLocaleDateString('fr-FR') : '',
+                  soldDate: mutation.date || '',
                   pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
                   rooms: mutation.nbpprinc || '',
                   terrain: mutation.sterr ? `${mutation.sterr.toLocaleString('fr-FR')} m²` : '',
@@ -263,7 +324,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
         price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
         surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
         type: mutation.type_groupe || 'Type inconnu',
-        soldDate: mutation.date ? new Date(mutation.date).toLocaleDateString('fr-FR') : '',
+        soldDate: mutation.date || '',
         pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
         rooms: mutation.nbpprinc || '',
         terrain: mutation.sterr ? `${mutation.sterr.toLocaleString('fr-FR')} m²` : '',
@@ -305,7 +366,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   return (
     <div className="flex flex-col lg:flex-row w-full h-full min-h-screen lg:min-h-full bg-gray-50">
       {/* --- List & Detail Panel - HIDDEN ON MOBILE for ImmoData experience --- */}
-      <div className="hidden lg:flex lg:w-[456px] lg:flex-shrink-0 flex-col bg-white border-r border-gray-200 z-10 h-full min-h-[calc(100vh-60px)] lg:min-h-full">
+      <div className="hidden lg:flex lg:w-[456px] lg:flex-shrink-0 flex-col bg-white border-r border-gray-200 z-50 h-full min-h-[calc(100vh-60px)] lg:min-h-full">
         {selectedProperty ? (
           <motion.div
             className="h-full w-full bg-white overflow-hidden lg:border-r border-gray-200 lg:rounded-lg"
@@ -476,7 +537,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 max-h-[calc(100vh-120px)] lg:max-h-none">
+            <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 pb-4">
               {sortedProperties.length > 0 ? (
                 sortedProperties.map(property => (
                   <PropertyCard
