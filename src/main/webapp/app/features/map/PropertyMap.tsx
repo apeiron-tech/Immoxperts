@@ -243,9 +243,6 @@ const getQuartierFromCoords = async (lng: number, lat: number) => {
         zoom: 18,
         'accept-language': 'fr',
       },
-      headers: {
-        'User-Agent': 'Immoxperts-App/1.0',
-      },
     });
 
     if (response.data && response.data.address) {
