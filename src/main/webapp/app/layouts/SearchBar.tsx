@@ -29,6 +29,61 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Default filter values for comparison
+  const defaultFilters = {
+    propertyTypes: { maison: true, terrain: true, appartement: true, biensMultiples: true, localCommercial: true },
+    roomCounts: { studio: true, deuxPieces: true, troisPieces: true, quatrePieces: true, cinqPiecesPlus: true },
+    priceRange: [0, 20000000] as [number, number],
+    surfaceRange: [0, 400] as [number, number],
+    terrainRange: [0, 50000] as [number, number],
+    pricePerSqmRange: [0, 40000] as [number, number],
+    dateRange: [0, 140] as [number, number],
+  };
+
+  // Calculate active filter count
+  const calculateActiveFilters = (): number => {
+    if (!currentFilters) return 0;
+
+    let count = 0;
+
+    // Checkboxes: unchecked = +1 point each (10 total)
+    const propertyTypeKeys = Object.keys(currentFilters.propertyTypes) as (keyof typeof currentFilters.propertyTypes)[];
+    propertyTypeKeys.forEach(key => {
+      if (!currentFilters.propertyTypes[key]) count += 1; // Unchecked adds 1
+    });
+
+    const roomCountKeys = Object.keys(currentFilters.roomCounts) as (keyof typeof currentFilters.roomCounts)[];
+    roomCountKeys.forEach(key => {
+      if (!currentFilters.roomCounts[key]) count += 1; // Unchecked adds 1
+    });
+
+    // Range bars: 5 bars, each can give 0-2 points
+    const rangeFilters: Array<{ key: keyof typeof defaultFilters; range: [number, number] }> = [
+      { key: 'priceRange', range: currentFilters.priceRange },
+      { key: 'surfaceRange', range: currentFilters.surfaceRange },
+      { key: 'terrainRange', range: currentFilters.terrainRange },
+      { key: 'pricePerSqmRange', range: currentFilters.pricePerSqmRange },
+      { key: 'dateRange', range: currentFilters.dateRange },
+    ];
+
+    rangeFilters.forEach(({ key, range }) => {
+      const defaultRange = defaultFilters[key] as [number, number];
+      const minChanged = range[0] !== defaultRange[0];
+      const maxChanged = range[1] !== defaultRange[1];
+
+      if (minChanged && maxChanged) {
+        count += 2; // Both changed = 2 points
+      } else if (minChanged || maxChanged) {
+        count += 1; // One changed = 1 point
+      }
+      // Neither changed = 0 points (do nothing)
+    });
+
+    return count;
+  };
+
+  const activeFilterCount = calculateActiveFilters();
+
   // Debounce search input
   useEffect(() => {
     const handler = setTimeout(async () => {
@@ -155,7 +210,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
               {/* Mobile Filter Button - Like ImmoData */}
               <button
-                className="flex items-center justify-center w-10 h-10 rounded-xl text-white hover:bg-opacity-90 transition-colors duration-200"
+                className="relative flex items-center justify-center w-10 h-10 rounded-xl text-white hover:bg-opacity-90 transition-colors duration-200"
                 style={{ backgroundColor: '#7069F9' }}
                 onClick={() => setIsFilterOpen(true)}
               >
@@ -185,6 +240,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                     fill="white"
                   />
                 </svg>
+
+                {/* Active Filter Counter Badge */}
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
             </div>
 
@@ -267,7 +329,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
             {/* Filter Button - Only on desktop */}
             <button
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white hover:bg-opacity-90 transition-colors duration-200 font-medium"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white hover:bg-opacity-90 transition-colors duration-200 font-medium relative"
               style={{ backgroundColor: '#7069F9' }}
               onClick={() => setIsFilterOpen(true)}
             >
@@ -299,6 +361,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                 />
               </svg>
               <span>Filtres</span>
+
+              {/* Active Filter Counter Badge */}
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
 
             {isFilterOpen && (

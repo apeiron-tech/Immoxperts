@@ -76,6 +76,25 @@ const getPropertyTypeColor = (propertyType: string) => {
   return colorMap[shortType as keyof typeof colorMap] || '#9CA3AF';
 };
 
+// Helper function to format date to French format
+const formatFrenchDate = (dateString: string) => {
+  if (!dateString) return 'N/A';
+
+  // Try to parse the date
+  const date = new Date(dateString);
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    return dateString; // Return original string if parsing fails
+  }
+
+  return date.toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
 // --- REACT COMPONENT ---
 const PropertyCard: React.FC<PropertyCardProps> = ({
   property,
@@ -138,7 +157,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
             alignSelf: 'flex-start',
           }}
         >
-          Vendu le <strong style={{ color: '#000' }}>{soldDate}</strong>
+          Vendu le <strong style={{ color: '#000' }}>{formatFrenchDate(soldDate)}</strong>
         </div>
       </div>
       {/* RIGHT COLUMN: PRICE BOX */}

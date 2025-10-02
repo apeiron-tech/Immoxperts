@@ -1,7 +1,7 @@
-/* Styles globaux pour les popups Mapbox */
+/* Styles globaux pour les popups Mapbox - Below filter popup */
 .mapboxgl-popup {
   font-family: 'Sans-serif', monospace !important;
-  z-index: 100;
+  z-index: 9000 !important;
 }
 
 /* Base popup content styles */
@@ -61,4 +61,58 @@
   filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.6)) drop-shadow(0 0 20px rgba(255, 0, 0, 0.4));
   transform: scale(1.2);
   transition: all 0.3s ease;
+}
+
+/* All map controls - keep under popups */
+.mapboxgl-ctrl-bottom-right,
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-top-right,
+.mapboxgl-ctrl-top-left {
+  z-index: 1 !important;
+}
+
+/* Enhanced attribution styling - Make Mapbox and OpenStreetMap text bigger */
+.mapboxgl-ctrl-attrib {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid #ccc !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  padding: 6px 10px !important;
+  max-width: 350px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  z-index: 1 !important;
+  position: relative !important;
+}
+
+/* Mobile specific - smaller attribution that stays under popups */
+@media (max-width: 768px) {
+  .mapboxgl-ctrl-attrib {
+    font-size: 10px !important;
+    padding: 4px 6px !important;
+    max-width: 200px !important;
+    z-index: 1 !important;
+  }
+
+  .mapboxgl-ctrl-attrib a {
+    font-size: 10px !important;
+  }
+
+  .mapboxgl-ctrl-attrib-inner {
+    font-size: 10px !important;
+  }
+}
+
+.mapboxgl-ctrl-attrib a {
+  color: #0066cc !important;
+  text-decoration: underline !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+}
+
+.mapboxgl-ctrl-attrib a:hover {
+  color: #004499 !important;
+}
+
+.mapboxgl-ctrl-attrib-inner {
+  font-size: 14px !important;
 }
