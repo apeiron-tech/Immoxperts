@@ -40,7 +40,7 @@ interface PropertyListProps {
   onMapHover?: (propertyId: number | null) => void; // Add callback for map hover
 }
 
-type SortOption = 'date-desc' | 'date-asc' | 'price-desc' | 'price-asc' | 'sqm-desc' | 'sqm-asc';
+type SortOption = '' | 'date-desc' | 'date-asc' | 'price-desc' | 'price-asc' | 'sqm-desc' | 'sqm-asc';
 
 // ===================================================================
 // REACT COMPONENT
@@ -52,7 +52,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [hoveredPropertyId, setHoveredPropertyId] = useState<number | null>(null);
   const [mapHoveredPropertyId, setMapHoveredPropertyId] = useState<number | null>(null);
-  const [sortOption, setSortOption] = useState<SortOption>('date-desc');
+  const [sortOption, setSortOption] = useState<SortOption>('');
 
   // **KEY ADDITION**: Store the currently active filters in this component
   const [currentActiveFilters, setCurrentActiveFilters] = useState<FilterState | null>(null);
@@ -75,6 +75,8 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   const sortedProperties = useMemo(() => {
     const props = [...properties];
     switch (sortOption) {
+      case '':
+        return props;
       case 'date-desc':
         return props.sort((a, b) => {
           const dateA = new Date(a.soldDate);
@@ -463,6 +465,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                   onChange={e => setSortOption(e.target.value as SortOption)}
                   className="w-full sm:w-1/2 border rounded-md px-2 py-1.5 text-sm bg-white"
                 >
+                  <option value="">Sélectionner...</option>
                   <option value="date-desc">Les plus récentes</option>
                   <option value="date-asc">Les plus anciennes</option>
                   <option value="price-desc">Prix le plus haut</option>

@@ -13,6 +13,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
   const [min, setMin] = useState<number>(minValue);
   const [max, setMax] = useState<number>(maxValue);
   const [dragging, setDragging] = useState<string | null>(null);
+  const sliderRef = React.useRef<HTMLDivElement>(null);
 
   // Update local state when props change
   useEffect(() => {
@@ -40,61 +41,58 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
   };
 
   const handleMouseMove = (e: MouseEvent, thumb: string) => {
-    const slider = document.querySelector('.range-slider-container');
-    if (!slider) return;
+    if (!sliderRef.current) return;
 
-    const rect = slider.getBoundingClientRect();
+    const rect = sliderRef.current.getBoundingClientRect();
     const percentage = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
 
-    let newValue: number;
     let currentStep: number;
+    let rangeMin: number;
+    let rangeMax: number;
 
     if (isPriceSlider) {
-      // Convert percentage to actual price value
-      const priceRange = priceMaxValue - priceMinValue;
-      newValue = priceMinValue + (percentage / 100) * priceRange;
+      rangeMin = priceMinValue;
+      rangeMax = priceMaxValue;
       currentStep = priceStep;
     } else if (isSurfaceSlider) {
-      // Convert percentage to actual surface value
-      const surfaceRange = surfaceMaxValue - surfaceMinValue;
-      newValue = surfaceMinValue + (percentage / 100) * surfaceRange;
+      rangeMin = surfaceMinValue;
+      rangeMax = surfaceMaxValue;
       currentStep = surfaceStep;
     } else if (isTerrainSlider) {
-      // Convert percentage to actual terrain value
-      const terrainRange = terrainMaxValue - terrainMinValue;
-      newValue = terrainMinValue + (percentage / 100) * terrainRange;
-      // Dynamic step: 50m² up to 1000m², then 1000m²
-      currentStep = newValue <= 1000 ? 50 : 1000;
+      rangeMin = terrainMinValue;
+      rangeMax = terrainMaxValue;
+      currentStep = terrainStep;
     } else if (isPricePerSqmSlider) {
-      // Convert percentage to actual price per m² value
-      const pricePerSqmRange = pricePerSqmMaxValue - pricePerSqmMinValue;
-      newValue = pricePerSqmMinValue + (percentage / 100) * pricePerSqmRange;
+      rangeMin = pricePerSqmMinValue;
+      rangeMax = pricePerSqmMaxValue;
       currentStep = pricePerSqmStep;
     } else if (isDateSlider) {
-      // Convert percentage to actual date value (months)
-      const dateRange = dateMaxValue - dateMinValue;
-      newValue = dateMinValue + (percentage / 100) * dateRange;
+      rangeMin = dateMinValue;
+      rangeMax = dateMaxValue;
       currentStep = dateStep;
     } else {
-      // Convert percentage to actual value
-      const range = maxValue - minValue;
-      newValue = minValue + (percentage / 100) * range;
+      rangeMin = 0;
+      rangeMax = 100;
       currentStep = step;
     }
+
+    // Convert percentage to actual value using the full range
+    const valueRange = rangeMax - rangeMin;
+    const newValue = rangeMin + (percentage / 100) * valueRange;
 
     // Round to nearest step
     const steppedValue = Math.round(newValue / currentStep) * currentStep;
 
     if (thumb === 'min') {
-      // Ensure min doesn't go above max
-      const newMin = Math.min(steppedValue, max - currentStep);
+      // Ensure min doesn't go above max and stays within bounds
+      const newMin = Math.max(rangeMin, Math.min(steppedValue, max - currentStep));
       if (newMin !== min) {
         setMin(newMin);
         onChange?.(newMin, max);
       }
     } else if (thumb === 'max') {
-      // Ensure max doesn't go below min
-      const newMax = Math.max(steppedValue, min + currentStep);
+      // Ensure max doesn't go below min and stays within bounds
+      const newMax = Math.min(rangeMax, Math.max(steppedValue, min + currentStep));
       if (newMax !== max) {
         setMax(newMax);
         onChange?.(min, newMax);
@@ -131,7 +129,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
   // Date-specific values (months since 2014)
   const dateMinValue = 0; // January 2014
-  const dateMaxValue = 130; // December 2024 (10 years * 12 months + 12 months)
+  const dateMaxValue = 140; // September 2025 (11 years * 12 months + 8 months)
   const dateStep = 1; // 1 month steps
 
   // Calculate positions as percentages
@@ -314,7 +312,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
   };
 
   return (
-    <div className="range-slider-container relative w-full h-6 flex items-center mb-4">
+    <div ref={sliderRef} className="range-slider-container relative w-full h-6 flex items-center mb-4">
       {/* Track */}
       <div className="absolute w-full h-1.5 bg-gray-300 rounded-full" style={{ top: '50%', transform: 'translateY(-50%)' }} />
 
@@ -382,7 +380,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     surfaceRange: [0, 400], // 0 to 400m²
     terrainRange: [0, 50000], // 0 to 50,000m²
     pricePerSqmRange: [0, 40000], // 0 to 40k €/m²
-    dateRange: [0, 130], // January 2014 to December 2024 (months)
+    dateRange: [0, 140], // January 2014 to September 2025 (months)
   };
 
   const [filters, setFilters] = useState<FilterState>(currentFilters || defaultFilters);
@@ -532,7 +530,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     const minDate = Math.round(filters.dateRange[0]);
     const maxDate = Math.round(filters.dateRange[1]);
     const dateMinValue = 0;
-    const dateMaxValue = 130;
+    const dateMaxValue = 140;
 
     if (minDate === dateMinValue && maxDate === dateMaxValue) {
       return 'Toutes les valeurs';
@@ -730,8 +728,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   <p className="text-lg">{getPriceText()}</p>
                   <RangeSlider
                     type="price"
-                    minValue={0}
-                    maxValue={20000000}
+                    minValue={filters.priceRange[0]}
+                    maxValue={filters.priceRange[1]}
                     step={25000}
                     onChange={(min, max) => handleRangeChange('priceRange', min, max)}
                   />
@@ -743,8 +741,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   <p className="text-lg">{getSurfaceText()}</p>
                   <RangeSlider
                     type="surface"
-                    minValue={0}
-                    maxValue={400}
+                    minValue={filters.surfaceRange[0]}
+                    maxValue={filters.surfaceRange[1]}
                     step={10}
                     onChange={(min, max) => handleRangeChange('surfaceRange', min, max)}
                   />
@@ -756,8 +754,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   <p className="text-lg">{getTerrainText()}</p>
                   <RangeSlider
                     type="terrain"
-                    minValue={0}
-                    maxValue={50000}
+                    minValue={filters.terrainRange[0]}
+                    maxValue={filters.terrainRange[1]}
                     step={50}
                     onChange={(min, max) => handleRangeChange('terrainRange', min, max)}
                   />
@@ -769,8 +767,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   <p className="text-lg">{getPricePerSqmText()}</p>
                   <RangeSlider
                     type="pricePerSqm"
-                    minValue={0}
-                    maxValue={40000}
+                    minValue={filters.pricePerSqmRange[0]}
+                    maxValue={filters.pricePerSqmRange[1]}
                     step={100}
                     onChange={(min, max) => handleRangeChange('pricePerSqmRange', min, max)}
                   />
@@ -782,8 +780,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   <p className="text-lg">{getDateText()}</p>
                   <RangeSlider
                     type="date"
-                    minValue={0}
-                    maxValue={130}
+                    minValue={filters.dateRange[0]}
+                    maxValue={filters.dateRange[1]}
                     step={1}
                     onChange={(min, max) => handleRangeChange('dateRange', min, max)}
                   />

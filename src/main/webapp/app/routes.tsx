@@ -17,7 +17,7 @@ import { AUTHORITIES } from 'app/config/constants';
 import Home from './pages/Home';
 import TrouveAgent from './pages/TrouveAgent';
 import VoirLagence from './pages/VoirLagence';
-import RecherchLouer from 'app/features/property/PropertySearch';
+
 import EstimationRechercher from './features/estimation/EstimationSearch';
 import Louer from 'app/pages/Louer';
 import Estimation from 'app/features/estimation/Estimation';
@@ -25,6 +25,7 @@ import StreetStats from 'app/features/property/StreetStats';
 import PropertyList from 'app/pages/PropertyList';
 import SearchBar from 'app/layouts/SearchBar';
 import { FilterState } from './types/filters';
+import RecherchLouer from './features/property/PropertySearch';
 
 const loading = <div>loading ...</div>;
 
