@@ -623,30 +623,30 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
 
   return (
     <div className="fixed inset-0 bg-white md:bg-black md:bg-opacity-50 flex items-start md:items-center justify-center z-[10000]">
-      <div className="bg-white w-full max-w-5xl relative h-screen md:h-auto md:max-h-[95vh] md:rounded-2xl flex flex-col px-4 py-2">
-        <div className="flex-1 overflow-y-auto">
-          {/* Header */}
-          <div className="flex justify-between items-center p-2 border-b border-gray-200">
-            <h2 className="text-lg font-bold">Filtres</h2>
-            <button onClick={onClose} className="text-black hover:text-gray-700">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
+      <div className="bg-white w-full max-w-5xl relative h-full md:h-auto md:max-h-[95vh] md:rounded-2xl flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-lg font-bold">Filtres</h2>
+          <button onClick={onClose} className="text-black hover:text-gray-700">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
 
-          {/* Content */}
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4">
           <div className="p-2">
             <div className="flex flex-col md:flex-row">
               {/* Left Column */}
@@ -868,13 +868,16 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
         </div>
 
         {/* Footer with buttons - Fixed at bottom */}
-        <div className="flex justify-end gap-2 p-2 border-t border-gray-200 flex-shrink-0">
-          <button onClick={onClose} className="px-3 py-1 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm">
+        <div className="flex justify-between items-center p-3 border-t border-gray-200 flex-shrink-0 bg-white shadow-lg">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium"
+          >
             Annuler
           </button>
           <button
             onClick={() => onApply(filters)}
-            className="px-3 py-1 text-white rounded hover:bg-opacity-90 text-sm transition-colors duration-200"
+            className="px-5 py-2 text-white rounded-lg hover:bg-opacity-90 text-sm font-medium transition-colors duration-200"
             style={{ backgroundColor: '#7069F9' }}
           >
             Appliquer
