@@ -40,6 +40,9 @@ const AppRoutes = () => {
   // This allows the map to load without filters initially, then apply them when user chooses
   const [filterState, setFilterState] = useState<FilterState | null>(null);
 
+  // Track if filter popup is open to close other popups
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
   // **KEY ADDITION**: Handle filter changes from PropertyList component
   const handleFiltersChange = (filters: FilterState | null) => {
     setFilterState(filters);
@@ -60,18 +63,33 @@ const AppRoutes = () => {
           element={
             <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden">
               {/* Mobile-first Search Bar */}
-              <SearchBar onSearch={handleSearchParamsChange} onFilterApply={setFilterState} currentFilters={filterState} />
+              <SearchBar
+                onSearch={handleSearchParamsChange}
+                onFilterApply={setFilterState}
+                currentFilters={filterState}
+                onFilterOpenChange={setIsFilterOpen}
+              />
 
               {/* Mobile: Full-screen map only, Desktop: Split view */}
               <div className="flex h-full">
                 {/* Mobile Layout - Map Only */}
                 <div className="block md:hidden w-full h-full">
-                  <PropertyList searchParams={searchParams} filterState={filterState} onFiltersChange={handleFiltersChange} />
+                  <PropertyList
+                    searchParams={searchParams}
+                    filterState={filterState}
+                    onFiltersChange={handleFiltersChange}
+                    isFilterOpen={isFilterOpen}
+                  />
                 </div>
 
                 {/* Desktop Layout - Split View */}
                 <div className="hidden md:flex w-full h-full shadow-lg border border-gray-200 rounded-lg overflow-hidden bg-white">
-                  <PropertyList searchParams={searchParams} filterState={filterState} onFiltersChange={handleFiltersChange} />
+                  <PropertyList
+                    searchParams={searchParams}
+                    filterState={filterState}
+                    onFiltersChange={handleFiltersChange}
+                    isFilterOpen={isFilterOpen}
+                  />
                 </div>
               </div>
             </div>

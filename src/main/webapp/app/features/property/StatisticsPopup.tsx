@@ -41,7 +41,7 @@ const StatisticsPopup: React.FC<StatisticsPopupProps> = ({ isOpen, onClose, sear
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+    <div className="fixed inset-0 bg-white z-[9000] flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-3">

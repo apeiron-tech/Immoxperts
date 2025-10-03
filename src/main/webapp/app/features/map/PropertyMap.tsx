@@ -56,6 +56,7 @@ interface MapPageProps {
   onDataUpdate?: (mutationData: any[]) => void; // **NEW**: Callback to update PropertyCard data
   onMapHover?: (propertyId: number | null) => void; // **NEW**: Callback for map hover
   dataVersion?: number; // **NEW**: Data version to trigger zone stats recalculation
+  isFilterOpen?: boolean; // **NEW**: Track if filter popup is open to close other popups
 }
 
 interface AddressProperties {
@@ -284,6 +285,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
   onDataUpdate,
   onMapHover,
   dataVersion,
+  isFilterOpen,
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
@@ -314,6 +316,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // Mobile bottom sheet state
   const [showMobileBottomSheet, setShowMobileBottomSheet] = useState(false);
+
+  // Close all popups when filter popup opens
+  useEffect(() => {
+    if (isFilterOpen) {
+      setShowStatsPanel(false);
+      setShowMobileBottomSheet(false);
+    }
+  }, [isFilterOpen]);
   const [mobileSheetProperty, setMobileSheetProperty] = useState<any>(null);
   const [mobileSheetIndex, setMobileSheetIndex] = useState(0);
   const [mobileSheetMutations, setMobileSheetMutations] = useState<any[]>([]);
