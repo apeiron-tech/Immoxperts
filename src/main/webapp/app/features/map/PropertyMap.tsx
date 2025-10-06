@@ -1292,6 +1292,10 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           const addNavigationListeners = () => {
                             setTimeout(() => {
                               const popupElement = hoverPopupRef.current?.getElement();
+                              if (!popupElement) {
+                                console.warn('Popup element not found, skipping navigation listeners');
+                                return;
+                              }
                               const prevBtn = popupElement.querySelector('.prev-btn');
                               const nextBtn = popupElement.querySelector('.next-btn');
 
@@ -1864,6 +1868,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                 // Use fixed width instead of calculating actual width
                 const actualWidth = fixedWidth;
+
+                // Check if scaleBarContainer exists before proceeding
+                if (!scaleBarContainer) {
+                  console.warn('Scale bar container not found, skipping scale bar update');
+                  return;
+                }
 
                 // Update existing elements instead of recreating them
                 let scaleBar = scaleBarContainer.querySelector('.scale-bar-line');
