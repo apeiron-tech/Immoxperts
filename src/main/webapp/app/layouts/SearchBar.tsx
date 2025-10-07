@@ -7,6 +7,7 @@ interface SearchBarProps {
   onSearch: (searchParams: { numero: number; nomVoie: string; coordinates: [number, number]; context?: Array<{ text: string }> }) => void;
   onFilterApply?: (filters: FilterState) => void;
   currentFilters?: FilterState;
+  onFilterOpenChange?: (isOpen: boolean) => void;
 }
 
 interface LocalAddressFeature {
@@ -21,13 +22,18 @@ interface LocalAddressFeature {
   adresseComplete: string;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentFilters }) => {
+const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentFilters, onFilterOpenChange }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<LocalAddressFeature[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Notify parent when filter popup opens/closes
+  useEffect(() => {
+    onFilterOpenChange?.(isFilterOpen);
+  }, [isFilterOpen, onFilterOpenChange]);
 
   // Default filter values for comparison
   const defaultFilters = {
@@ -46,16 +52,15 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
     let count = 0;
 
-    // Checkboxes: unchecked = +1 point each (10 total)
+    // Type de bien: +1 if ANY checkbox is unchecked
     const propertyTypeKeys = Object.keys(currentFilters.propertyTypes) as (keyof typeof currentFilters.propertyTypes)[];
-    propertyTypeKeys.forEach(key => {
-      if (!currentFilters.propertyTypes[key]) count += 1; // Unchecked adds 1
-    });
+    const hasPropertyTypeFilter = propertyTypeKeys.some(key => !currentFilters.propertyTypes[key]);
+    if (hasPropertyTypeFilter) count += 1;
 
+    // Nombre de pièces: +1 if ANY checkbox is unchecked
     const roomCountKeys = Object.keys(currentFilters.roomCounts) as (keyof typeof currentFilters.roomCounts)[];
-    roomCountKeys.forEach(key => {
-      if (!currentFilters.roomCounts[key]) count += 1; // Unchecked adds 1
-    });
+    const hasRoomCountFilter = roomCountKeys.some(key => !currentFilters.roomCounts[key]);
+    if (hasRoomCountFilter) count += 1;
 
     // Range bars: 5 bars, each can give 0-2 points
     const rangeFilters: Array<{ key: keyof typeof defaultFilters; range: [number, number] }> = [

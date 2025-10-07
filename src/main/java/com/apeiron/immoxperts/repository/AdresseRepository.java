@@ -41,14 +41,15 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             MIN(latitude) as latitude,
             MIN(longitude) as longitude
         FROM dvf.adresse_complete_geom_mv
-        WHERE
-            (UPPER(adresse_complete) LIKE UPPER(CONCAT('%', REPLACE(:q, ' ', '%'), '%'))
-            OR (
-                UPPER(nom_voie) LIKE UPPER(CONCAT('%', :q, '%'))
-                OR UPPER(type_voie) LIKE UPPER(CONCAT('%', :q, '%'))
-                OR UPPER(numero) LIKE UPPER(CONCAT('%', :q, '%'))
-                OR UPPER(commune) LIKE UPPER(CONCAT('%', :q, '%'))
-            ))
+                WHERE
+                                             (adresse_complete ILIKE CONCAT('%', REPLACE(:q, ' ', '%'), '%')
+                                             OR (
+                                                 nom_voie ILIKE CONCAT('%', :q, '%')
+                                                 OR type_voie ILIKE CONCAT('%', :q, '%')
+                                                 OR numero ILIKE CONCAT('%', :q, '%')
+                                                 OR commune ILIKE CONCAT('%', :q, '%')
+                                             ))
+
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
         LIMIT 20

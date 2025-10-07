@@ -38,6 +38,7 @@ interface PropertyListProps {
   filterState?: FilterState;
   onFiltersChange?: (filters: FilterState | null) => void; // Add callback for filter changes
   onMapHover?: (propertyId: number | null) => void; // Add callback for map hover
+  isFilterOpen?: boolean; // Track if filter popup is open
 }
 
 type SortOption = '' | 'date-desc' | 'date-asc' | 'price-desc' | 'price-asc' | 'sqm-desc' | 'sqm-asc';
@@ -46,7 +47,7 @@ type SortOption = '' | 'date-desc' | 'date-asc' | 'price-desc' | 'price-asc' | '
 // REACT COMPONENT
 // ===================================================================
 
-const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, onFiltersChange, onMapHover }) => {
+const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, onFiltersChange, onMapHover, isFilterOpen }) => {
   // --- STATE MANAGEMENT ---
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -571,6 +572,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
           onDataUpdate={updatePropertiesFromMutations} // **NEW**: Callback to update PropertyCard data
           onMapHover={handleMapHover} // **NEW**: Callback for map hover
           dataVersion={dataVersion} // **NEW**: Pass data version to trigger zone stats recalculation
+          isFilterOpen={isFilterOpen} // **NEW**: Pass filter popup state to close other popups
         />
       </div>
     </div>

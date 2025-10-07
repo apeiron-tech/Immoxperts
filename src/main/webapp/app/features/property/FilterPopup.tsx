@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { FilterState } from '../../types/filters';
 
 interface RangeSliderProps {
@@ -621,8 +622,11 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-white md:bg-black md:bg-opacity-50 flex items-start md:items-center justify-center z-[10000]">
+  const popupContent = (
+    <div
+      className="fixed inset-0 bg-white md:bg-black md:bg-opacity-50 flex items-start md:items-center justify-center"
+      style={{ zIndex: 100000 }}
+    >
       <div className="bg-white w-full max-w-5xl relative h-full md:h-auto md:max-h-[95vh] md:rounded-2xl flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
@@ -886,6 +890,9 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
       </div>
     </div>
   );
+
+  // Use React Portal to render popup at document.body level (above everything)
+  return ReactDOM.createPortal(popupContent, document.body);
 };
 
 export default FilterPopup;
