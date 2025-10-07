@@ -84,11 +84,11 @@ const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick
 
   // Build the details string, only showing non-zero values
   const details = [];
-  if (rooms && rooms !== '' && rooms !== '0') details.push(`${rooms} pièces`);
-  if (surface && surface !== '' && surface !== '0 m²') details.push(surface);
+  if (rooms && rooms !== '' && rooms !== '0') details.push(`pieces: ${rooms}`);
   if (terrain && terrain !== '' && terrain !== '0 m²') details.push(`Terrain ${terrain}`);
+  if (surface && surface !== '' && surface !== '0 m²') details.push(`surface ${surface}`);
 
-  const detailsText = details.length > 0 ? details.join(' – ') : 'N/A';
+  const detailsText = details.length > 0 ? details.join(', ') : '';
 
   return (
     <div
@@ -117,25 +117,11 @@ const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick
         {address.toUpperCase()}, <span style={{ fontSize: '12px', color: '#6b7280' }}>{city}</span>
       </div>
 
-      {/* Property Type, Rooms, Surface, Terrain */}
-      <div
-        style={{
-          fontSize: '16px',
-          width: '70%',
-          color: '#333',
-        }}
-      >
-        <span
-          style={{
-            color: getPropertyTypeColor(type),
-            fontWeight: 900,
-            marginBottom: '10px',
-          }}
-        >
-          {getShortTypeName(type)}
-        </span>
-        <span style={{ marginTop: '10px' }}> {detailsText}</span>
-      </div>
+      {/* Property Type */}
+      <div style={{ color: getPropertyTypeColor(type), fontWeight: 900, fontSize: 16, marginBottom: 10 }}>{getShortTypeName(type)}</div>
+
+      {/* Characteristics: pieces, terrain, surface */}
+      {detailsText && <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>{detailsText}</div>}
 
       {/* Price Box */}
       <div
@@ -172,10 +158,10 @@ const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick
       {/* Sold Date */}
       <div
         style={{
-          marginTop: '16px',
+          marginTop: '8px',
           display: 'inline-block',
           border: '1px solid #e5e7eb',
-          padding: '10px 14px',
+          padding: '10px 8px',
           borderRadius: '12px',
           fontSize: '14px',
           color: '#444',

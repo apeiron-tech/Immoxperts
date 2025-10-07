@@ -1140,11 +1140,11 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                           // Build the details string, only showing non-zero values
                           const details = [];
-                          if (rooms > 0) details.push(`${rooms} pièces`);
-                          if (surface > 0) details.push(`surface ${surface.toLocaleString('fr-FR')} m²`);
+                          if (rooms > 0) details.push(`pieces: ${rooms}`);
                           if (terrain > 0) details.push(`Terrain ${terrain.toLocaleString('fr-FR')} m²`);
+                          if (surface > 0) details.push(`surface ${surface.toLocaleString('fr-FR')} m²`);
 
-                          const detailsText = details.length > 0 ? details.join(' – ') : 'N/A';
+                          const detailsText = details.length > 0 ? details.join(', ') : '';
 
                           return `
              <div style="
@@ -1161,13 +1161,21 @@ const PropertyMap: React.FC<MapPageProps> = ({
                    ${address.toUpperCase() || ''}
                </div>
 
-               <!-- Property Type, Rooms, Surface, Terrain -->
-               <div style="font-size: 16px;width:70%; color: #333;">
-                 <span style="color: ${getPropertyTypeColor(propertyTypeLabel)}; font-weight: 900; margin-bottom: 10px;">
-                   ${getShortTypeName(propertyTypeLabel)}
-                 </span>
-                   <span style="margin-top: 10px;">${detailsText}</span>
+               <!-- Property Type -->
+               <div style="color: ${getPropertyTypeColor(propertyTypeLabel)}; font-weight: 900; font-size: 16px; margin-bottom: 10px;">
+                 ${getShortTypeName(propertyTypeLabel)}
                </div>
+
+               <!-- Characteristics: pieces, terrain, surface -->
+               ${
+                 detailsText
+                   ? `
+               <div style="font-size: 16px; color: #333; margin-bottom: 8px;">
+                 ${detailsText}
+               </div>
+               `
+                   : ''
+               }
 
                <!-- Price Box -->
                <div style="
@@ -1189,7 +1197,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                  margin-top: 16px;
                  display: inline-block;
                  border: 1px solid #e5e7eb;
-                 padding: 10px 14px;
+                 padding: 10px 8px;
                  border-radius: 12px;
                  font-size: 14px;
                  color: #444;

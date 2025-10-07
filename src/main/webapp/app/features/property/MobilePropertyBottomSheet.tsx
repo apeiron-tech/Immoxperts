@@ -60,27 +60,27 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
                 {property.address.toUpperCase()}
               </div>
 
-              {/* Type, Rooms, Surface, Terrain */}
-              <div style={{ fontSize: '14px', color: '#333' }}>
-                <span style={{ color: '#241c83', fontWeight: '900' }}>{property.type}</span>
-                {property.rooms && property.rooms !== '' && property.rooms !== '0' && (
-                  <span style={{ marginLeft: '8px', color: '#666' }}>• {property.rooms} pièces</span>
-                )}
-                {property.surface && property.surface !== '' && property.surface !== '0 m²' && (
-                  <span style={{ marginLeft: '8px', color: '#666' }}>• surface {property.surface}</span>
-                )}
-                {property.terrain && property.terrain !== '' && property.terrain !== '0 m²' && (
-                  <span style={{ marginLeft: '8px', color: '#666' }}>• Terrain {property.terrain.replace('m²', '')} m²</span>
-                )}
+              {/* Property Type */}
+              <div style={{ color: '#241c83', fontWeight: '900', fontSize: '16px', marginBottom: '10px' }}>{property.type}</div>
+
+              {/* Characteristics: pieces, terrain, surface */}
+              <div style={{ fontSize: '16px', color: '#333', marginBottom: '8px' }}>
+                {[
+                  property.rooms && property.rooms !== '' && property.rooms !== '0' ? `pieces: ${property.rooms}` : null,
+                  property.terrain && property.terrain !== '' && property.terrain !== '0 m²' ? `Terrain ${property.terrain}` : null,
+                  property.surface && property.surface !== '' && property.surface !== '0 m²' ? `surface ${property.surface}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
               </div>
 
               {/* Sold Date - Desktop Style */}
               <div
                 style={{
-                  marginTop: '16px',
+                  marginTop: '8px',
                   display: 'inline-block',
                   border: '1px solid #e5e7eb',
-                  padding: '10px 14px',
+                  padding: '10px 8px',
                   borderRadius: '12px',
                   fontSize: '14px',
                   color: '#444',
