@@ -1157,7 +1157,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                border-radius: 16px;
              ">
                <!-- Address -->
-               <div style="font-weight: 700; font-size: 16px;width:75%; margin-bottom: 10px; color: #1a1a1a;">
+               <div style="font-weight: 700; font-size: 16px; width:60%; margin-bottom: 10px; color: #1a1a1a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                    ${address.toUpperCase() || ''}
                </div>
 

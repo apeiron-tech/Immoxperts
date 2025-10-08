@@ -544,11 +544,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     if (minPrice === priceMinValue && maxPrice === priceMaxValue) {
       return 'Toutes les valeurs';
     } else if (minPrice > priceMinValue && maxPrice === priceMaxValue) {
-      return `À partir de ${formatPrice(minPrice)}`;
+      return (
+        <>
+          À partir de <strong>{formatPrice(minPrice)}</strong>
+        </>
+      );
     } else if (minPrice === priceMinValue && maxPrice < priceMaxValue) {
-      return `Jusqu'à ${formatPrice(maxPrice)}`;
+      return (
+        <>
+          Jusqu'à <strong>{formatPrice(maxPrice)}</strong>
+        </>
+      );
     } else {
-      return `De ${formatPrice(minPrice)} à ${formatPrice(maxPrice)}`;
+      return (
+        <>
+          De <strong>{formatPrice(minPrice)}</strong> à <strong>{formatPrice(maxPrice)}</strong>
+        </>
+      );
     }
   };
 
@@ -561,11 +573,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     if (minSurface === surfaceMinValue && maxSurface === surfaceMaxValue) {
       return 'Toutes les valeurs';
     } else if (minSurface > surfaceMinValue && maxSurface === surfaceMaxValue) {
-      return `À partir de ${minSurface}m²`;
+      return (
+        <>
+          À partir de <strong>{minSurface}m²</strong>
+        </>
+      );
     } else if (minSurface === surfaceMinValue && maxSurface < surfaceMaxValue) {
-      return `Jusqu'à ${maxSurface}m²`;
+      return (
+        <>
+          Jusqu'à <strong>{maxSurface}m²</strong>
+        </>
+      );
     } else {
-      return `De ${minSurface}m² à ${maxSurface}m²`;
+      return (
+        <>
+          De <strong>{minSurface}m²</strong> à <strong>{maxSurface}m²</strong>
+        </>
+      );
     }
   };
 
@@ -578,11 +602,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     if (minTerrain === terrainMinValue && maxTerrain === terrainMaxValue) {
       return 'Tous terrains';
     } else if (minTerrain > terrainMinValue && maxTerrain === terrainMaxValue) {
-      return `À partir de ${minTerrain.toLocaleString('fr-FR')}m²`;
+      return (
+        <>
+          À partir de <strong>{minTerrain.toLocaleString('fr-FR')}m²</strong>
+        </>
+      );
     } else if (minTerrain === terrainMinValue && maxTerrain < terrainMaxValue) {
-      return `Jusqu'à ${maxTerrain.toLocaleString('fr-FR')}m²`;
+      return (
+        <>
+          Jusqu'à <strong>{maxTerrain.toLocaleString('fr-FR')}m²</strong>
+        </>
+      );
     } else {
-      return `De ${minTerrain.toLocaleString('fr-FR')}m² à ${maxTerrain.toLocaleString('fr-FR')}m²`;
+      return (
+        <>
+          De <strong>{minTerrain.toLocaleString('fr-FR')}m²</strong> à <strong>{maxTerrain.toLocaleString('fr-FR')}m²</strong>
+        </>
+      );
     }
   };
 
@@ -595,11 +631,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     if (minPricePerSqm === pricePerSqmMinValue && maxPricePerSqm === pricePerSqmMaxValue) {
       return 'Toutes les valeurs';
     } else if (minPricePerSqm > pricePerSqmMinValue && maxPricePerSqm === pricePerSqmMaxValue) {
-      return `À partir de ${formatPricePerSqm(minPricePerSqm)}`;
+      return (
+        <>
+          À partir de <strong>{formatPricePerSqm(minPricePerSqm)}</strong>
+        </>
+      );
     } else if (minPricePerSqm === pricePerSqmMinValue && maxPricePerSqm < pricePerSqmMaxValue) {
-      return `Jusqu'à ${formatPricePerSqm(maxPricePerSqm)}`;
+      return (
+        <>
+          Jusqu'à <strong>{formatPricePerSqm(maxPricePerSqm)}</strong>
+        </>
+      );
     } else {
-      return `De ${formatPricePerSqm(minPricePerSqm)} à ${formatPricePerSqm(maxPricePerSqm)}`;
+      return (
+        <>
+          De <strong>{formatPricePerSqm(minPricePerSqm)}</strong> à <strong>{formatPricePerSqm(maxPricePerSqm)}</strong>
+        </>
+      );
     }
   };
 
@@ -612,11 +660,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     if (minDate === dateMinValue && maxDate === dateMaxValue) {
       return 'Toutes les valeurs';
     } else if (minDate > dateMinValue && maxDate === dateMaxValue) {
-      return `À partir de ${formatDate(minDate)}`;
+      return (
+        <>
+          À partir de <strong>{formatDate(minDate)}</strong>
+        </>
+      );
     } else if (minDate === dateMinValue && maxDate < dateMaxValue) {
-      return `Jusqu'à ${formatDate(maxDate)}`;
+      return (
+        <>
+          Jusqu'à <strong>{formatDate(maxDate)}</strong>
+        </>
+      );
     } else {
-      return `De ${formatDate(minDate)} à ${formatDate(maxDate)}`;
+      return (
+        <>
+          De <strong>{formatDate(minDate)}</strong> à <strong>{formatDate(maxDate)}</strong>
+        </>
+      );
     }
   };
 
@@ -807,7 +867,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   {/* Date de vente */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Date de vente</h3>
-                    <p className="text-lg">{getDateText()}</p>
+                    <p className="text-sm">{getDateText()}</p>
                     <RangeSlider
                       type="date"
                       minValue={filters.dateRange[0]}
@@ -820,7 +880,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   {/* Surface */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Surface</h3>
-                    <p className="text-lg">{getSurfaceText()}</p>
+                    <p className="text-sm">{getSurfaceText()}</p>
                     <RangeSlider
                       type="surface"
                       minValue={filters.surfaceRange[0]}
@@ -833,7 +893,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   {/* Prix m² */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Prix m²</h3>
-                    <p className="text-lg">{getPricePerSqmText()}</p>
+                    <p className="text-sm">{getPricePerSqmText()}</p>
                     <RangeSlider
                       type="pricePerSqm"
                       minValue={filters.pricePerSqmRange[0]}
@@ -849,7 +909,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   {/* Prix */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Prix</h3>
-                    <p className="text-lg">{getPriceText()}</p>
+                    <p className="text-sm">{getPriceText()}</p>
                     <RangeSlider
                       type="price"
                       minValue={filters.priceRange[0]}
@@ -862,7 +922,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   {/* Terrain */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Terrain</h3>
-                    <p className="text-lg">{getTerrainText()}</p>
+                    <p className="text-sm">{getTerrainText()}</p>
                     <RangeSlider
                       type="terrain"
                       minValue={filters.terrainRange[0]}

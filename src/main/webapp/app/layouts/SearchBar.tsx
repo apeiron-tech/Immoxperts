@@ -264,7 +264,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                     title="Réinitialiser les filtres"
                   >
                     <span className="group-hover:hidden text-xs">{activeFilterCount}</span>
-                    <span className="hidden group-hover:block text-sm">×</span>
+                    <span className="hidden group-hover:block text-lg">×</span>
                   </span>
                 )}
               </button>
@@ -393,7 +393,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   title="Réinitialiser les filtres"
                 >
                   <span className="group-hover:hidden">{activeFilterCount}</span>
-                  <span className="hidden group-hover:block text-sm">×</span>
+                  <span className="hidden group-hover:block text-lg">×</span>
                 </span>
               )}
             </button>
