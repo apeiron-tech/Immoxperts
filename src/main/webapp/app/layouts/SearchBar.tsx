@@ -89,6 +89,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
   const activeFilterCount = calculateActiveFilters();
 
+  // Reset all filters to default values
+  const resetFilters = () => {
+    if (onFilterApply) {
+      onFilterApply(defaultFilters);
+    }
+  };
+
   // Debounce search input
   useEffect(() => {
     const handler = setTimeout(async () => {
@@ -248,8 +255,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
                 {/* Active Filter Counter Badge */}
                 {activeFilterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
-                    {activeFilterCount}
+                  <span
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md cursor-pointer hover:bg-red-600 transition-colors duration-200 group"
+                    onClick={e => {
+                      e.stopPropagation();
+                      resetFilters();
+                    }}
+                    title="Réinitialiser les filtres"
+                  >
+                    <span className="group-hover:hidden text-xs">{activeFilterCount}</span>
+                    <span className="hidden group-hover:block text-sm">×</span>
                   </span>
                 )}
               </button>
@@ -369,8 +384,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
               {/* Active Filter Counter Badge */}
               {activeFilterCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md">
-                  {activeFilterCount}
+                <span
+                  className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md cursor-pointer hover:bg-red-600 transition-colors duration-200 group"
+                  onClick={e => {
+                    e.stopPropagation();
+                    resetFilters();
+                  }}
+                  title="Réinitialiser les filtres"
+                >
+                  <span className="group-hover:hidden">{activeFilterCount}</span>
+                  <span className="hidden group-hover:block text-sm">×</span>
                 </span>
               )}
             </button>

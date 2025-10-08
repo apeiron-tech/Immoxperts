@@ -50,18 +50,18 @@ const formatPropertyDetails = (rooms: any, surface: string, terrain?: string): s
   const details: string[] = [];
 
   if (hasValue(rooms)) {
-    details.push(`${rooms} pièces`);
-  }
-
-  if (hasValue(surface)) {
-    details.push(`Surface: ${surface}`);
+    details.push(`pieces: ${rooms}`);
   }
 
   if (hasValue(terrain)) {
-    details.push(`Terrain: ${terrain}`);
+    details.push(`Terrain ${terrain}`);
   }
 
-  return details.length > 0 ? details.join(' - ') : '';
+  if (hasValue(surface)) {
+    details.push(`surface ${surface}`);
+  }
+
+  return details.length > 0 ? details.join(', ') : '';
 };
 
 const getPropertyTypeColor = (propertyType: string) => {
@@ -141,15 +141,18 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         >
           {(address || '').toUpperCase()}
         </div>
-        <div style={{ fontSize: 15, color: '#333', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
-          <span style={{ color: getPropertyTypeColor(type), fontWeight: 900, fontSize: 15 }}>{getShortTypeName(type)}</span>
-          {propertyDetails && <span style={{ color: '#1a1a1a', fontWeight: 500, fontSize: 14 }}>{propertyDetails}</span>}
-        </div>
+        {/* Property Type */}
+        <div style={{ color: getPropertyTypeColor(type), fontWeight: 900, fontSize: 16, marginBottom: 10 }}>{getShortTypeName(type)}</div>
+
+        {/* Characteristics: pieces, terrain, surface */}
+        {propertyDetails && <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>{propertyDetails}</div>}
+
+        {/* Sold Date */}
         <div
           style={{
             marginTop: 8,
             border: '1px solid #e5e7eb',
-            padding: '8px 14px',
+            padding: '10px 8px',
             borderRadius: 12,
             fontSize: 14,
             color: '#444',
