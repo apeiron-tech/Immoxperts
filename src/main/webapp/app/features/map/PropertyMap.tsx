@@ -49,6 +49,7 @@ interface MapPageProps {
   searchParams?: {
     coordinates?: [number, number];
     address?: string;
+    isCity?: boolean; // Flag to indicate if this is a city/commune (no red circle)
   };
   selectedProperty?: Property | null;
   hoveredProperty?: Property | null;
@@ -2299,9 +2300,21 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // Handle searchParams to show red marker for selected address
   useEffect(() => {
-    if (searchParams?.coordinates) {
+    if (searchParams?.coordinates && !searchParams?.isCity) {
+      // Only set selected address if it's NOT a city (i.e., it's a specific address)
       setSelectedAddress(searchParams.coordinates);
-      debugLog('Selected address coordinates:', searchParams.coordinates);
+      debugLog('Selected address coordinates (showing red circle):', searchParams.coordinates);
+    } else if (searchParams?.coordinates && searchParams?.isCity) {
+      // For cities/communes, just pan the map without red circle
+      setSelectedAddress(null);
+      if (mapRef.current) {
+        mapRef.current.flyTo({
+          center: searchParams.coordinates,
+          zoom: 13, // Zoom level for cities
+          duration: 2000,
+        });
+        debugLog('Panning to city coordinates (no red circle):', searchParams.coordinates);
+      }
     } else {
       setSelectedAddress(null);
     }
