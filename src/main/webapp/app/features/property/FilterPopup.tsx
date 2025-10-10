@@ -689,7 +689,10 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     >
       <div className="bg-white w-full max-w-5xl relative h-full md:h-auto md:max-h-[95vh] rounded-lg flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
+        <div
+          className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.03)' }}
+        >
           <h2 className="text-lg font-bold">Filtres</h2>
           <button onClick={onClose} className="text-black hover:text-gray-700">
             <svg
@@ -714,9 +717,9 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
           <div className="p-2">
             <div className="flex flex-col">
               {/* Top Row - Type de bien and Nombre de pièces (Desktop) / Type de bien only (Mobile) */}
-              <div className="flex flex-col md:flex-row mb-4">
+              <div className="flex flex-col md:flex-row pb-4">
                 {/* Type de bien */}
-                <div className="md:w-1/2 md:pr-4 mb-4 md:mb-0">
+                <div className="md:w-1/2 md:border-r md:border-gray-200 md:pr-4 mb-4 md:mb-0">
                   <h3 className="text-base font-bold mb-2">Type de bien</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center">
@@ -783,6 +786,78 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                       <label htmlFor="biens-multiples" className="ml-1 text-sm">
                         Biens multiples
                       </label>
+                    </div>
+                  </div>
+
+                  {/* Nombre de pièces - Mobile only */}
+                  <div className="md:hidden mt-4">
+                    <h3 className="text-base font-bold mb-2">Nombre de pièces</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="studio-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.studio}
+                          onChange={() => handleRoomCountChange('studio')}
+                        />
+                        <label htmlFor="studio-mobile" className="ml-1 text-sm">
+                          Studio
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="2pieces-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.deuxPieces}
+                          onChange={() => handleRoomCountChange('deuxPieces')}
+                        />
+                        <label htmlFor="2pieces-mobile" className="ml-1 text-sm">
+                          2 pièces
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="3pieces-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.troisPieces}
+                          onChange={() => handleRoomCountChange('troisPieces')}
+                        />
+                        <label htmlFor="3pieces-mobile" className="ml-1 text-sm">
+                          3 pièces
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="4pieces-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.quatrePieces}
+                          onChange={() => handleRoomCountChange('quatrePieces')}
+                        />
+                        <label htmlFor="4pieces-mobile" className="ml-1 text-sm">
+                          4 pièces
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="5pieces-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.cinqPiecesPlus}
+                          onChange={() => handleRoomCountChange('cinqPiecesPlus')}
+                        />
+                        <label htmlFor="5pieces-mobile" className="ml-1 text-sm">
+                          5 pièces et +
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -863,7 +938,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
               {/* Bottom Row - Range Sliders */}
               <div className="flex flex-col md:flex-row">
                 {/* Left Column */}
-                <div className="md:w-1/2 md:border-r md:pr-4 pb-3">
+                <div className="md:w-1/2 md:border-r md:border-gray-200 md:pr-4 pb-3">
                   {/* Date de vente */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Date de vente</h3>
@@ -934,83 +1009,11 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                 </div>
               </div>
             </div>
-
-            {/* Nombre de pièces - Mobile bottom section */}
-            <div className="md:hidden mb-4">
-              <h3 className="text-base font-bold mb-2">Nombre de pièces</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="studio-mobile"
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: '#7069F9' }}
-                    checked={filters.roomCounts.studio}
-                    onChange={() => handleRoomCountChange('studio')}
-                  />
-                  <label htmlFor="studio-mobile" className="ml-1 text-sm">
-                    Studio
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="3pieces-mobile"
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: '#7069F9' }}
-                    checked={filters.roomCounts.troisPieces}
-                    onChange={() => handleRoomCountChange('troisPieces')}
-                  />
-                  <label htmlFor="3pieces-mobile" className="ml-1 text-sm">
-                    3 pièces
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="5pieces-mobile"
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: '#7069F9' }}
-                    checked={filters.roomCounts.cinqPiecesPlus}
-                    onChange={() => handleRoomCountChange('cinqPiecesPlus')}
-                  />
-                  <label htmlFor="5pieces-mobile" className="ml-1 text-sm">
-                    5 pièces et +
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="2pieces-mobile"
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: '#7069F9' }}
-                    checked={filters.roomCounts.deuxPieces}
-                    onChange={() => handleRoomCountChange('deuxPieces')}
-                  />
-                  <label htmlFor="2pieces-mobile" className="ml-1 text-sm">
-                    2 pièces
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="4pieces-mobile"
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: '#7069F9' }}
-                    checked={filters.roomCounts.quatrePieces}
-                    onChange={() => handleRoomCountChange('quatrePieces')}
-                  />
-                  <label htmlFor="4pieces-mobile" className="ml-1 text-sm">
-                    4 pièces
-                  </label>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
         {/* Footer with buttons - Fixed at bottom */}
-        <div className="flex justify-between items-center rounded-b-lg p-3 border-t border-gray-200 flex-shrink-0 bg-white shadow-lg">
+        <div className="flex justify-end items-center gap-3 rounded-b-lg p-3 border-t border-gray-200 flex-shrink-0 bg-white shadow-lg">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium"

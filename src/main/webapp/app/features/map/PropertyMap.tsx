@@ -1141,11 +1141,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                           // Build the details string, only showing non-zero values
                           const details = [];
-                          if (rooms > 0) details.push(`pieces: ${rooms}`);
-                          if (terrain > 0) details.push(`Terrain ${terrain.toLocaleString('fr-FR')} m²`);
-                          if (surface > 0) details.push(`surface ${surface.toLocaleString('fr-FR')} m²`);
+                          if (rooms > 0)
+                            details.push(
+                              `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
+                            );
+                          if (surface > 0)
+                            details.push(
+                              `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${surface.toLocaleString('fr-FR')} m²</span>`,
+                            );
+                          if (terrain > 0)
+                            details.push(
+                              `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${terrain.toLocaleString('fr-FR')} m²</span>`,
+                            );
 
-                          const detailsText = details.length > 0 ? details.join(', ') : '';
+                          const detailsText = details.length > 0 ? details.join('<span style="margin-left: 12px;"></span>') : '';
 
                           return `
              <div style="
@@ -1188,6 +1197,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                  border-radius: 12px;
                  text-align: right;
                  min-width: 110px;
+                 background-color: rgba(112, 105, 249, 0.04);
                ">
                  <div style="color: #241c83; font-weight: 800; font-size: 18px;">${priceFormatted}</div>
                  <div style="color: #888; font-size: 14px;">${pricePerSqm}</div>
@@ -1202,6 +1212,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                  border-radius: 12px;
                  font-size: 14px;
                  color: #444;
+                 background-color: rgba(0, 0, 0, 0.04);
                ">
                    Vendu le <strong style="color: #000;">${formatFrenchDate(soldDate || '')}</strong>
                </div>

@@ -50,15 +50,13 @@ const formatPropertyDetails = (rooms: any, surface: string, terrain?: string): s
   const details: string[] = [];
 
   if (hasValue(rooms)) {
-    details.push(`pieces: ${rooms}`);
+    details.push(`Piece: ${rooms}`);
   }
-
+  if (hasValue(surface)) {
+    details.push(`Surface ${surface}`);
+  }
   if (hasValue(terrain)) {
     details.push(`Terrain ${terrain}`);
-  }
-
-  if (hasValue(surface)) {
-    details.push(`surface ${surface}`);
   }
 
   return details.length > 0 ? details.join(', ') : '';
@@ -166,6 +164,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
               minWidth: 110,
               flexShrink: 0,
               alignSelf: 'flex-start',
+              backgroundColor: 'rgba(112, 105, 249, 0.04)',
             }}
           >
             <div style={{ color: '#241c83', fontWeight: 800, fontSize: 18, lineHeight: 1 }}>{priceFormatted}</div>
@@ -176,11 +175,26 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         {/* Description: Characteristics */}
         {(hasValue(rooms) || hasValue(terrain) || hasValue(surface)) && (
           <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>
-            {hasValue(rooms) && `pieces: ${rooms}`}
-            {hasValue(rooms) && (hasValue(terrain) || hasValue(surface)) && ', '}
-            {hasValue(terrain) && `Terrain ${terrain}`}
-            {hasValue(terrain) && hasValue(surface) && ', '}
-            {hasValue(surface) && `surface ${surface}`}
+            {hasValue(rooms) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Pièce </span>}
+            {hasValue(rooms) && (
+              <span style={{ fontFamily: 'Maven Pro', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
+                {rooms}
+              </span>
+            )}
+            {hasValue(rooms) && (hasValue(surface) || hasValue(terrain)) && <span style={{ marginLeft: '12px' }}></span>}
+            {hasValue(surface) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Surface </span>}
+            {hasValue(surface) && (
+              <span style={{ fontFamily: 'Maven Pro', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
+                {surface}
+              </span>
+            )}
+            {hasValue(surface) && hasValue(terrain) && <span style={{ marginLeft: '12px' }}></span>}
+            {hasValue(terrain) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Terrain </span>}
+            {hasValue(terrain) && (
+              <span style={{ fontFamily: 'Maven Pro', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
+                {terrain}
+              </span>
+            )}
           </div>
         )}
 
@@ -192,7 +206,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
             borderRadius: 12,
             fontSize: 14,
             color: '#444',
-            background: '#fafbfc',
+            backgroundColor: 'rgba(0, 0, 0, 0.04)',
             display: 'inline-block',
             width: 'fit-content',
           }}

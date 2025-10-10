@@ -236,11 +236,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           const combinedSuggestions = [...osmSuggestions, ...backendSuggestions];
 
           setSuggestions(combinedSuggestions);
-
-          // Only show suggestions if the input is focused (user typing)
-          if (document.activeElement === inputRef.current) {
-            setShowSuggestions(true);
-          }
+          setShowSuggestions(true);
+          console.warn('Mobile suggestions:', combinedSuggestions.length, combinedSuggestions);
         } catch (error) {
           // Error fetching address suggestions
           console.warn('Error fetching suggestions:', error);
@@ -329,6 +326,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   placeholder="Entrez une adresse en France"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
+                  onFocus={() => {
+                    if (searchQuery.length > 2 && suggestions.length > 0) {
+                      setShowSuggestions(true);
+                    }
+                  }}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 border-0 rounded-xl text-base placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
                 />
@@ -342,7 +344,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
                 {/* Mobile Suggestions Dropdown */}
                 {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-80 overflow-y-auto">
+                  <div className="absolute z-[9999] w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-80 overflow-y-auto">
                     {suggestions.map((suggestion, index) => (
                       <button
                         key={suggestion.id}
@@ -399,7 +401,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
                 {/* No results message */}
                 {showSuggestions && searchQuery.length > 2 && suggestions.length === 0 && !isLoading && (
-                  <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl">
+                  <div className="absolute z-[9999] w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl">
                     <div className="px-5 py-4 text-base text-gray-500 text-center">Aucune adresse trouvée</div>
                   </div>
                 )}
@@ -438,18 +440,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   />
                 </svg>
 
-                {/* Active Filter Counter Badge */}
+                {/* Active Filter Counter Badge - Mobile: no click action */}
                 {activeFilterCount > 0 && (
                   <span
-                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md cursor-pointer hover:bg-red-600 transition-colors duration-200 group"
-                    onClick={e => {
-                      e.stopPropagation();
-                      resetFilters();
-                    }}
-                    title="Réinitialiser les filtres"
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md"
+                    title="Filtres actifs"
                   >
-                    <span className="group-hover:hidden text-xs">{activeFilterCount}</span>
-                    <span className="hidden group-hover:block text-lg">×</span>
+                    <span className="text-xs">{activeFilterCount}</span>
                   </span>
                 )}
               </button>
