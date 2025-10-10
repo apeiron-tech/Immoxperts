@@ -4,7 +4,13 @@ import { FilterState } from '../types/filters';
 import { API_ENDPOINTS } from 'app/config/api.config';
 
 interface SearchBarProps {
-  onSearch: (searchParams: { numero: number; nomVoie: string; coordinates: [number, number]; context?: Array<{ text: string }> }) => void;
+  onSearch: (searchParams: {
+    numero: number;
+    nomVoie: string;
+    coordinates: [number, number];
+    context?: Array<{ text: string }>;
+    isCity?: boolean; // Flag to indicate if this is a city/commune (OSM) vs specific address
+  }) => void;
   onFilterApply?: (filters: FilterState) => void;
   currentFilters?: FilterState;
   onFilterOpenChange?: (isOpen: boolean) => void;
@@ -22,10 +28,123 @@ interface LocalAddressFeature {
   adresseComplete: string;
 }
 
+// OpenStreetMap Nominatim result
+interface OSMPlace {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+  type: string;
+  class: string;
+  addresstype?: string;
+  name?: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    postcode?: string;
+    county?: string;
+    state?: string;
+  };
+}
+
+// Unified suggestion type
+interface UnifiedSuggestion {
+  id: string;
+  displayName: string;
+  subtitle: string;
+  coordinates: [number, number]; // [longitude, latitude]
+  type: 'address' | 'city' | 'commune' | 'department';
+  source: 'backend' | 'osm';
+  originalData: LocalAddressFeature | OSMPlace;
+}
+
+// Function to fetch cities/communes from OpenStreetMap Nominatim API
+const fetchOSMPlaces = async (query: string): Promise<OSMPlace[]> => {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?` +
+        `q=${encodeURIComponent(query)}&` +
+        `format=json&` +
+        `addressdetails=1&` +
+        `countrycodes=fr&` +
+        `limit=5&` +
+        `featuretype=city`,
+      {
+        headers: {
+          Accept: 'application/json',
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    // Filter to only include cities, towns, villages (communes)
+    return data.filter(
+      (place: OSMPlace) =>
+        place.type === 'administrative' ||
+        place.addresstype === 'city' ||
+        place.addresstype === 'town' ||
+        place.addresstype === 'village' ||
+        place.addresstype === 'municipality' ||
+        place.class === 'place',
+    );
+  } catch (error) {
+    console.warn('Error fetching OSM places:', error);
+    return [];
+  }
+};
+
+// Convert backend address to unified suggestion
+const convertBackendToUnified = (feature: LocalAddressFeature): UnifiedSuggestion => ({
+  id: `backend-${feature.idadresse}`,
+  displayName: feature.adresseComplete,
+  subtitle: `${feature.commune} • ${feature.codepostal}`,
+  coordinates: [feature.longitude, feature.latitude],
+  type: 'address',
+  source: 'backend',
+  originalData: feature,
+});
+
+// Convert OSM place to unified suggestion
+const convertOSMToUnified = (place: OSMPlace): UnifiedSuggestion => {
+  const cityName =
+    place.address?.city ||
+    place.address?.town ||
+    place.address?.village ||
+    place.address?.municipality ||
+    place.name ||
+    place.display_name.split(',')[0];
+
+  const postcode = place.address?.postcode || '';
+  const county = place.address?.county || '';
+
+  let suggestionType: 'city' | 'commune' | 'department' = 'city';
+  if (place.addresstype === 'village' || place.addresstype === 'municipality') {
+    suggestionType = 'commune';
+  } else if (place.addresstype === 'administrative' && place.type === 'administrative') {
+    suggestionType = 'department';
+  }
+
+  return {
+    id: `osm-${place.place_id}`,
+    displayName: cityName,
+    subtitle: postcode ? `${county} • ${postcode}` : county,
+    coordinates: [parseFloat(place.lon), parseFloat(place.lat)],
+    type: suggestionType,
+    source: 'osm',
+    originalData: place,
+  };
+};
+
 const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentFilters, onFilterOpenChange }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
-  const [suggestions, setSuggestions] = useState<LocalAddressFeature[]>([]);
+  const [suggestions, setSuggestions] = useState<UnifiedSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,28 +215,32 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
     }
   };
 
-  // Debounce search input
+  // Debounce search input - Fetch from both backend and OSM
   useEffect(() => {
     const handler = setTimeout(async () => {
       if (searchQuery.length > 2) {
         try {
           setIsLoading(true);
 
-          const response = await fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(searchQuery)}`);
+          // Fetch from both APIs in parallel
+          const [backendResponse, osmPlaces] = await Promise.all([
+            fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(searchQuery)}`).then(res => (res.ok ? res.json() : [])),
+            fetchOSMPlaces(searchQuery),
+          ]);
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+          // Convert and merge results
+          const backendSuggestions: UnifiedSuggestion[] = (backendResponse as LocalAddressFeature[]).map(convertBackendToUnified);
+          const osmSuggestions: UnifiedSuggestion[] = osmPlaces.map(convertOSMToUnified);
 
-          const data = await response.json();
-          setSuggestions(data);
+          // Combine: OSM cities/communes first, then backend addresses
+          const combinedSuggestions = [...osmSuggestions, ...backendSuggestions];
 
-          // Only show suggestions if the input is focused (user typing)
-          if (document.activeElement === inputRef.current) {
-            setShowSuggestions(true);
-          }
+          setSuggestions(combinedSuggestions);
+          setShowSuggestions(true);
+          console.warn('Mobile suggestions:', combinedSuggestions.length, combinedSuggestions);
         } catch (error) {
           // Error fetching address suggestions
+          console.warn('Error fetching suggestions:', error);
           setSuggestions([]);
         } finally {
           setIsLoading(false);
@@ -131,12 +254,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const handleAddressSelect = (feature: LocalAddressFeature): void => {
-    const numero = parseInt(feature.numero, 10);
-    const nomVoie = feature.nomVoie;
-    const coordinates: [number, number] = [feature.longitude, feature.latitude];
-
-    setSearchQuery(feature.adresseComplete);
+  const handleSuggestionSelect = (suggestion: UnifiedSuggestion): void => {
+    setSearchQuery(suggestion.displayName);
     setShowSuggestions(false); // Close suggestions
     setSuggestions([]); // Clear suggestions after selection
 
@@ -144,12 +263,36 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       inputRef.current.blur(); // Blur input to prevent reopening
     }
 
-    onSearch({
-      numero,
-      nomVoie,
-      coordinates,
-      context: [{ text: feature.commune }, { text: feature.codepostal }, { text: feature.typeVoie }],
-    });
+    if (suggestion.source === 'backend' && suggestion.type === 'address') {
+      // Handle backend address (with mutation data) - show red circle
+      const feature = suggestion.originalData as LocalAddressFeature;
+      const numero = parseInt(feature.numero, 10);
+      const nomVoie = feature.nomVoie;
+
+      onSearch({
+        numero,
+        nomVoie,
+        coordinates: suggestion.coordinates,
+        context: [{ text: feature.commune }, { text: feature.codepostal }, { text: feature.typeVoie }],
+        isCity: false, // This is a specific address, show red circle
+      });
+    } else if (suggestion.source === 'osm') {
+      // Handle OSM city/commune (no specific address) - just pan the map
+      const place = suggestion.originalData as OSMPlace;
+      const cityName = suggestion.displayName;
+
+      onSearch({
+        numero: 0, // No specific number for cities
+        nomVoie: cityName,
+        coordinates: suggestion.coordinates,
+        context: [
+          { text: cityName },
+          { text: place.address?.postcode || '' },
+          { text: suggestion.type }, // 'city', 'commune', or 'department'
+        ],
+        isCity: true, // This is a city/commune, don't show red circle
+      });
+    }
   };
 
   return (
@@ -183,6 +326,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   placeholder="Entrez une adresse en France"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
+                  onFocus={() => {
+                    if (searchQuery.length > 2 && suggestions.length > 0) {
+                      setShowSuggestions(true);
+                    }
+                  }}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 border-0 rounded-xl text-base placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
                 />
@@ -196,16 +344,55 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
                 {/* Mobile Suggestions Dropdown */}
                 {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-80 overflow-y-auto">
-                    {suggestions.map((feature, index) => (
+                  <div className="absolute z-[9999] w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-80 overflow-y-auto">
+                    {suggestions.map((suggestion, index) => (
                       <button
-                        key={feature.idadresse}
-                        className="w-full px-5 py-4 text-left hover:bg-gray-50 border-b border-gray-50 last:border-b-0 transition-colors first:rounded-t-2xl last:rounded-b-2xl"
-                        onClick={() => handleAddressSelect(feature)}
+                        key={suggestion.id}
+                        className="w-full px-5 py-4 text-left hover:bg-gray-50 border-b border-gray-50 last:border-b-0 transition-colors first:rounded-t-2xl last:rounded-b-2xl flex items-start gap-3"
+                        onClick={() => handleSuggestionSelect(suggestion)}
                       >
-                        <div className="text-base font-medium text-gray-900 mb-1">{feature.adresseComplete}</div>
-                        <div className="text-sm text-gray-500">
-                          {feature.commune} • {feature.codepostal}
+                        {/* Icon based on type */}
+                        <div className="flex-shrink-0 mt-1">
+                          {suggestion.type === 'address' ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="text-blue-500"
+                            >
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                              <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                          ) : (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="text-green-500"
+                            >
+                              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-base font-medium text-gray-900 mb-1 truncate">{suggestion.displayName}</div>
+                          <div className="text-sm text-gray-500 flex items-center gap-2">
+                            <span className="truncate">{suggestion.subtitle}</span>
+                            {suggestion.source === 'osm' && (
+                              <span className="flex-shrink-0 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                                {suggestion.type === 'city' ? 'Ville' : suggestion.type === 'commune' ? 'Commune' : 'Département'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -214,7 +401,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
                 {/* No results message */}
                 {showSuggestions && searchQuery.length > 2 && suggestions.length === 0 && !isLoading && (
-                  <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl">
+                  <div className="absolute z-[9999] w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl">
                     <div className="px-5 py-4 text-base text-gray-500 text-center">Aucune adresse trouvée</div>
                   </div>
                 )}
@@ -253,18 +440,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   />
                 </svg>
 
-                {/* Active Filter Counter Badge */}
+                {/* Active Filter Counter Badge - Mobile: no click action */}
                 {activeFilterCount > 0 && (
                   <span
-                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md cursor-pointer hover:bg-red-600 transition-colors duration-200 group"
-                    onClick={e => {
-                      e.stopPropagation();
-                      resetFilters();
-                    }}
-                    title="Réinitialiser les filtres"
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md"
+                    title="Filtres actifs"
                   >
-                    <span className="group-hover:hidden text-xs">{activeFilterCount}</span>
-                    <span className="hidden group-hover:block text-sm">×</span>
+                    <span className="text-xs">{activeFilterCount}</span>
                   </span>
                 )}
               </button>
@@ -324,15 +506,54 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
               {/* Desktop Suggestions Dropdown */}
               {showSuggestions && suggestions.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {suggestions.map((feature, index) => (
+                  {suggestions.map((suggestion, index) => (
                     <button
-                      key={feature.idadresse}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-100 border-b border-gray-100 last:border-b-0 transition-colors"
-                      onClick={() => handleAddressSelect(feature)}
+                      key={suggestion.id}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-100 border-b border-gray-100 last:border-b-0 transition-colors flex items-start gap-3"
+                      onClick={() => handleSuggestionSelect(suggestion)}
                     >
-                      <div className="text-sm font-medium text-gray-900">{feature.adresseComplete}</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {feature.commune} - {feature.codepostal}
+                      {/* Icon based on type */}
+                      <div className="flex-shrink-0 mt-0.5">
+                        {suggestion.type === 'address' ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-blue-500"
+                          >
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                          </svg>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-green-500"
+                          >
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 truncate">{suggestion.displayName}</div>
+                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                          <span className="truncate">{suggestion.subtitle}</span>
+                          {suggestion.source === 'osm' && (
+                            <span className="flex-shrink-0 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                              {suggestion.type === 'city' ? 'Ville' : suggestion.type === 'commune' ? 'Commune' : 'Département'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   ))}
@@ -393,7 +614,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   title="Réinitialiser les filtres"
                 >
                   <span className="group-hover:hidden">{activeFilterCount}</span>
-                  <span className="hidden group-hover:block text-sm">×</span>
+                  <span className="hidden group-hover:block text-lg">×</span>
                 </span>
               )}
             </button>

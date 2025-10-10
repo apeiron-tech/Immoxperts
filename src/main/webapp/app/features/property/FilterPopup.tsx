@@ -544,11 +544,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     if (minPrice === priceMinValue && maxPrice === priceMaxValue) {
       return 'Toutes les valeurs';
     } else if (minPrice > priceMinValue && maxPrice === priceMaxValue) {
-      return `À partir de ${formatPrice(minPrice)}`;
+      return (
+        <>
+          À partir de <strong>{formatPrice(minPrice)}</strong>
+        </>
+      );
     } else if (minPrice === priceMinValue && maxPrice < priceMaxValue) {
-      return `Jusqu'à ${formatPrice(maxPrice)}`;
+      return (
+        <>
+          Jusqu'à <strong>{formatPrice(maxPrice)}</strong>
+        </>
+      );
     } else {
-      return `De ${formatPrice(minPrice)} à ${formatPrice(maxPrice)}`;
+      return (
+        <>
+          De <strong>{formatPrice(minPrice)}</strong> à <strong>{formatPrice(maxPrice)}</strong>
+        </>
+      );
     }
   };
 
@@ -561,11 +573,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     if (minSurface === surfaceMinValue && maxSurface === surfaceMaxValue) {
       return 'Toutes les valeurs';
     } else if (minSurface > surfaceMinValue && maxSurface === surfaceMaxValue) {
-      return `À partir de ${minSurface}m²`;
+      return (
+        <>
+          À partir de <strong>{minSurface}m²</strong>
+        </>
+      );
     } else if (minSurface === surfaceMinValue && maxSurface < surfaceMaxValue) {
-      return `Jusqu'à ${maxSurface}m²`;
+      return (
+        <>
+          Jusqu'à <strong>{maxSurface}m²</strong>
+        </>
+      );
     } else {
-      return `De ${minSurface}m² à ${maxSurface}m²`;
+      return (
+        <>
+          De <strong>{minSurface}m²</strong> à <strong>{maxSurface}m²</strong>
+        </>
+      );
     }
   };
 
@@ -578,11 +602,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     if (minTerrain === terrainMinValue && maxTerrain === terrainMaxValue) {
       return 'Tous terrains';
     } else if (minTerrain > terrainMinValue && maxTerrain === terrainMaxValue) {
-      return `À partir de ${minTerrain.toLocaleString('fr-FR')}m²`;
+      return (
+        <>
+          À partir de <strong>{minTerrain.toLocaleString('fr-FR')}m²</strong>
+        </>
+      );
     } else if (minTerrain === terrainMinValue && maxTerrain < terrainMaxValue) {
-      return `Jusqu'à ${maxTerrain.toLocaleString('fr-FR')}m²`;
+      return (
+        <>
+          Jusqu'à <strong>{maxTerrain.toLocaleString('fr-FR')}m²</strong>
+        </>
+      );
     } else {
-      return `De ${minTerrain.toLocaleString('fr-FR')}m² à ${maxTerrain.toLocaleString('fr-FR')}m²`;
+      return (
+        <>
+          De <strong>{minTerrain.toLocaleString('fr-FR')}m²</strong> à <strong>{maxTerrain.toLocaleString('fr-FR')}m²</strong>
+        </>
+      );
     }
   };
 
@@ -595,11 +631,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     if (minPricePerSqm === pricePerSqmMinValue && maxPricePerSqm === pricePerSqmMaxValue) {
       return 'Toutes les valeurs';
     } else if (minPricePerSqm > pricePerSqmMinValue && maxPricePerSqm === pricePerSqmMaxValue) {
-      return `À partir de ${formatPricePerSqm(minPricePerSqm)}`;
+      return (
+        <>
+          À partir de <strong>{formatPricePerSqm(minPricePerSqm)}</strong>
+        </>
+      );
     } else if (minPricePerSqm === pricePerSqmMinValue && maxPricePerSqm < pricePerSqmMaxValue) {
-      return `Jusqu'à ${formatPricePerSqm(maxPricePerSqm)}`;
+      return (
+        <>
+          Jusqu'à <strong>{formatPricePerSqm(maxPricePerSqm)}</strong>
+        </>
+      );
     } else {
-      return `De ${formatPricePerSqm(minPricePerSqm)} à ${formatPricePerSqm(maxPricePerSqm)}`;
+      return (
+        <>
+          De <strong>{formatPricePerSqm(minPricePerSqm)}</strong> à <strong>{formatPricePerSqm(maxPricePerSqm)}</strong>
+        </>
+      );
     }
   };
 
@@ -612,11 +660,23 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     if (minDate === dateMinValue && maxDate === dateMaxValue) {
       return 'Toutes les valeurs';
     } else if (minDate > dateMinValue && maxDate === dateMaxValue) {
-      return `À partir de ${formatDate(minDate)}`;
+      return (
+        <>
+          À partir de <strong>{formatDate(minDate)}</strong>
+        </>
+      );
     } else if (minDate === dateMinValue && maxDate < dateMaxValue) {
-      return `Jusqu'à ${formatDate(maxDate)}`;
+      return (
+        <>
+          Jusqu'à <strong>{formatDate(maxDate)}</strong>
+        </>
+      );
     } else {
-      return `De ${formatDate(minDate)} à ${formatDate(maxDate)}`;
+      return (
+        <>
+          De <strong>{formatDate(minDate)}</strong> à <strong>{formatDate(maxDate)}</strong>
+        </>
+      );
     }
   };
 
@@ -629,7 +689,10 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     >
       <div className="bg-white w-full max-w-5xl relative h-full md:h-auto md:max-h-[95vh] rounded-lg flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
+        <div
+          className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.03)' }}
+        >
           <h2 className="text-lg font-bold">Filtres</h2>
           <button onClick={onClose} className="text-black hover:text-gray-700">
             <svg
@@ -654,9 +717,9 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
           <div className="p-2">
             <div className="flex flex-col">
               {/* Top Row - Type de bien and Nombre de pièces (Desktop) / Type de bien only (Mobile) */}
-              <div className="flex flex-col md:flex-row mb-4">
+              <div className="flex flex-col md:flex-row pb-4">
                 {/* Type de bien */}
-                <div className="md:w-1/2 md:pr-4 mb-4 md:mb-0">
+                <div className="md:w-1/2 md:border-r md:border-gray-200 md:pr-4 mb-4 md:mb-0">
                   <h3 className="text-base font-bold mb-2">Type de bien</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center">
@@ -723,6 +786,78 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                       <label htmlFor="biens-multiples" className="ml-1 text-sm">
                         Biens multiples
                       </label>
+                    </div>
+                  </div>
+
+                  {/* Nombre de pièces - Mobile only */}
+                  <div className="md:hidden mt-4">
+                    <h3 className="text-base font-bold mb-2">Nombre de pièces</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="studio-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.studio}
+                          onChange={() => handleRoomCountChange('studio')}
+                        />
+                        <label htmlFor="studio-mobile" className="ml-1 text-sm">
+                          Studio
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="2pieces-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.deuxPieces}
+                          onChange={() => handleRoomCountChange('deuxPieces')}
+                        />
+                        <label htmlFor="2pieces-mobile" className="ml-1 text-sm">
+                          2 pièces
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="3pieces-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.troisPieces}
+                          onChange={() => handleRoomCountChange('troisPieces')}
+                        />
+                        <label htmlFor="3pieces-mobile" className="ml-1 text-sm">
+                          3 pièces
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="4pieces-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.quatrePieces}
+                          onChange={() => handleRoomCountChange('quatrePieces')}
+                        />
+                        <label htmlFor="4pieces-mobile" className="ml-1 text-sm">
+                          4 pièces
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="5pieces-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.cinqPiecesPlus}
+                          onChange={() => handleRoomCountChange('cinqPiecesPlus')}
+                        />
+                        <label htmlFor="5pieces-mobile" className="ml-1 text-sm">
+                          5 pièces et +
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -803,11 +938,11 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
               {/* Bottom Row - Range Sliders */}
               <div className="flex flex-col md:flex-row">
                 {/* Left Column */}
-                <div className="md:w-1/2 md:border-r md:pr-4 pb-3">
+                <div className="md:w-1/2 md:border-r md:border-gray-200 md:pr-4 pb-3">
                   {/* Date de vente */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Date de vente</h3>
-                    <p className="text-lg">{getDateText()}</p>
+                    <p className="text-sm">{getDateText()}</p>
                     <RangeSlider
                       type="date"
                       minValue={filters.dateRange[0]}
@@ -820,7 +955,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   {/* Surface */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Surface</h3>
-                    <p className="text-lg">{getSurfaceText()}</p>
+                    <p className="text-sm">{getSurfaceText()}</p>
                     <RangeSlider
                       type="surface"
                       minValue={filters.surfaceRange[0]}
@@ -833,7 +968,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   {/* Prix m² */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Prix m²</h3>
-                    <p className="text-lg">{getPricePerSqmText()}</p>
+                    <p className="text-sm">{getPricePerSqmText()}</p>
                     <RangeSlider
                       type="pricePerSqm"
                       minValue={filters.pricePerSqmRange[0]}
@@ -849,7 +984,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   {/* Prix */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Prix</h3>
-                    <p className="text-lg">{getPriceText()}</p>
+                    <p className="text-sm">{getPriceText()}</p>
                     <RangeSlider
                       type="price"
                       minValue={filters.priceRange[0]}
@@ -862,7 +997,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                   {/* Terrain */}
                   <div className="mb-3 space-y-1">
                     <h3 className="text-base font-bold">Terrain</h3>
-                    <p className="text-lg">{getTerrainText()}</p>
+                    <p className="text-sm">{getTerrainText()}</p>
                     <RangeSlider
                       type="terrain"
                       minValue={filters.terrainRange[0]}
@@ -874,83 +1009,11 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                 </div>
               </div>
             </div>
-
-            {/* Nombre de pièces - Mobile bottom section */}
-            <div className="md:hidden mb-4">
-              <h3 className="text-base font-bold mb-2">Nombre de pièces</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="studio-mobile"
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: '#7069F9' }}
-                    checked={filters.roomCounts.studio}
-                    onChange={() => handleRoomCountChange('studio')}
-                  />
-                  <label htmlFor="studio-mobile" className="ml-1 text-sm">
-                    Studio
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="3pieces-mobile"
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: '#7069F9' }}
-                    checked={filters.roomCounts.troisPieces}
-                    onChange={() => handleRoomCountChange('troisPieces')}
-                  />
-                  <label htmlFor="3pieces-mobile" className="ml-1 text-sm">
-                    3 pièces
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="5pieces-mobile"
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: '#7069F9' }}
-                    checked={filters.roomCounts.cinqPiecesPlus}
-                    onChange={() => handleRoomCountChange('cinqPiecesPlus')}
-                  />
-                  <label htmlFor="5pieces-mobile" className="ml-1 text-sm">
-                    5 pièces et +
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="2pieces-mobile"
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: '#7069F9' }}
-                    checked={filters.roomCounts.deuxPieces}
-                    onChange={() => handleRoomCountChange('deuxPieces')}
-                  />
-                  <label htmlFor="2pieces-mobile" className="ml-1 text-sm">
-                    2 pièces
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="4pieces-mobile"
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: '#7069F9' }}
-                    checked={filters.roomCounts.quatrePieces}
-                    onChange={() => handleRoomCountChange('quatrePieces')}
-                  />
-                  <label htmlFor="4pieces-mobile" className="ml-1 text-sm">
-                    4 pièces
-                  </label>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
         {/* Footer with buttons - Fixed at bottom */}
-        <div className="flex justify-between items-center rounded-b-lg p-3 border-t border-gray-200 flex-shrink-0 bg-white shadow-lg">
+        <div className="flex justify-end items-center gap-3 rounded-b-lg p-3 border-t border-gray-200 flex-shrink-0 bg-white shadow-lg">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium"

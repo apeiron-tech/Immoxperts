@@ -50,15 +50,13 @@ const formatPropertyDetails = (rooms: any, surface: string, terrain?: string): s
   const details: string[] = [];
 
   if (hasValue(rooms)) {
-    details.push(`pieces: ${rooms}`);
+    details.push(`Piece: ${rooms}`);
   }
-
+  if (hasValue(surface)) {
+    details.push(`Surface ${surface}`);
+  }
   if (hasValue(terrain)) {
     details.push(`Terrain ${terrain}`);
-  }
-
-  if (hasValue(surface)) {
-    details.push(`surface ${surface}`);
   }
 
   return details.length > 0 ? details.join(', ') : '';
@@ -134,49 +132,87 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      {/* LEFT COLUMN */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <div
-          style={{ fontWeight: 700, fontSize: 16, color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-        >
-          {(address || '').toUpperCase()}
-        </div>
-        {/* Property Type */}
-        <div style={{ color: getPropertyTypeColor(type), fontWeight: 900, fontSize: 16, marginBottom: 10 }}>{getShortTypeName(type)}</div>
+      {/* Container */}
+      <div style={{ width: '100%' }}>
+        {/* Row: Left and Right columns */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          {/* Left Column */}
+          <div style={{ flex: 1, minWidth: 0, maxWidth: 'calc(100% - 140px)' }}>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 16,
+                color: '#1a1a1a',
+                marginBottom: 4,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {(address || '').toUpperCase()}
+            </div>
+            <div style={{ color: getPropertyTypeColor(type), fontWeight: 900, fontSize: 16 }}>{getShortTypeName(type)}</div>
+          </div>
 
-        {/* Characteristics: pieces, terrain, surface */}
-        {propertyDetails && <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>{propertyDetails}</div>}
+          {/* Right Column: Price */}
+          <div
+            style={{
+              border: '1px solid #e5e7eb',
+              padding: '10px 14px',
+              borderRadius: 12,
+              textAlign: 'right',
+              minWidth: 110,
+              flexShrink: 0,
+              alignSelf: 'flex-start',
+              backgroundColor: 'rgba(112, 105, 249, 0.04)',
+            }}
+          >
+            <div style={{ color: '#241c83', fontWeight: 800, fontSize: 18, lineHeight: 1 }}>{priceFormatted}</div>
+            {pricePerSqmFormatted && <div style={{ color: '#1a1a1a', fontSize: 14 }}>{pricePerSqmFormatted}</div>}
+          </div>
+        </div>
+
+        {/* Description: Characteristics */}
+        {(hasValue(rooms) || hasValue(terrain) || hasValue(surface)) && (
+          <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>
+            {hasValue(rooms) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Pièce </span>}
+            {hasValue(rooms) && (
+              <span style={{ fontFamily: 'Maven Pro', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
+                {rooms}
+              </span>
+            )}
+            {hasValue(rooms) && (hasValue(surface) || hasValue(terrain)) && <span style={{ marginLeft: '12px' }}></span>}
+            {hasValue(surface) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Surface </span>}
+            {hasValue(surface) && (
+              <span style={{ fontFamily: 'Maven Pro', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
+                {surface}
+              </span>
+            )}
+            {hasValue(surface) && hasValue(terrain) && <span style={{ marginLeft: '12px' }}></span>}
+            {hasValue(terrain) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Terrain </span>}
+            {hasValue(terrain) && (
+              <span style={{ fontFamily: 'Maven Pro', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
+                {terrain}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Sold Date */}
         <div
           style={{
-            marginTop: 8,
             border: '1px solid #e5e7eb',
             padding: '10px 8px',
             borderRadius: 12,
             fontSize: 14,
             color: '#444',
-            background: '#fafbfc',
-            alignSelf: 'flex-start',
+            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+            display: 'inline-block',
+            width: 'fit-content',
           }}
         >
           Vendu le <strong style={{ color: '#000' }}>{formatFrenchDate(soldDate)}</strong>
         </div>
-      </div>
-      {/* RIGHT COLUMN: PRICE BOX */}
-      <div
-        style={{
-          border: '1px solid #e5e7eb',
-          padding: '10px 14px',
-          borderRadius: 12,
-          textAlign: 'right',
-          minWidth: 110,
-          flexShrink: 0,
-          alignSelf: 'flex-start',
-        }}
-      >
-        <div style={{ color: '#241c83', fontWeight: 800, fontSize: 18, lineHeight: 1 }}>{priceFormatted}</div>
-        {pricePerSqmFormatted && <div style={{ color: '#1a1a1a', fontSize: 14 }}>{pricePerSqmFormatted}</div>}
       </div>
     </div>
   );

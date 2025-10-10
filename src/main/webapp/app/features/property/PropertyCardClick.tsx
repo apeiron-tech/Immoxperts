@@ -84,11 +84,20 @@ const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick
 
   // Build the details string, only showing non-zero values
   const details = [];
-  if (rooms && rooms !== '' && rooms !== '0') details.push(`pieces: ${rooms}`);
-  if (terrain && terrain !== '' && terrain !== '0 m²') details.push(`Terrain ${terrain}`);
-  if (surface && surface !== '' && surface !== '0 m²') details.push(`surface ${surface}`);
+  if (rooms && rooms !== '' && rooms !== '0')
+    details.push(
+      `<span style="color: rgba(12, 12, 12, 0.75);">Pièces </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
+    );
+  if (surface && surface !== '' && surface !== '0 m²')
+    details.push(
+      `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${surface}</span>`,
+    );
+  if (terrain && terrain !== '' && terrain !== '0 m²')
+    details.push(
+      `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${terrain}</span>`,
+    );
 
-  const detailsText = details.length > 0 ? details.join(', ') : '';
+  const detailsText = details.length > 0 ? details.join('<span style="margin-left: 12px;"></span>') : '';
 
   return (
     <div
@@ -121,7 +130,7 @@ const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick
       <div style={{ color: getPropertyTypeColor(type), fontWeight: 900, fontSize: 16, marginBottom: 10 }}>{getShortTypeName(type)}</div>
 
       {/* Characteristics: pieces, terrain, surface */}
-      {detailsText && <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>{detailsText}</div>}
+      {detailsText && <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: detailsText }} />}
 
       {/* Price Box */}
       <div
@@ -134,6 +143,7 @@ const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick
           borderRadius: '12px',
           textAlign: 'right',
           minWidth: '110px',
+          backgroundColor: 'rgba(112, 105, 249, 0.04)',
         }}
       >
         <div
@@ -165,6 +175,7 @@ const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick
           borderRadius: '12px',
           fontSize: '14px',
           color: '#444',
+          backgroundColor: 'rgba(0, 0, 0, 0.04)',
         }}
       >
         Vendu le <strong style={{ color: '#000' }}>{formatFrenchDate(soldDate)}</strong>

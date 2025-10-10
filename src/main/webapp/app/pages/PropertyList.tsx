@@ -368,85 +368,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
     <div className="flex flex-col lg:flex-row w-full h-screen bg-gray-50">
       {/* --- List & Detail Panel - HIDDEN ON MOBILE for ImmoData experience --- */}
       <div className="hidden lg:flex lg:w-[456px] lg:flex-shrink-0 flex-col bg-white border-r border-gray-200 z-10 h-[80vh]">
-        {selectedProperty ? (
-          <motion.div
-            className="h-full w-full bg-white overflow-hidden lg:border-r border-gray-200 lg:rounded-lg"
-            variants={sidebarVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            key={`property-details-${selectedProperty.id}`}
-          >
-            <div className="w-full h-full overflow-y-auto custom-scroll">
-              <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-                <div className="pt-2">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2 p-2 w-full">
-                      {similarProperties[currentIndex] ? (
-                        <motion.div
-                          key={`similar-property-${currentIndex}-${similarProperties[currentIndex]?.id || 'none'}`}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <PropertyCardClick
-                            property={similarProperties[currentIndex]}
-                            onClick={() => handlePropertySelect(similarProperties[currentIndex])}
-                            compact
-                          />
-                        </motion.div>
-                      ) : (
-                        <div className="p-4 text-center text-gray-500">Aucune propriété à afficher</div>
-                      )}
-
-                      {similarProperties.length > 0 && (
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => setCurrentIndex(prev => (prev > 0 ? prev - 1 : similarProperties.length - 1))}
-                            className="p-1 hover:text-blue-600"
-                          >
-                            &lt;
-                          </button>
-                          <span className="text-s px-4 text-blue-600 font-medium">
-                            {currentIndex + 1} / {similarProperties.length}
-                          </span>
-                          <button
-                            onClick={() => setCurrentIndex(prev => (prev < similarProperties.length - 1 ? prev + 1 : 0))}
-                            className="p-1 hover:text-blue-600"
-                          >
-                            &gt;
-                          </button>
-                        </div>
-                      )}
-
-                      <div className="relative flex items-center py-2">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-gray-200"></div>
-                        </div>
-                        <span className="relative bg-white pr-4 text-gray-900 font-semibold text-sm">En savoir plus</span>
-                      </div>
-
-                      <div className="flex flex-col gap-2 text-sm">
-                        <p>Générez une analyse à cette adresse pour obtenir :</p>
-                        <ul className="list-inside list-disc">
-                          <li>L'estimation de la valeur du bien</li>
-                          <li>L'analyse cadastrale</li>
-                          <li>Une présentation des ventes réalisées à proximité</li>
-                          <li>L'évolution des prix dans ce quartier</li>
-                          <li>Une analyse du quartier</li>
-                        </ul>
-                      </div>
-                    </div>
-                    <button onClick={closeSidebar} className="text-gray-400 hover:text-gray-700 text-2xl sm:text-3xl p-1 sm:p-2">
-                      &times;
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ) : currentAddress ? (
+        {currentAddress ? (
           <motion.div
             className="h-full w-full bg-white overflow-hidden lg:border-r border-gray-200 lg:rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4"
             variants={sidebarVariants}
@@ -483,16 +405,48 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
               <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={() => setCurrentIndex(prev => (prev > 0 ? prev - 1 : similarProperties.length - 1))}
-                  className="p-1 hover:text-blue-600"
+                  style={{
+                    padding: '4px 8px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
+                    background: 'white',
+                    color: '#666',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontFamily: 'Maven Pro',
+                    fontWeight: 600,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'white')}
                 >
                   &lt;
                 </button>
-                <span className="text-s px-4 text-blue-600 font-medium">
+                <span
+                  style={{
+                    fontSize: '12px',
+                    color: '#3b82f6',
+                    fontWeight: 500,
+                    padding: '0 12px',
+                    fontFamily: 'Maven Pro',
+                  }}
+                >
                   {currentIndex + 1} / {similarProperties.length}
                 </span>
                 <button
                   onClick={() => setCurrentIndex(prev => (prev < similarProperties.length - 1 ? prev + 1 : 0))}
-                  className="p-1 hover:text-blue-600"
+                  style={{
+                    padding: '4px 8px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
+                    background: 'white',
+                    color: '#666',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontFamily: 'Maven Pro',
+                    fontWeight: 600,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'white')}
                 >
                   &gt;
                 </button>
