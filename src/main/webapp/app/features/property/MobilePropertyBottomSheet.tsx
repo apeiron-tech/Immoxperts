@@ -99,7 +99,7 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
               const details = [];
               if (property.rooms && property.rooms !== '' && property.rooms !== '0') {
                 details.push(
-                  `<span style="color: rgba(12, 12, 12, 0.75);">Pièces </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.rooms}</span>`,
+                  `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.rooms}</span>`,
                 );
               }
               if (property.surface && property.surface !== '' && property.surface !== '0 m²') {
