@@ -34,6 +34,7 @@ export const API_ENDPOINTS = {
     suggestions: `${API_BASE_URL}/api/adresses/suggestions`,
     osmPlaces: `${API_BASE_URL}/api/adresses/osm-places`,
     osmReverse: `${API_BASE_URL}/api/adresses/osm-reverse`,
+    frenchAddressReverse: `${API_BASE_URL}/api/adresses/french-address-reverse`,
   },
   management: {
     health: `${API_BASE_URL}/management/health`,
