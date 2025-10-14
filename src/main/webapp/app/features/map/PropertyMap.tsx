@@ -58,6 +58,7 @@ interface MapPageProps {
   onMapHover?: (propertyId: number | null) => void; // **NEW**: Callback for map hover
   dataVersion?: number; // **NEW**: Data version to trigger zone stats recalculation
   isFilterOpen?: boolean; // **NEW**: Track if filter popup is open to close other popups
+  onCloseStatsPopup?: () => void; // **NEW**: Callback to close stats popup
 }
 
 interface AddressProperties {
@@ -235,8 +236,8 @@ const getINSEECodeFromCoords = async (lng: number, lat: number) => {
 
 const getQuartierFromCoords = async (lng: number, lat: number) => {
   try {
-    // Use OpenStreetMap Nominatim API for reverse geocoding
-    const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
+    // Use backend proxy to avoid CORS issues
+    const response = await axios.get(API_ENDPOINTS.adresses.osmReverse, {
       params: {
         lat,
         lon: lng,
@@ -284,11 +285,23 @@ const PropertyMap: React.FC<MapPageProps> = ({
   onMapHover,
   dataVersion,
   isFilterOpen,
+  onCloseStatsPopup,
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
   // Stats panel state
   const [showStatsPanel, setShowStatsPanel] = useState(false); // Closed by default
+
+  // Expose function to close stats popup to parent
+  useEffect(() => {
+    if (onCloseStatsPopup) {
+      // Store the close function globally so SearchBar can call it
+      (window as any).closeStatsPopup = () => setShowStatsPanel(false);
+    }
+    return () => {
+      delete (window as any).closeStatsPopup;
+    };
+  }, [onCloseStatsPopup]);
   const [activePropertyType, setActivePropertyType] = useState(0);
   const [propertyStats, setPropertyStats] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -305,7 +318,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const [isLoadingQuartier, setIsLoadingQuartier] = useState(false);
   const [hasQuartier, setHasQuartier] = useState<boolean>(false);
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const scaleBarRef = useRef<HTMLDivElement | null>(null); // Reference for scale bar to keep it persistent
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [debugging, setDebugging] = useState<boolean>(true); // Enable debugging
@@ -587,12 +599,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
         source.setData(geojsonData);
         debugLog(`Updated mutations source with ${geojsonData.features.length} initial features`);
 
-        // **NEW**: Ensure scale bar remains attached after data update
-        if (scaleBarRef.current && !mapRef.current.getContainer().contains(scaleBarRef.current)) {
-          mapRef.current.getContainer().appendChild(scaleBarRef.current);
-          debugLog('Scale bar re-attached after initial data update');
-        }
-
         // **NEW**: Notify PropertyList about new data
         if (onDataUpdate) {
           onDataUpdate(geojsonData.features);
@@ -687,12 +693,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
         source.setData(geojsonData);
         debugLog(`Updated mutations source with ${geojsonData.features.length} features`);
 
-        // **NEW**: Ensure scale bar remains attached after data update
-        if (scaleBarRef.current && !mapRef.current.getContainer().contains(scaleBarRef.current)) {
-          mapRef.current.getContainer().appendChild(scaleBarRef.current);
-          debugLog('Scale bar re-attached after mutations data update');
-        }
-
         // **NEW**: Notify PropertyList about new data
         if (onDataUpdate) {
           onDataUpdate(geojsonData.features);
@@ -753,7 +753,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         minZoom: 12, // Limit zoom out to maximum 1km
         maxZoom: 18,
         antialias: true, // Enable antialiasing for better performance
-        attributionControl: true, // Enable Mapbox attribution
+        attributionControl: false, // Disable Mapbox attribution
       });
 
       const map = mapRef.current;
@@ -1795,21 +1795,15 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         }
                       }
                     } else {
-                      // No quartier found, hide the option and switch to commune if needed
+                      // No quartier found, hide the option but don't change selection
                       setCurrentQuartier('');
                       setHasQuartier(false);
-                      if (statsScope === 'quartier') {
-                        setStatsScope('commune');
-                      }
                       debugLog('No quartier found for current location');
                     }
                   } catch (err) {
                     debugLog('Error updating quartier data:', err);
                     setCurrentQuartier('');
                     setHasQuartier(false);
-                    if (statsScope === 'quartier') {
-                      setStatsScope('commune');
-                    }
                   } finally {
                     setIsLoadingQuartier(false);
                   }
@@ -1835,126 +1829,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
           debugLog('Map event handlers set up successfully');
 
-          // Add scale bar at the very end of map loading
-          if (!scaleBarRef.current) {
-            const createCustomScaleBar = () => {
-              const scaleBarContainer = document.createElement('div');
-              scaleBarContainer.style.cssText = `
-               position: absolute;
-               z-index: 10;
-               box-shadow: none;
-               background: rgba(255, 255, 255, 0.8);
-               border: 1px solid #ccc;
-               bottom: 10px;
-               left: 10px;
-               padding: 5px;
-               border-radius: 0.2rem;
-             `;
-
-              const updateScaleBar = () => {
-                const bounds = map.getBounds();
-                const width = map.getContainer().offsetWidth;
-                const zoom = map.getZoom();
-
-                const metersPerPixel = (156543.03392 * Math.cos((bounds.getCenter().lat * Math.PI) / 180)) / Math.pow(2, zoom);
-                const distance = (metersPerPixel * width) / 1000; // Convert to km
-
-                // Fixed width for the scale bar (60px)
-                const fixedWidth = 60;
-
-                // Calculate the distance represented by the fixed width scale bar
-                const scaleDistance = (distance * fixedWidth) / width;
-
-                // Round to a nice number with better precision
-                let niceDistance: number;
-                let unit: string;
-
-                if (scaleDistance >= 1000) {
-                  niceDistance = Math.round(scaleDistance / 100) * 100;
-                  unit = 'km';
-                } else if (scaleDistance >= 100) {
-                  niceDistance = Math.round(scaleDistance / 10) * 10;
-                  unit = 'm';
-                } else if (scaleDistance >= 10) {
-                  niceDistance = Math.round(scaleDistance);
-                  unit = 'm';
-                } else {
-                  niceDistance = Math.round(scaleDistance * 10) / 10;
-                  unit = 'm';
-                }
-
-                // Use fixed width instead of calculating actual width
-                const actualWidth = fixedWidth;
-
-                // Check if scaleBarContainer exists before proceeding
-                if (!scaleBarContainer) {
-                  console.warn('Scale bar container not found, skipping scale bar update');
-                  return;
-                }
-
-                // Update existing elements instead of recreating them
-                let scaleBar = scaleBarContainer.querySelector('.scale-bar-line');
-                let label = scaleBarContainer.querySelector('.scale-bar-label');
-
-                if (!scaleBar) {
-                  // Create scale bar element only if it doesn't exist
-                  scaleBar = document.createElement('div');
-                  scaleBar.className = 'scale-bar-line';
-                  (scaleBar as HTMLElement).style.cssText = `
-                    border-top: none;
-                    border-right: 2px solid rgb(126, 132, 144);
-                    border-bottom: 2px solid rgb(126, 132, 144);
-                    border-left: 2px solid rgb(126, 132, 144);
-                    box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 4px;
-                    height: 7px;
-                    border-bottom-left-radius: 1px;
-                    border-bottom-right-radius: 1px;
-                  `;
-                  scaleBarContainer.appendChild(scaleBar);
-                }
-
-                if (!label) {
-                  // Create label only if it doesn't exist
-                  label = document.createElement('div');
-                  label.className = 'scale-bar-label';
-                  (label as HTMLElement).style.cssText = `
-                    padding-left: 10px;
-                    font-family: Arial, sans-serif;
-                    font-size: 12px;
-                    color: #333;
-                  `;
-                  scaleBarContainer.appendChild(label);
-                }
-
-                // Update only the width and text content
-                (scaleBar as HTMLElement).style.width = `${actualWidth}px`;
-                (label as HTMLElement).textContent = `${niceDistance} ${unit}`;
-              };
-
-              // Update scale bar on map events
-              map.on('zoom', updateScaleBar);
-              map.on('move', updateScaleBar);
-
-              // Initial update
-              updateScaleBar();
-
-              return scaleBarContainer;
-            };
-
-            // Add custom scale bar to map and store reference
-            const customScaleBar = createCustomScaleBar();
-            scaleBarRef.current = customScaleBar;
-            map.getContainer().appendChild(customScaleBar);
-            debugLog('Scale bar created and added to map at end of loading');
-          } else {
-            // Scale bar already exists, just ensure it's attached
-            if (scaleBarRef.current && !map.getContainer().contains(scaleBarRef.current)) {
-              map.getContainer().appendChild(scaleBarRef.current);
-              debugLog('Scale bar re-attached to map');
-            }
-          }
-
-          // Add second scale control (top right)
+          // Add scale control (top right)
           const secondScaleContainer = document.createElement('div');
           secondScaleContainer.style.cssText = `
             position: absolute;
@@ -2117,26 +1992,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
     fetchStatsByINSEE();
   }, [currentINSEE]);
 
-  // **NEW**: Keep scale bar attached at all times
-  useEffect(() => {
-    if (!mapRef.current || !scaleBarRef.current) return;
-
-    const ensureScaleBarAttached = () => {
-      if (scaleBarRef.current && mapRef.current && !mapRef.current.getContainer().contains(scaleBarRef.current)) {
-        mapRef.current.getContainer().appendChild(scaleBarRef.current);
-        debugLog('Scale bar re-attached to map container');
-      }
-    };
-
-    // Check immediately
-    ensureScaleBarAttached();
-
-    // Check periodically to ensure scale bar stays attached
-    const intervalId = setInterval(ensureScaleBarAttached, 1000);
-
-    return () => clearInterval(intervalId);
-  }, [mapLoaded]);
-
   // **NEW**: Calculate zone statistics when scope is "zone" and map has data
   useEffect(() => {
     if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
@@ -2173,7 +2028,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
     }
   }, [dataVersion, statsScope]); // Trigger when dataVersion or statsScope changes
 
-  // **NEW**: Handle statsScope change to quartier - reset stats to zeros
+  // **NEW**: Handle statsScope change - reset stats to zeros for quartier, reload for commune
   useEffect(() => {
     if (statsScope === 'quartier') {
       // Reset property stats to show zeros when quartier scope is selected
@@ -2186,8 +2041,31 @@ const PropertyMap: React.FC<MapPageProps> = ({
       ];
       setPropertyStats(resetStats);
       setIsLoading(false); // Stop loading state for quartier
+    } else if (statsScope === 'commune' && currentINSEE) {
+      // When switching to commune, reload the statistics
+      const fetchStatsByINSEE = async () => {
+        try {
+          setIsLoading(true);
+          setError(null);
+          debugLog('Reloading statistics for commune, INSEE code:', currentINSEE);
+
+          const response = await axios.get(`${API_ENDPOINTS.mutations.statsByCity}`, {
+            params: { codeInsee: currentINSEE },
+          });
+
+          debugLog('Statistics reloaded successfully:', response.data);
+          setPropertyStats(response.data);
+        } catch (err) {
+          setError('Erreur chargement statistiques');
+          setPropertyStats([]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchStatsByINSEE();
     }
-  }, [statsScope]); // Trigger when statsScope changes
+  }, [statsScope, currentINSEE]); // Trigger when statsScope or currentINSEE changes
 
   // **NEW**: Handle property card hover to highlight corresponding point on map
   useEffect(() => {
@@ -2312,6 +2190,26 @@ const PropertyMap: React.FC<MapPageProps> = ({
       // Only set selected address if it's NOT a city (i.e., it's a specific address)
       setSelectedAddress(searchParams.coordinates);
       debugLog('Selected address coordinates (showing red circle):', searchParams.coordinates);
+
+      // Pan to the address and load mutations data
+      if (mapRef.current) {
+        mapRef.current.flyTo({
+          center: searchParams.coordinates,
+          zoom: 16, // Zoom level for specific addresses
+          duration: 2000,
+        });
+
+        // Load mutations data for the new location after panning
+        setTimeout(() => {
+          debugLog('Loading mutations after address selection...');
+          if (mapRef.current && mapRef.current.isStyleLoaded()) {
+            loadMutationsData();
+          } else {
+            debugLog('Map not ready, retrying in 1 second...');
+            setTimeout(() => loadMutationsData(), 1000);
+          }
+        }, 2100); // Wait for flyTo animation to complete
+      }
     } else if (searchParams?.coordinates && searchParams?.isCity) {
       // For cities/communes, just pan the map without red circle
       setSelectedAddress(null);
@@ -2322,6 +2220,17 @@ const PropertyMap: React.FC<MapPageProps> = ({
           duration: 2000,
         });
         debugLog('Panning to city coordinates (no red circle):', searchParams.coordinates);
+
+        // Load mutations data for the new location after panning
+        setTimeout(() => {
+          debugLog('Loading mutations after city selection...');
+          if (mapRef.current && mapRef.current.isStyleLoaded()) {
+            loadMutationsData();
+          } else {
+            debugLog('Map not ready, retrying in 1 second...');
+            setTimeout(() => loadMutationsData(), 1000);
+          }
+        }, 2100); // Wait for flyTo animation to complete
       }
     } else {
       setSelectedAddress(null);
@@ -2422,7 +2331,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
           </a>
         </div>
       </div>
-
       {/* Stats Panel Toggle Button */}
       <button
         onClick={() => {
@@ -2576,11 +2484,19 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   <div className="w-full">
                     <div className="relative flex lg:justify-end">
                       <select
-                        value={statsScope === 'commune' ? currentCity : statsScope === 'zone' ? 'Zone affichée' : currentQuartier}
+                        value={
+                          statsScope === 'commune'
+                            ? currentCity
+                            : statsScope === 'zone'
+                              ? 'Zone affichée'
+                              : hasQuartier
+                                ? currentQuartier
+                                : 'Quartier (non disponible)'
+                        }
                         onChange={e => {
                           if (e.target.value === 'Zone affichée') {
                             setStatsScope('zone');
-                          } else if (e.target.value === currentQuartier) {
+                          } else if (e.target.value === currentQuartier || e.target.value === 'Quartier (non disponible)') {
                             setStatsScope('quartier');
                           } else {
                             setStatsScope('commune');
@@ -2590,7 +2506,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       >
                         <option value={currentCity}>{currentCity}</option>
                         <option value="Zone affichée">Zone affichée</option>
-                        {hasQuartier && <option value={currentQuartier}>{currentQuartier}</option>}
+                        <option value={hasQuartier ? currentQuartier : 'Quartier (non disponible)'}>
+                          {hasQuartier ? currentQuartier : 'Quartier (non disponible)'}
+                        </option>
                       </select>
                     </div>
                   </div>
@@ -2767,7 +2685,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   >
                     <option value="commune">Commune ({currentCity})</option>
                     <option value="zone">Zone affichée</option>
-                    {hasQuartier && <option value="quartier">Quartier ({currentQuartier || 'Chargement...'})</option>}
+                    <option value="quartier">
+                      {hasQuartier ? `Quartier (${currentQuartier || 'Chargement...'})` : 'Quartier (non disponible)'}
+                    </option>
                   </select>
                 </div>
               </div>

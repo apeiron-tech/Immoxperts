@@ -365,7 +365,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
   // --- RENDER ---
   return (
-    <div className="flex flex-col lg:flex-row w-full h-screen bg-gray-50">
+    <div className="flex flex-col lg:flex-row w-full h-[80vh] bg-gray-50">
       {/* --- List & Detail Panel - HIDDEN ON MOBILE for ImmoData experience --- */}
       <div className="hidden lg:flex lg:w-[456px] lg:flex-shrink-0 flex-col bg-white border-r border-gray-200 z-10 h-[80vh]">
         {currentAddress ? (
@@ -513,8 +513,8 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
         )}
       </div>
 
-      {/* --- Map Container - Full screen on mobile like ImmoData --- */}
-      <div className="flex-1 relative w-full h-screen">
+      {/* --- Map Container - Same height as property list --- */}
+      <div className="flex-1 relative w-full h-[80vh]">
         <PropertyMap
           properties={properties}
           onPropertySelect={handlePropertySelect}
@@ -527,6 +527,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
           onMapHover={handleMapHover} // **NEW**: Callback for map hover
           dataVersion={dataVersion} // **NEW**: Pass data version to trigger zone stats recalculation
           isFilterOpen={isFilterOpen} // **NEW**: Pass filter popup state to close other popups
+          onCloseStatsPopup={() => {}} // **NEW**: Pass empty function to enable stats popup closing
         />
       </div>
     </div>
