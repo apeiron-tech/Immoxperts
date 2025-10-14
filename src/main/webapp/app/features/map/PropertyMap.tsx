@@ -211,7 +211,8 @@ const calculateMedian = (values: number[]) => {
 // Function to get INSEE code from coordinates
 const getINSEECodeFromCoords = async (lng: number, lat: number) => {
   try {
-    const response = await axios.get(`https://api-adresse.data.gouv.fr/reverse/`, {
+    // Use backend proxy to avoid CORS issues
+    const response = await axios.get(API_ENDPOINTS.adresses.frenchAddressReverse, {
       params: {
         lon: lng,
         lat,
@@ -2195,38 +2196,79 @@ const PropertyMap: React.FC<MapPageProps> = ({
       if (mapRef.current) {
         const map = mapRef.current;
 
-        // Use once() to ensure listener fires only one time
-        map.once('moveend', () => {
-          debugLog('Address flyTo completed - force loading mutations data');
-          loadMutationsData();
-        });
-
         map.flyTo({
           center: searchParams.coordinates,
           zoom: 16, // Zoom level for specific addresses
           duration: 2000,
         });
+
+        // Force reload after animation completes with retry mechanism
+        setTimeout(() => {
+          debugLog('🔄 FORCING data reload after address selection');
+
+          const attemptLoad = (retries = 5) => {
+            if (map && map.isStyleLoaded()) {
+              const bounds = map.getBounds();
+              const b = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+              debugLog('📍 New bounds:', b);
+              loadMutationsData();
+            } else if (retries > 0) {
+              console.warn(`⏳ Map not ready for address, retrying... (${retries} retries left)`);
+              setTimeout(() => attemptLoad(retries - 1), 500);
+            }
+          };
+
+          attemptLoad();
+        }, 2300);
       }
     } else if (searchParams?.coordinates && searchParams?.isCity) {
       // For cities/communes, just pan the map without red circle
       setSelectedAddress(null);
+      console.warn('🏙️ City selected! Coordinates:', searchParams.coordinates);
       debugLog('Panning to city coordinates (no red circle):', searchParams.coordinates);
 
       // Pan to the city
       if (mapRef.current) {
         const map = mapRef.current;
 
-        // Use once() to ensure listener fires only one time
-        map.once('moveend', () => {
-          debugLog('City flyTo completed - force loading mutations data');
-          loadMutationsData();
-        });
+        console.warn('🗺️ Starting flyTo animation...');
 
         map.flyTo({
           center: searchParams.coordinates,
           zoom: 13, // Zoom level for cities
           duration: 2000,
         });
+
+        console.warn('⏰ Setting timeout to load data in 2.3 seconds...');
+
+        // Force reload after animation completes with retry mechanism
+        const timeoutId = setTimeout(() => {
+          console.warn('🔥 TIMEOUT FIRED! Attempting to load mutations data...');
+          debugLog('🔄 FORCING data reload after city selection');
+
+          const attemptLoad = (retries = 5) => {
+            if (map && map.isStyleLoaded()) {
+              const bounds = map.getBounds();
+              const b = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+              console.warn('📍 New bounds:', b);
+              debugLog('📍 New bounds:', b);
+              console.warn('📞 Calling loadMutationsData()...');
+              loadMutationsData();
+              console.warn('✅ loadMutationsData() called!');
+            } else if (retries > 0) {
+              console.warn(`⏳ Map not ready yet, retrying in 500ms... (${retries} retries left)`);
+              setTimeout(() => attemptLoad(retries - 1), 500);
+            } else {
+              console.error('❌ Map not ready after all retries! isStyleLoaded:', map?.isStyleLoaded());
+            }
+          };
+
+          attemptLoad();
+        }, 2300);
+
+        console.warn('⏰ Timeout ID:', timeoutId);
+      } else {
+        console.error('❌ mapRef.current is null!');
       }
     } else {
       setSelectedAddress(null);
