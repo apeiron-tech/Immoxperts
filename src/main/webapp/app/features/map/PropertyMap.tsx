@@ -2193,19 +2193,19 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
       // Pan to the address
       if (mapRef.current) {
-        mapRef.current.flyTo({
+        const map = mapRef.current;
+
+        // Use once() to ensure listener fires only one time
+        map.once('moveend', () => {
+          debugLog('Address flyTo completed - force loading mutations data');
+          loadMutationsData();
+        });
+
+        map.flyTo({
           center: searchParams.coordinates,
           zoom: 16, // Zoom level for specific addresses
           duration: 2000,
         });
-
-        // Backup: ensure data loads even if moveend doesn't fire
-        setTimeout(() => {
-          if (mapRef.current && mapRef.current.isStyleLoaded()) {
-            debugLog('Backup data load after address selection');
-            loadMutationsData();
-          }
-        }, 2200);
       }
     } else if (searchParams?.coordinates && searchParams?.isCity) {
       // For cities/communes, just pan the map without red circle
@@ -2214,19 +2214,19 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
       // Pan to the city
       if (mapRef.current) {
-        mapRef.current.flyTo({
+        const map = mapRef.current;
+
+        // Use once() to ensure listener fires only one time
+        map.once('moveend', () => {
+          debugLog('City flyTo completed - force loading mutations data');
+          loadMutationsData();
+        });
+
+        map.flyTo({
           center: searchParams.coordinates,
           zoom: 13, // Zoom level for cities
           duration: 2000,
         });
-
-        // Backup: ensure data loads even if moveend doesn't fire
-        setTimeout(() => {
-          if (mapRef.current && mapRef.current.isStyleLoaded()) {
-            debugLog('Backup data load after city selection');
-            loadMutationsData();
-          }
-        }, 2200);
       }
     } else {
       setSelectedAddress(null);
