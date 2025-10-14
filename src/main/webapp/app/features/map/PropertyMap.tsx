@@ -2191,7 +2191,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
       setSelectedAddress(searchParams.coordinates);
       debugLog('Selected address coordinates (showing red circle):', searchParams.coordinates);
 
-      // Pan to the address and load mutations data
+      // Pan to the address
       if (mapRef.current) {
         mapRef.current.flyTo({
           center: searchParams.coordinates,
@@ -2199,38 +2199,34 @@ const PropertyMap: React.FC<MapPageProps> = ({
           duration: 2000,
         });
 
-        // Load mutations data for the new location after panning
+        // Backup: ensure data loads even if moveend doesn't fire
         setTimeout(() => {
-          debugLog('Loading mutations after address selection...');
           if (mapRef.current && mapRef.current.isStyleLoaded()) {
+            debugLog('Backup data load after address selection');
             loadMutationsData();
-          } else {
-            debugLog('Map not ready, retrying in 1 second...');
-            setTimeout(() => loadMutationsData(), 1000);
           }
-        }, 2100); // Wait for flyTo animation to complete
+        }, 2200);
       }
     } else if (searchParams?.coordinates && searchParams?.isCity) {
       // For cities/communes, just pan the map without red circle
       setSelectedAddress(null);
+      debugLog('Panning to city coordinates (no red circle):', searchParams.coordinates);
+
+      // Pan to the city
       if (mapRef.current) {
         mapRef.current.flyTo({
           center: searchParams.coordinates,
           zoom: 13, // Zoom level for cities
           duration: 2000,
         });
-        debugLog('Panning to city coordinates (no red circle):', searchParams.coordinates);
 
-        // Load mutations data for the new location after panning
+        // Backup: ensure data loads even if moveend doesn't fire
         setTimeout(() => {
-          debugLog('Loading mutations after city selection...');
           if (mapRef.current && mapRef.current.isStyleLoaded()) {
+            debugLog('Backup data load after city selection');
             loadMutationsData();
-          } else {
-            debugLog('Map not ready, retrying in 1 second...');
-            setTimeout(() => loadMutationsData(), 1000);
           }
-        }, 2100); // Wait for flyTo animation to complete
+        }, 2200);
       }
     } else {
       setSelectedAddress(null);
