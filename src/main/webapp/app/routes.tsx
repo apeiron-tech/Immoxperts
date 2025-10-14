@@ -61,17 +61,18 @@ const AppRoutes = () => {
         <Route
           path="/PrixImmobliers"
           element={
-            <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden">
+            <div className="flex flex-col h-[calc(100vh-80px)]">
               {/* Mobile-first Search Bar */}
               <SearchBar
                 onSearch={handleSearchParamsChange}
                 onFilterApply={setFilterState}
                 currentFilters={filterState}
                 onFilterOpenChange={setIsFilterOpen}
+                onCloseOtherPopups={() => {}} // Pass empty function to enable popup closing
               />
 
               {/* Mobile: Full-screen map only, Desktop: Split view */}
-              <div className="flex h-full">
+              <div className="flex h-full overflow-hidden">
                 {/* Mobile Layout - Map Only */}
                 <div className="block md:hidden w-full h-full">
                   <PropertyList

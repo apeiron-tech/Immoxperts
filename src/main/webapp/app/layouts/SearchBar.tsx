@@ -14,6 +14,7 @@ interface SearchBarProps {
   onFilterApply?: (filters: FilterState) => void;
   currentFilters?: FilterState;
   onFilterOpenChange?: (isOpen: boolean) => void;
+  onCloseOtherPopups?: () => void; // New prop to close other popups when suggestions open
 }
 
 interface LocalAddressFeature {
@@ -60,31 +61,20 @@ interface UnifiedSuggestion {
   originalData: LocalAddressFeature | OSMPlace;
 }
 
-// Function to fetch cities/communes from OpenStreetMap Nominatim API
+// Function to fetch cities/communes from OpenStreetMap via backend proxy
 const fetchOSMPlaces = async (query: string): Promise<OSMPlace[]> => {
   try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?` +
-        `q=${encodeURIComponent(query)}&` +
-        `format=json&` +
-        `addressdetails=1&` +
-        `countrycodes=fr&` +
-        `limit=5&` +
-        `featuretype=city`,
-      {
-        headers: {
-          Accept: 'application/json',
-        },
-      },
-    );
+    // Use backend proxy to avoid CORS issues
+    const response = await fetch(`${API_ENDPOINTS.adresses.osmPlaces}?q=${encodeURIComponent(query)}`);
 
     if (!response.ok) {
       return [];
     }
 
     const data = await response.json();
+
     // Filter to only include cities, towns, villages (communes)
-    return data.filter(
+    const filtered = data.filter(
       (place: OSMPlace) =>
         place.type === 'administrative' ||
         place.addresstype === 'city' ||
@@ -93,8 +83,9 @@ const fetchOSMPlaces = async (query: string): Promise<OSMPlace[]> => {
         place.addresstype === 'municipality' ||
         place.class === 'place',
     );
+
+    return filtered;
   } catch (error) {
-    console.warn('Error fetching OSM places:', error);
     return [];
   }
 };
@@ -141,12 +132,13 @@ const convertOSMToUnified = (place: OSMPlace): UnifiedSuggestion => {
   };
 };
 
-const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentFilters, onFilterOpenChange }) => {
+const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentFilters, onFilterOpenChange, onCloseOtherPopups }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<UnifiedSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSelectionMade, setIsSelectionMade] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Notify parent when filter popup opens/closes
@@ -218,7 +210,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
   // Debounce search input - Fetch from both backend and OSM
   useEffect(() => {
     const handler = setTimeout(async () => {
-      if (searchQuery.length > 2) {
+      if (searchQuery.length > 2 && !isSelectionMade) {
         try {
           setIsLoading(true);
 
@@ -232,15 +224,31 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           const backendSuggestions: UnifiedSuggestion[] = (backendResponse as LocalAddressFeature[]).map(convertBackendToUnified);
           const osmSuggestions: UnifiedSuggestion[] = osmPlaces.map(convertOSMToUnified);
 
+          // Deduplicate OSM suggestions based on name and coordinates
+          const deduplicatedOSMSuggestions = osmSuggestions.filter((suggestion, index, array) => {
+            return (
+              array.findIndex(
+                s =>
+                  s.displayName.toLowerCase() === suggestion.displayName.toLowerCase() &&
+                  Math.abs(s.coordinates[0] - suggestion.coordinates[0]) < 0.001 &&
+                  Math.abs(s.coordinates[1] - suggestion.coordinates[1]) < 0.001,
+              ) === index
+            );
+          });
+
           // Combine: OSM cities/communes first, then backend addresses
-          const combinedSuggestions = [...osmSuggestions, ...backendSuggestions];
+          const combinedSuggestions = [...deduplicatedOSMSuggestions, ...backendSuggestions];
 
           setSuggestions(combinedSuggestions);
           setShowSuggestions(true);
-          console.warn('Mobile suggestions:', combinedSuggestions.length, combinedSuggestions);
+          // Close other popups when suggestions open
+          onCloseOtherPopups?.();
+          // Close stats popup if it exists
+          if ((window as any).closeStatsPopup) {
+            (window as any).closeStatsPopup();
+          }
         } catch (error) {
           // Error fetching address suggestions
-          console.warn('Error fetching suggestions:', error);
           setSuggestions([]);
         } finally {
           setIsLoading(false);
@@ -252,12 +260,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
     }, 300);
 
     return () => clearTimeout(handler);
-  }, [searchQuery]);
+  }, [searchQuery, isSelectionMade, onCloseOtherPopups]);
 
   const handleSuggestionSelect = (suggestion: UnifiedSuggestion): void => {
     setSearchQuery(suggestion.displayName);
     setShowSuggestions(false); // Close suggestions
     setSuggestions([]); // Clear suggestions after selection
+    setIsSelectionMade(true); // Mark that selection was made
 
     if (inputRef.current) {
       inputRef.current.blur(); // Blur input to prevent reopening
@@ -300,8 +309,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       {/* Mobile-first design */}
       <div className="w-full">
         {/* Mobile Search Bar - Full width, clean design like ImmoData */}
-        <div className="block md:hidden sticky top-0 z-50">
-          <div className="px-4 py-3 bg-white shadow-sm">
+        <div className="block md:hidden sticky top-0 z-[60] bg-white shadow-sm">
+          <div className="px-4 py-3">
             <div className="flex items-center gap-3">
               {/* Search Input Container */}
               <div className="relative flex-1">
@@ -325,7 +334,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   type="text"
                   placeholder="Entrez une adresse en France"
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={e => {
+                    const newValue = e.target.value;
+                    setSearchQuery(newValue);
+                    setIsSelectionMade(false); // Reset selection flag when typing
+                    // Don't manually set showSuggestions - let useEffect handle it after fetch
+                    if (newValue.length <= 2) {
+                      setShowSuggestions(false);
+                      setSuggestions([]);
+                    }
+                  }}
                   onFocus={() => {
                     if (searchQuery.length > 2 && suggestions.length > 0) {
                       setShowSuggestions(true);
@@ -335,16 +353,19 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   className="w-full pl-12 pr-4 py-3 bg-gray-50 border-0 rounded-xl text-base placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
                 />
 
-                {/* Loading indicator */}
+                {/* Loading indicator - Mobile */}
                 {isLoading && (
                   <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
                   </div>
                 )}
 
-                {/* Mobile Suggestions Dropdown */}
+                {/* Mobile Suggestions Dropdown - Inside input container */}
                 {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-[9999] w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-80 overflow-y-auto">
+                  <div
+                    className="absolute left-0 right-0 top-full z-[70] w-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-80 overflow-y-auto"
+                    style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}
+                  >
                     {suggestions.map((suggestion, index) => (
                       <button
                         key={suggestion.id}
@@ -399,9 +420,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   </div>
                 )}
 
-                {/* No results message */}
+                {/* No results message - Mobile */}
                 {showSuggestions && searchQuery.length > 2 && suggestions.length === 0 && !isLoading && (
-                  <div className="absolute z-[9999] w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl">
+                  <div
+                    className="absolute left-0 right-0 top-full z-[70] w-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl"
+                    style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}
+                  >
                     <div className="px-5 py-4 text-base text-gray-500 text-center">Aucune adresse trouvée</div>
                   </div>
                 )}
@@ -491,7 +515,21 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                 type="text"
                 placeholder="Entrez une adresse en France"
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => {
+                  const newValue = e.target.value;
+                  setSearchQuery(newValue);
+                  setIsSelectionMade(false); // Reset selection flag when typing
+                  // Don't manually set showSuggestions - let useEffect handle it after fetch
+                  if (newValue.length <= 2) {
+                    setShowSuggestions(false);
+                    setSuggestions([]);
+                  }
+                }}
+                onFocus={() => {
+                  if (searchQuery.length > 2 && suggestions.length > 0) {
+                    setShowSuggestions(true);
+                  }
+                }}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -505,7 +543,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
               {/* Desktop Suggestions Dropdown */}
               {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-40 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                   {suggestions.map((suggestion, index) => (
                     <button
                       key={suggestion.id}
@@ -562,7 +600,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
               {/* No results message */}
               {showSuggestions && searchQuery.length > 2 && suggestions.length === 0 && !isLoading && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+                <div className="absolute z-40 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
                   <div className="px-4 py-3 text-sm text-gray-500 text-center">Aucune adresse trouvée</div>
                 </div>
               )}

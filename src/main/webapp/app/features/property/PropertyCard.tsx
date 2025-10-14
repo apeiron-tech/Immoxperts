@@ -143,6 +143,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
                 fontWeight: 700,
                 fontSize: 16,
                 color: '#1a1a1a',
+                paddingTop: '8px',
                 marginBottom: 4,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',

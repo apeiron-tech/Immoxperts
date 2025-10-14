@@ -202,4 +202,70 @@ public class AdresseResource {
         List<AddressSuggestionProjection> suggestions = adresseService1.getSuggestions(query);
         return ResponseEntity.ok(suggestions);
     }
+
+    /**
+     * {@code GET  /adresses/osm-places} : Proxy for OpenStreetMap Nominatim API to avoid CORS issues.
+     *
+     * @param query the search query.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and OSM places in body.
+     */
+    @GetMapping("/osm-places")
+    public ResponseEntity<String> getOsmPlaces(@RequestParam("q") String query) {
+        LOG.debug("REST request to get OSM places for query : {}", query);
+        try {
+            String url = String.format(
+                "https://nominatim.openstreetmap.org/search?q=%s&format=json&addressdetails=1&countrycodes=fr&limit=5&featuretype=city",
+                java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8)
+            );
+
+            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create(url))
+                .header("Accept", "application/json")
+                .header("User-Agent", "Immoxperts/1.0 (contact@immoxperts.com)")
+                .GET()
+                .build();
+
+            java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+            return ResponseEntity.ok().header("Content-Type", "application/json").body(response.body());
+        } catch (Exception e) {
+            LOG.error("Error fetching OSM places", e);
+            return ResponseEntity.ok("[]");
+        }
+    }
+
+    /**
+     * {@code GET  /adresses/osm-reverse} : Proxy for OpenStreetMap reverse geocoding API to avoid CORS issues.
+     *
+     * @param lat the latitude.
+     * @param lon the longitude.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and reverse geocoding result in body.
+     */
+    @GetMapping("/osm-reverse")
+    public ResponseEntity<String> getOsmReverse(@RequestParam("lat") double lat, @RequestParam("lon") double lon) {
+        LOG.debug("REST request to get OSM reverse geocoding for lat: {}, lon: {}", lat, lon);
+        try {
+            String url = String.format(
+                "https://nominatim.openstreetmap.org/reverse?lat=%s&lon=%s&format=json&addressdetails=1&zoom=18&accept-language=fr",
+                lat,
+                lon
+            );
+
+            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create(url))
+                .header("Accept", "application/json")
+                .header("User-Agent", "Immoxperts/1.0 (contact@immoxperts.com)")
+                .GET()
+                .build();
+
+            java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+            return ResponseEntity.ok().header("Content-Type", "application/json").body(response.body());
+        } catch (Exception e) {
+            LOG.error("Error fetching OSM reverse geocoding", e);
+            return ResponseEntity.ok("{}");
+        }
+    }
 }
