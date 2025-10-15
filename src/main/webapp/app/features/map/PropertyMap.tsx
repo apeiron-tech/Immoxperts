@@ -2203,10 +2203,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
         });
 
         // Force reload after animation completes with retry mechanism
+        // Mobile devices need more retries as they're slower
+        const isMobile = window.innerWidth < 768;
+        const maxRetries = isMobile ? 15 : 5;
+
         setTimeout(() => {
           debugLog('FORCING data reload after address selection');
 
-          const attemptLoad = (retries = 5) => {
+          const attemptLoad = (retries = maxRetries) => {
             if (map && map.isStyleLoaded()) {
               const bounds = map.getBounds();
               const b = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
@@ -2214,6 +2218,10 @@ const PropertyMap: React.FC<MapPageProps> = ({
               loadMutationsData();
             } else if (retries > 0) {
               setTimeout(() => attemptLoad(retries - 1), 500);
+            } else {
+              // Last resort: try to load anyway after all retries
+              debugLog('Forcing load after max retries');
+              loadMutationsData();
             }
           };
 
@@ -2236,10 +2244,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
         });
 
         // Force reload after animation completes with retry mechanism
+        // Mobile devices need more retries as they're slower
+        const isMobile = window.innerWidth < 768;
+        const maxRetries = isMobile ? 15 : 5; // 15 retries for mobile (7.5 seconds), 5 for desktop (2.5 seconds)
+
         setTimeout(() => {
           debugLog('FORCING data reload after city selection');
 
-          const attemptLoad = (retries = 5) => {
+          const attemptLoad = (retries = maxRetries) => {
             if (map && map.isStyleLoaded()) {
               const bounds = map.getBounds();
               const b = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
@@ -2247,6 +2259,10 @@ const PropertyMap: React.FC<MapPageProps> = ({
               loadMutationsData();
             } else if (retries > 0) {
               setTimeout(() => attemptLoad(retries - 1), 500);
+            } else {
+              // Last resort: try to load anyway after all retries
+              debugLog('Forcing load after max retries');
+              loadMutationsData();
             }
           };
 
