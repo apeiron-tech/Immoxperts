@@ -394,6 +394,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
   // Ref to store hover popup for cleanup
   const hoverPopupRef = useRef<mapboxgl.Popup | null>(null);
 
+  // Ref to track if mouse is hovering over the popup
+  const isHoveringPopup = useRef<boolean>(false);
+
   // Ref to store click popup for cleanup
   const clickPopupRef = useRef<mapboxgl.Popup | null>(null);
 
@@ -1048,6 +1051,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 if (hoverPopupRef.current) {
                   hoverPopupRef.current.remove();
                   hoverPopupRef.current = null;
+                  isHoveringPopup.current = false; // Reset hover flag
                 }
 
                 // Create mutation data popup
@@ -1314,6 +1318,23 @@ const PropertyMap: React.FC<MapPageProps> = ({
                                 console.warn('Popup element not found, skipping navigation listeners');
                                 return;
                               }
+
+                              // Add hover tracking to prevent popup from closing when mouse is over it
+                              popupElement.addEventListener('mouseenter', () => {
+                                isHoveringPopup.current = true;
+                              });
+
+                              popupElement.addEventListener('mouseleave', () => {
+                                isHoveringPopup.current = false;
+                                // Remove popup when mouse leaves it
+                                setTimeout(() => {
+                                  if (!isHoveringPopup.current && hoverPopupRef.current) {
+                                    hoverPopupRef.current.remove();
+                                    hoverPopupRef.current = null;
+                                  }
+                                }, 100);
+                              });
+
                               const prevBtn = popupElement.querySelector('.prev-btn');
                               const nextBtn = popupElement.querySelector('.next-btn');
 
@@ -1340,6 +1361,27 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           // Add navigation event listeners if multiple mutations
                           if (allMutations.length > 1) {
                             addNavigationListeners();
+                          } else {
+                            // Even if no navigation buttons, add hover tracking
+                            setTimeout(() => {
+                              const popupElement = hoverPopupRef.current?.getElement();
+                              if (popupElement) {
+                                popupElement.addEventListener('mouseenter', () => {
+                                  isHoveringPopup.current = true;
+                                });
+
+                                popupElement.addEventListener('mouseleave', () => {
+                                  isHoveringPopup.current = false;
+                                  // Remove popup when mouse leaves it
+                                  setTimeout(() => {
+                                    if (!isHoveringPopup.current && hoverPopupRef.current) {
+                                      hoverPopupRef.current.remove();
+                                      hoverPopupRef.current = null;
+                                    }
+                                  }, 100);
+                                });
+                              }
+                            }, 100);
                           }
                         }
 
@@ -1461,8 +1503,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     setMobileSheetIndex(0);
                   }
                 } else {
-                  // Desktop: remove hover popup
-                  if (hoverPopupRef.current) {
+                  // Desktop: remove hover popup only if not hovering over the popup itself
+                  if (hoverPopupRef.current && !isHoveringPopup.current) {
                     hoverPopupRef.current.remove();
                     hoverPopupRef.current = null;
                     debugLog('Hover popup removed - no features');

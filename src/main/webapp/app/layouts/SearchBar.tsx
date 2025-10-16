@@ -3,6 +3,15 @@ import FilterPopup from '../features/property/FilterPopup';
 import { FilterState } from '../types/filters';
 import { API_ENDPOINTS } from 'app/config/api.config';
 
+// Utility function to normalize accented characters
+const normalizeAccents = (str: string): string => {
+  return str
+    .normalize('NFD') // Decompose accented characters into base + diacritic
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .replace(/ç/g, 'c') // Handle 'ç' specifically
+    .replace(/Ç/g, 'C'); // Handle 'Ç' specifically
+};
+
 interface SearchBarProps {
   onSearch: (searchParams: {
     numero: number;
@@ -214,10 +223,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
         try {
           setIsLoading(true);
 
+          // Normalize the search query before sending to APIs
+          const normalizedQuery = normalizeAccents(searchQuery);
+
           // Fetch from both APIs in parallel
           const [backendResponse, osmPlaces] = await Promise.all([
-            fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(searchQuery)}`).then(res => (res.ok ? res.json() : [])),
-            fetchOSMPlaces(searchQuery),
+            fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(normalizedQuery)}`).then(res => (res.ok ? res.json() : [])),
+            fetchOSMPlaces(normalizedQuery),
           ]);
 
           // Convert and merge results
