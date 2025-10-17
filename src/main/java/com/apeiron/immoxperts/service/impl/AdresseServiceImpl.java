@@ -45,14 +45,90 @@ public class AdresseServiceImpl implements AdresseService {
     }
 
     public List<AddressSuggestionProjection> getSuggestions(String query) {
-        List<AddressSuggestionProjection> results = adresseRepository.findSuggestions(query);
+        if (query == null || query.trim().isEmpty()) {
+            return List.of();
+        }
 
-        // ✅ Éliminer les doublons par idadresse
+        // Split query into tokens and filter out very short ones
+        String[] tokens = query.trim().split("\\s+");
+        List<String> validTokens = new java.util.ArrayList<>();
+
+        for (String token : tokens) {
+            String cleanToken = token.trim();
+            // Keep tokens that are at least 1 character (numbers included)
+            if (!cleanToken.isEmpty()) {
+                validTokens.add(cleanToken);
+            }
+        }
+
+        LOG.debug("Search tokens: {}", validTokens);
+
+        List<AddressSuggestionProjection> results;
+
+        // If we have multiple tokens, use multi-token search
+        if (validTokens.size() >= 5) {
+            results = adresseRepository.findSuggestionsByFiveTokens(
+                validTokens.get(0),
+                validTokens.get(1),
+                validTokens.get(2),
+                validTokens.get(3),
+                validTokens.get(4)
+            );
+
+            // If no results with 5 tokens, try with 4
+            if (results.isEmpty() && validTokens.size() >= 4) {
+                results = adresseRepository.findSuggestionsByFourTokens(
+                    validTokens.get(0),
+                    validTokens.get(1),
+                    validTokens.get(2),
+                    validTokens.get(3)
+                );
+            }
+
+            // If no results with 4 tokens, try with 3
+            if (results.isEmpty() && validTokens.size() >= 3) {
+                results = adresseRepository.findSuggestionsByThreeTokens(validTokens.get(0), validTokens.get(1), validTokens.get(2));
+            }
+        } else if (validTokens.size() == 4) {
+            results = adresseRepository.findSuggestionsByFourTokens(
+                validTokens.get(0),
+                validTokens.get(1),
+                validTokens.get(2),
+                validTokens.get(3)
+            );
+
+            // If no results with 4 tokens, try with 3
+            if (results.isEmpty()) {
+                results = adresseRepository.findSuggestionsByThreeTokens(validTokens.get(0), validTokens.get(1), validTokens.get(2));
+            }
+        } else if (validTokens.size() == 3) {
+            results = adresseRepository.findSuggestionsByThreeTokens(validTokens.get(0), validTokens.get(1), validTokens.get(2));
+
+            // If no results with 3 tokens, try with 2
+            if (results.isEmpty()) {
+                results = adresseRepository.findSuggestionsByTwoTokens(validTokens.get(0), validTokens.get(1));
+            }
+        } else if (validTokens.size() == 2) {
+            results = adresseRepository.findSuggestionsByTwoTokens(validTokens.get(0), validTokens.get(1));
+
+            // If no results with 2 tokens, try with first token only
+            if (results.isEmpty()) {
+                results = adresseRepository.findSuggestionsByToken(validTokens.get(0));
+            }
+        } else if (validTokens.size() == 1) {
+            results = adresseRepository.findSuggestionsByToken(validTokens.get(0));
+        } else {
+            // Fallback to original method if no valid tokens
+            results = adresseRepository.findSuggestions(query);
+        }
+
+        // ✅ Éliminer les doublons par idadresse et limiter à 20 résultats
         return results
             .stream()
-            .collect(Collectors.toMap(AddressSuggestionProjection::getIdadresse, result -> result, (existing, replacement) -> existing)) // Garder le premier
+            .collect(Collectors.toMap(AddressSuggestionProjection::getIdadresse, result -> result, (existing, replacement) -> existing))
             .values()
             .stream()
+            .limit(20)
             .collect(Collectors.toList());
     }
 

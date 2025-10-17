@@ -49,4 +49,139 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
         nativeQuery = true
     )
     List<AddressSuggestionProjection> findSuggestions(@Param("q") String q);
+
+    @Query(
+        value = """
+        SELECT
+            idadresse,
+            adresse_complete as adresseComplete,
+            numero,
+            nom_voie as nomVoie,
+            type_voie as typeVoie,
+            codepostal,
+            commune,
+            MIN(latitude) as latitude,
+            MIN(longitude) as longitude
+        FROM dvf.adresse_complete_geom_mv
+        WHERE adresse_complete ILIKE CONCAT('%', :token1, '%')
+        GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
+        ORDER BY commune, nom_voie, numero
+        LIMIT 100
+        """,
+        nativeQuery = true
+    )
+    List<AddressSuggestionProjection> findSuggestionsByToken(@Param("token1") String token1);
+
+    @Query(
+        value = """
+        SELECT
+            idadresse,
+            adresse_complete as adresseComplete,
+            numero,
+            nom_voie as nomVoie,
+            type_voie as typeVoie,
+            codepostal,
+            commune,
+            MIN(latitude) as latitude,
+            MIN(longitude) as longitude
+        FROM dvf.adresse_complete_geom_mv
+        WHERE adresse_complete ILIKE CONCAT('%', :token1, '%')
+          AND adresse_complete ILIKE CONCAT('%', :token2, '%')
+        GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
+        ORDER BY commune, nom_voie, numero
+        LIMIT 100
+        """,
+        nativeQuery = true
+    )
+    List<AddressSuggestionProjection> findSuggestionsByTwoTokens(@Param("token1") String token1, @Param("token2") String token2);
+
+    @Query(
+        value = """
+        SELECT
+            idadresse,
+            adresse_complete as adresseComplete,
+            numero,
+            nom_voie as nomVoie,
+            type_voie as typeVoie,
+            codepostal,
+            commune,
+            MIN(latitude) as latitude,
+            MIN(longitude) as longitude
+        FROM dvf.adresse_complete_geom_mv
+        WHERE adresse_complete ILIKE CONCAT('%', :token1, '%')
+          AND adresse_complete ILIKE CONCAT('%', :token2, '%')
+          AND adresse_complete ILIKE CONCAT('%', :token3, '%')
+        GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
+        ORDER BY commune, nom_voie, numero
+        LIMIT 100
+        """,
+        nativeQuery = true
+    )
+    List<AddressSuggestionProjection> findSuggestionsByThreeTokens(
+        @Param("token1") String token1,
+        @Param("token2") String token2,
+        @Param("token3") String token3
+    );
+
+    @Query(
+        value = """
+        SELECT
+            idadresse,
+            adresse_complete as adresseComplete,
+            numero,
+            nom_voie as nomVoie,
+            type_voie as typeVoie,
+            codepostal,
+            commune,
+            MIN(latitude) as latitude,
+            MIN(longitude) as longitude
+        FROM dvf.adresse_complete_geom_mv
+        WHERE adresse_complete ILIKE CONCAT('%', :token1, '%')
+          AND adresse_complete ILIKE CONCAT('%', :token2, '%')
+          AND adresse_complete ILIKE CONCAT('%', :token3, '%')
+          AND adresse_complete ILIKE CONCAT('%', :token4, '%')
+        GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
+        ORDER BY commune, nom_voie, numero
+        LIMIT 100
+        """,
+        nativeQuery = true
+    )
+    List<AddressSuggestionProjection> findSuggestionsByFourTokens(
+        @Param("token1") String token1,
+        @Param("token2") String token2,
+        @Param("token3") String token3,
+        @Param("token4") String token4
+    );
+
+    @Query(
+        value = """
+        SELECT
+            idadresse,
+            adresse_complete as adresseComplete,
+            numero,
+            nom_voie as nomVoie,
+            type_voie as typeVoie,
+            codepostal,
+            commune,
+            MIN(latitude) as latitude,
+            MIN(longitude) as longitude
+        FROM dvf.adresse_complete_geom_mv
+        WHERE adresse_complete ILIKE CONCAT('%', :token1, '%')
+          AND adresse_complete ILIKE CONCAT('%', :token2, '%')
+          AND adresse_complete ILIKE CONCAT('%', :token3, '%')
+          AND adresse_complete ILIKE CONCAT('%', :token4, '%')
+          AND adresse_complete ILIKE CONCAT('%', :token5, '%')
+        GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
+        ORDER BY commune, nom_voie, numero
+        LIMIT 100
+        """,
+        nativeQuery = true
+    )
+    List<AddressSuggestionProjection> findSuggestionsByFiveTokens(
+        @Param("token1") String token1,
+        @Param("token2") String token2,
+        @Param("token3") String token3,
+        @Param("token4") String token4,
+        @Param("token5") String token5
+    );
 }
