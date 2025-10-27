@@ -143,13 +143,13 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
               disabled={currentIndex === 0}
               onClick={onPrevious}
               style={{
-                padding: '4px 8px',
+                padding: '8px 12px',
                 border: '1px solid #e5e7eb',
                 borderRadius: '6px',
                 background: currentIndex === 0 ? '#f9fafb' : 'white',
                 color: currentIndex === 0 ? '#9ca3af' : '#666',
                 cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
-                fontSize: '12px',
+                fontSize: '14px',
                 fontFamily: 'Maven Pro',
                 fontWeight: 600,
                 display: 'flex',
@@ -167,13 +167,13 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
                 }
               }}
             >
-              <svg width="12" height="12" fill="currentColor" viewBox="0 0 320 512">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 320 512">
                 <path d="M20.7 267.3c-6.2-6.2-6.2-16.4 0-22.6l192-192c6.2-6.2 16.4-6.2 22.6 0s6.2 16.4 0 22.6L54.6 256 235.3 436.7c6.2 6.2 6.2 16.4 0 22.6s-16.4 6.2-22.6 0l-192-192z" />
               </svg>
             </button>
             <span
               style={{
-                fontSize: '12px',
+                fontSize: '14px',
                 color: '#3b82f6',
                 fontWeight: 500,
                 padding: '0 12px',
@@ -188,13 +188,13 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
               disabled={currentIndex === totalCount - 1}
               onClick={onNext}
               style={{
-                padding: '4px 8px',
+                padding: '8px 12px',
                 border: '1px solid #e5e7eb',
                 borderRadius: '6px',
                 background: currentIndex === totalCount - 1 ? '#f9fafb' : 'white',
                 color: currentIndex === totalCount - 1 ? '#9ca3af' : '#666',
                 cursor: currentIndex === totalCount - 1 ? 'not-allowed' : 'pointer',
-                fontSize: '12px',
+                fontSize: '14px',
                 fontFamily: 'Maven Pro',
                 fontWeight: 600,
                 display: 'flex',
@@ -212,7 +212,7 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
                 }
               }}
             >
-              <svg width="12" height="12" fill="currentColor" viewBox="0 0 320 512">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 320 512">
                 <path d="M299.3 244.7c6.2 6.2 6.2 16.4 0 22.6l-192 192c-6.2 6.2-16.4 6.2-22.6 0s-6.2-16.4 0-22.6L265.4 256 84.7 75.3c-6.2-6.2-6.2-16.4 0-22.6s16.4-6.2 22.6 0l192 192z" />
               </svg>
             </button>
