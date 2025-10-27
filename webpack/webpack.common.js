@@ -67,7 +67,7 @@ module.exports = async options => {
             exclude: [utils.root('node_modules')],
           },
           {
-            test: /\.(png|jpe?g|gif|svg|ico)$/i,
+            test: /\.(png|jpe?g|gif|svg|ico|webp)$/i,
             type: 'asset/resource',
           },
           /*

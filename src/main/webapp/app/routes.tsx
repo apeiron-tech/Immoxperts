@@ -31,9 +31,9 @@ const loading = <div>loading ...</div>;
 
 const AppRoutes = () => {
   const [searchParams, setSearchParams] = useState({
-    numero: null,
-    nomVoie: null,
     coordinates: null,
+    address: null,
+    isCity: false,
   });
 
   // **IMPORTANT**: Start with null filter state instead of default values
@@ -50,7 +50,14 @@ const AppRoutes = () => {
 
   // **KEY ADDITION**: Handle search parameter changes
   const handleSearchParamsChange = (params: any) => {
-    setSearchParams(params);
+    // Map SearchBar format to PropertyMap format
+    const mappedParams = {
+      coordinates: params.coordinates,
+      address: params.fullAddress || (params.nomVoie ? `${params.numero || ''} ${params.nomVoie}`.trim() : null),
+      isCity: params.isCity || false,
+    };
+
+    setSearchParams(mappedParams);
   };
 
   return (

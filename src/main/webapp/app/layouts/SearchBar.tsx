@@ -16,6 +16,7 @@ interface SearchBarProps {
   onSearch: (searchParams: {
     numero: number;
     nomVoie: string;
+    fullAddress?: string; // Full address extracted from displayName
     coordinates: [number, number];
     context?: Array<{ text: string }>;
     isCity?: boolean; // Flag to indicate if this is a city/commune (OSM) vs specific address
@@ -251,7 +252,34 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           // Combine: OSM cities/communes first, then backend addresses
           const combinedSuggestions = [...deduplicatedOSMSuggestions, ...backendSuggestions];
 
-          setSuggestions(combinedSuggestions);
+          // Sort by relevance: closest match first
+          const sortedSuggestions = combinedSuggestions.sort((a, b) => {
+            const queryLower = searchQuery.toLowerCase().trim();
+            const aLower = a.displayName.toLowerCase();
+            const bLower = b.displayName.toLowerCase();
+
+            // Priority 1: Exact start match
+            const aStartsWith = aLower.startsWith(queryLower);
+            const bStartsWith = bLower.startsWith(queryLower);
+            if (aStartsWith && !bStartsWith) return -1;
+            if (!aStartsWith && bStartsWith) return 1;
+
+            // Priority 2: Word boundary match (space before query)
+            const aWordStart = aLower.includes(' ' + queryLower);
+            const bWordStart = bLower.includes(' ' + queryLower);
+            if (aWordStart && !bWordStart) return -1;
+            if (!aWordStart && bWordStart) return 1;
+
+            // Priority 3: Shorter addresses first
+            if (a.displayName.length !== b.displayName.length) {
+              return a.displayName.length - b.displayName.length;
+            }
+
+            // Priority 4: Alphabetical
+            return a.displayName.localeCompare(b.displayName);
+          });
+
+          setSuggestions(sortedSuggestions);
           setShowSuggestions(true);
           // Close other popups when suggestions open
           onCloseOtherPopups?.();
@@ -290,9 +318,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       const numero = parseInt(feature.numero, 10);
       const nomVoie = feature.nomVoie;
 
+      // Extract the full address from displayName (remove city and postal code)
+      const fullAddress = suggestion.displayName.replace(/\s+\d{5}\s+.*$/, '').trim();
+
       onSearch({
         numero,
         nomVoie,
+        fullAddress, // Add the full address
         coordinates: suggestion.coordinates,
         context: [{ text: feature.commune }, { text: feature.codepostal }, { text: feature.typeVoie }],
         isCity: false, // This is a specific address, show red circle
@@ -354,6 +386,36 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                     if (newValue.length <= 2) {
                       setShowSuggestions(false);
                       setSuggestions([]);
+                    }
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && searchQuery.trim()) {
+                      // When Enter is pressed, try to find a matching suggestion
+                      const exactMatch = suggestions.find(suggestion => suggestion.displayName.toLowerCase() === searchQuery.toLowerCase());
+
+                      if (exactMatch) {
+                        handleSuggestionSelect(exactMatch);
+                      } else {
+                        // Try to find a partial match (contains the search query)
+                        const partialMatch = suggestions.find(suggestion =>
+                          suggestion.displayName.toLowerCase().includes(searchQuery.toLowerCase()),
+                        );
+
+                        if (partialMatch) {
+                          handleSuggestionSelect(partialMatch);
+                        } else {
+                          // If no match at all, trigger search with the typed query
+                          // This will show the map with the search query but no specific coordinates
+                          onSearch({
+                            numero: null,
+                            nomVoie: searchQuery.trim(),
+                            coordinates: null,
+                            isCity: true, // Treat as city search when no exact match
+                          });
+                          setShowSuggestions(false);
+                          setIsSelectionMade(true);
+                        }
+                      }
                     }
                   }}
                   onFocus={() => {
@@ -535,6 +597,36 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   if (newValue.length <= 2) {
                     setShowSuggestions(false);
                     setSuggestions([]);
+                  }
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    // When Enter is pressed, try to find a matching suggestion
+                    const exactMatch = suggestions.find(suggestion => suggestion.displayName.toLowerCase() === searchQuery.toLowerCase());
+
+                    if (exactMatch) {
+                      handleSuggestionSelect(exactMatch);
+                    } else {
+                      // Try to find a partial match (contains the search query)
+                      const partialMatch = suggestions.find(suggestion =>
+                        suggestion.displayName.toLowerCase().includes(searchQuery.toLowerCase()),
+                      );
+
+                      if (partialMatch) {
+                        handleSuggestionSelect(partialMatch);
+                      } else {
+                        // If no match at all, trigger search with the typed query
+                        // This will show the map with the search query but no specific coordinates
+                        onSearch({
+                          numero: null,
+                          nomVoie: searchQuery.trim(),
+                          coordinates: null,
+                          isCity: true, // Treat as city search when no exact match
+                        });
+                        setShowSuggestions(false);
+                        setIsSelectionMade(true);
+                      }
+                    }
                   }
                 }}
                 onFocus={() => {

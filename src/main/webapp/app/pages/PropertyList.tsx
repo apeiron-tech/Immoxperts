@@ -392,11 +392,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <PropertyCardClick
-                  property={similarProperties[currentIndex]}
-                  onClick={() => handlePropertySelect(similarProperties[currentIndex])}
-                  compact
-                />
+                <PropertyCardClick property={similarProperties[currentIndex]} onClick={() => {}} compact />
               </motion.div>
             )}
 
