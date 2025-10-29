@@ -7,9 +7,9 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { FilterState } from '../../types/filters';
 import MobilePropertyBottomSheet from '../property/MobilePropertyBottomSheet';
 // Import map style icons - using direct path since webpack handles it via CopyWebpackPlugin
-const mapSatelliteIcon = '/content/assets/worldwide.png';
-const mapStreetsIcon = '/content/assets/earth.png';
-const statsIcon = '/content/assets/statistic.png';
+const mapSatelliteIcon = '/content/assets/map-satellite.f2bd1f82.webp';
+const mapStreetsIcon = '/content/assets/20251029-091227.jpg';
+const statsIcon = '/content/assets/img_1.png';
 
 // Types definitions
 interface Feature {
@@ -2619,7 +2619,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           title="Toggle map style"
         >
           <img
-            className="absolute rounded-md cursor-pointer h-7 w-7 z-10 relative border border-white"
+            className="absolute rounded-md cursor-pointer h-8 w-8 z-10 relative border border-white"
             src={currentMapStyle === 'original' ? mapSatelliteIcon : mapStreetsIcon}
             alt={currentMapStyle === 'original' ? 'Satellite view' : 'Streets view'}
           />
