@@ -300,6 +300,92 @@ const PropertyMap: React.FC<MapPageProps> = ({
     searchParamsRef.current = searchParams;
   }, [searchParams]);
 
+  // Normalize addresses to improve matching across variants (AV vs Avenue, accents, punctuation)
+  const normalizeAddress = (value: string | undefined | null): string => {
+    if (!value) return '';
+    const lower = value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // strip accents
+      .toLowerCase()
+      .replace(/[.-]/g, ' ') // dots and hyphens to space
+      .replace(/\s+/g, ' ') // collapse spaces
+      .trim();
+    // Normalize street-type codes and words to a single canonical form
+    const codeToCanonical: Record<string, string> = {
+      fg: 'faubourg',
+      n: 'nord',
+      esc: 'escalier',
+      vte: 'voie terrestre',
+      mte: 'montee',
+      pl: 'place',
+      imp: 'impasse',
+      camp: 'camp',
+      vc: 'voie communale',
+      clos: 'clos',
+      ctre: 'centre',
+      sen: 'sente',
+      rue: 'rue',
+      esp: 'esplanade',
+      enc: 'enclave',
+      roc: 'rocade',
+      ptr: 'poterne',
+      dom: 'domaine',
+      sq: 'square',
+      prt: 'port',
+      crs: 'cours',
+      cours: 'cours',
+      gal: 'galerie',
+      ple: 'place',
+      bd: 'boulevard',
+      zi: 'zone industrielle',
+      rte: 'route',
+      prom: 'promenade',
+      quai: 'quai',
+      res: 'residence',
+      pas: 'passage',
+      ham: 'hameau',
+      mais: 'maison',
+      cd: 'chemin departemental',
+      tra: 'traverse',
+      parc: 'parc',
+      rac: 'raccordement',
+      dsc: 'descente',
+      lot: 'lotissement',
+      rpe: 'ruelle',
+      chem: 'chemin',
+      che: 'chemin',
+      hab: 'habitation',
+      qua: 'quartier',
+      chv: 'chevauchant',
+      all: 'allee',
+      allee: 'allee',
+      cour: 'cour',
+      ptte: 'petite',
+      tsse: 'tasse',
+      zac: 'zone amenagement concerte',
+      za: 'zone activite',
+      vge: 'village',
+      rle: 'ruelle',
+      cc: 'centre commercial',
+      cite: 'cite',
+      voie: 'voie',
+      cr: 'chemin rural',
+      gr: 'grande randonnee',
+      nte: 'montee',
+      via: 'viaduc',
+      av: 'avenue',
+      ave: 'avenue',
+      avenue: 'avenue',
+      boulevard: 'boulevard',
+      r: 'rue',
+    };
+    let normalized = lower;
+    Object.entries(codeToCanonical).forEach(([code, canonical]) => {
+      normalized = normalized.replace(new RegExp(`\\b${code}\\b`, 'g'), canonical);
+    });
+    return normalized.replace(/\s+/g, ' ').trim();
+  };
+
   // Stats panel state
   const [showStatsPanel, setShowStatsPanel] = useState(true); // Open by default
 
@@ -1076,8 +1162,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       if (searchParamsRef.current?.address) {
                         const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
                         sortedAddresses = [...addresses].sort((a, b) => {
-                          const aMatchesAddress = a.adresse_complete.toLowerCase().trim() === searchedAddress;
-                          const bMatchesAddress = b.adresse_complete.toLowerCase().trim() === searchedAddress;
+                          const aMatchesAddress = normalizeAddress(a.adresse_complete) === normalizeAddress(searchedAddress);
+                          const bMatchesAddress = normalizeAddress(b.adresse_complete) === normalizeAddress(searchedAddress);
                           if (aMatchesAddress && !bMatchesAddress) return -1;
                           if (!aMatchesAddress && bMatchesAddress) return 1;
                           return 0;
@@ -1568,8 +1654,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
               const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
 
               sortedAddresses = [...addresses].sort((a, b) => {
-                const aMatchesAddress = a.adresse_complete.toLowerCase().trim() === searchedAddress;
-                const bMatchesAddress = b.adresse_complete.toLowerCase().trim() === searchedAddress;
+                const aMatchesAddress = normalizeAddress(a.adresse_complete) === normalizeAddress(searchedAddress);
+                const bMatchesAddress = normalizeAddress(b.adresse_complete) === normalizeAddress(searchedAddress);
 
                 if (aMatchesAddress && !bMatchesAddress) return -1;
                 if (!aMatchesAddress && bMatchesAddress) return 1;
@@ -1641,8 +1727,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
             if (searchParamsRef.current?.address) {
               const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
               sortedAddresses = [...addresses].sort((a, b) => {
-                const aMatchesAddress = a.adresse_complete.toLowerCase().trim() === searchedAddress;
-                const bMatchesAddress = b.adresse_complete.toLowerCase().trim() === searchedAddress;
+                const aMatchesAddress = normalizeAddress(a.adresse_complete) === normalizeAddress(searchedAddress);
+                const bMatchesAddress = normalizeAddress(b.adresse_complete) === normalizeAddress(searchedAddress);
                 if (aMatchesAddress && !bMatchesAddress) return -1;
                 if (!aMatchesAddress && bMatchesAddress) return 1;
                 return 0;
@@ -1729,8 +1815,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
 
                       sortedAddresses = [...addresses].sort((a, b) => {
-                        const aMatchesAddress = a.adresse_complete.toLowerCase().trim() === searchedAddress;
-                        const bMatchesAddress = b.adresse_complete.toLowerCase().trim() === searchedAddress;
+                        const aMatchesAddress = normalizeAddress(a.adresse_complete) === normalizeAddress(searchedAddress);
+                        const bMatchesAddress = normalizeAddress(b.adresse_complete) === normalizeAddress(searchedAddress);
 
                         if (aMatchesAddress && !bMatchesAddress) return -1;
                         if (!aMatchesAddress && bMatchesAddress) return 1;
