@@ -9,7 +9,7 @@ import MobilePropertyBottomSheet from '../property/MobilePropertyBottomSheet';
 // Import map style icons - using direct path since webpack handles it via CopyWebpackPlugin
 const mapSatelliteIcon = '/content/assets/map-satellite.f2bd1f82.webp';
 const mapStreetsIcon = '/content/assets/20251029-091227.jpg';
-const statsIcon = '/content/assets/img_1.png';
+const statsIcon = '/content/assets/statimg.png';
 
 // Types definitions
 interface Feature {
