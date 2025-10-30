@@ -2600,7 +2600,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           }
           toggleStatsPanel();
         }}
-        className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 bg-white text-gray-600 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-lg flex items-center gap-0.5 hover:bg-gray-50 shadow-md"
+        className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 bg-white text-gray-600 px-1 py-1 sm:px-2 sm:py-1.5 rounded-lg flex items-center gap-0.5 hover:bg-gray-50 shadow-md"
       >
         {showStatsPanel ? (
           <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24">
