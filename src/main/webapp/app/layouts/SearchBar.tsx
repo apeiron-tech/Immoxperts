@@ -12,6 +12,52 @@ const normalizeAccents = (str: string): string => {
     .replace(/Ç/g, 'C'); // Handle 'Ç' specifically
 };
 
+// Utility function to expand French address abbreviations
+const expandAddressAbbreviations = (str: string): string => {
+  // Common French address abbreviations mapping
+  const abbreviations: { [key: string]: string } = {
+    'BD ': 'BOULEVARD ',
+    'BVD ': 'BOULEVARD ',
+    'BD. ': 'BOULEVARD ',
+    'BVD. ': 'BOULEVARD ',
+    'AV ': 'AVENUE ',
+    'AV. ': 'AVENUE ',
+    'AVE ': 'AVENUE ',
+    'AVE. ': 'AVENUE ',
+    'R ': 'RUE ',
+    'R. ': 'RUE ',
+    'PL ': 'PLACE ',
+    'PL. ': 'PLACE ',
+    'SQ ': 'SQUARE ',
+    'SQ. ': 'SQUARE ',
+    'CRS ': 'COURS ',
+    'CRS. ': 'COURS ',
+    'PROM ': 'PROMENADE ',
+    'PROM. ': 'PROMENADE ',
+    'IMP ': 'IMPASSE ',
+    'IMP. ': 'IMPASSE ',
+    'CHEMIN ': 'CHEMIN ',
+    'CH ': 'CHEMIN ',
+    'CH. ': 'CHEMIN ',
+    'BLVD ': 'BOULEVARD ',
+    'BLVD. ': 'BOULEVARD ',
+    'ALLEE ': 'ALLÉE ',
+    'ALLEE. ': 'ALLÉE ',
+    'ALL ': 'ALLÉE ',
+    'ALL. ': 'ALLÉE ',
+  };
+
+  // Replace abbreviations (case-insensitive)
+  let expanded = str.toUpperCase();
+  Object.keys(abbreviations).forEach(abbr => {
+    // Use word boundary to ensure we match complete words only
+    const regex = new RegExp(`\\b${abbr.replace(/\./g, '\\.')}`, 'gi');
+    expanded = expanded.replace(regex, abbreviations[abbr]);
+  });
+
+  return expanded;
+};
+
 interface SearchBarProps {
   onSearch: (searchParams: {
     numero: number;
@@ -224,8 +270,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
         try {
           setIsLoading(true);
 
-          // Normalize the search query before sending to APIs
-          const normalizedQuery = normalizeAccents(searchQuery);
+          // Expand abbreviations first, then normalize the search query before sending to APIs
+          const expandedQuery = expandAddressAbbreviations(searchQuery);
+          const normalizedQuery = normalizeAccents(expandedQuery);
 
           // Fetch from both APIs in parallel
           const [backendResponse, osmPlaces] = await Promise.all([
