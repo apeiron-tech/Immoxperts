@@ -44,7 +44,7 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
         WHERE adresse_complete ILIKE CONCAT('%', :q, '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
-        LIMIT 20
+        LIMIT 50
         """,
         nativeQuery = true
     )
@@ -66,7 +66,7 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
         WHERE adresse_complete ILIKE CONCAT('%', :token1, '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
-        LIMIT 100
+        LIMIT 50
         """,
         nativeQuery = true
     )
@@ -89,7 +89,7 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
           AND adresse_complete ILIKE CONCAT('%', :token2, '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
-        LIMIT 100
+        LIMIT 50
         """,
         nativeQuery = true
     )
@@ -113,7 +113,7 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
           AND adresse_complete ILIKE CONCAT('%', :token3, '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
-        LIMIT 100
+        LIMIT 50
         """,
         nativeQuery = true
     )
@@ -142,7 +142,7 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
           AND adresse_complete ILIKE CONCAT('%', :token4, '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
-        LIMIT 100
+        LIMIT 50
         """,
         nativeQuery = true
     )
@@ -173,7 +173,7 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
           AND adresse_complete ILIKE CONCAT('%', :token5, '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
-        LIMIT 100
+        LIMIT 50
         """,
         nativeQuery = true
     )

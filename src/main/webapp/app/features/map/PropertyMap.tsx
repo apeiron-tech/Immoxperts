@@ -6,6 +6,10 @@ import { API_ENDPOINTS } from 'app/config/api.config';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { FilterState } from '../../types/filters';
 import MobilePropertyBottomSheet from '../property/MobilePropertyBottomSheet';
+// Import map style icons - using direct path since webpack handles it via CopyWebpackPlugin
+const mapSatelliteIcon = '/content/assets/map-satellite.f2bd1f82.webp';
+const mapStreetsIcon = '/content/assets/20251029-091227.jpg';
+const statsIcon = '/content/assets/img_1.png';
 
 // Types definitions
 interface Feature {
@@ -290,8 +294,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
+  // Store searchParams in a ref to avoid stale closure issues
+  const searchParamsRef = useRef(searchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  }, [searchParams]);
+
   // Stats panel state
-  const [showStatsPanel, setShowStatsPanel] = useState(false); // Closed by default
+  const [showStatsPanel, setShowStatsPanel] = useState(true); // Open by default
 
   // Expose function to close stats popup to parent
   useEffect(() => {
@@ -972,10 +982,10 @@ const PropertyMap: React.FC<MapPageProps> = ({
             source: 'selected-address-marker',
             paint: {
               'circle-color': '#ff0000', // Red color
-              'circle-radius': 8,
-              'circle-stroke-width': 3,
+              'circle-radius': 4,
+              'circle-stroke-width': 2,
               'circle-stroke-color': '#fff',
-              'circle-stroke-opacity': 0.8,
+              'circle-stroke-opacity': 0.9,
             },
           });
 
@@ -1038,6 +1048,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
             }
 
             // Set a small delay to avoid too many queries
+            // eslint-disable-next-line complexity
             hoverTimeout = setTimeout(() => {
               const features = map.queryRenderedFeatures(e.point, { layers: ['mutation-point'] });
 
@@ -1060,7 +1071,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     const addresses = JSON.parse(feature.properties.adresses);
 
                     if (addresses && addresses.length > 0) {
-                      const firstAddress = addresses[0];
+                      // Sort addresses to prioritize searched address if available
+                      let sortedAddresses = addresses;
+                      if (searchParamsRef.current?.address) {
+                        const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
+                        sortedAddresses = [...addresses].sort((a, b) => {
+                          const aMatchesAddress = a.adresse_complete.toLowerCase().trim() === searchedAddress;
+                          const bMatchesAddress = b.adresse_complete.toLowerCase().trim() === searchedAddress;
+                          if (aMatchesAddress && !bMatchesAddress) return -1;
+                          if (!aMatchesAddress && bMatchesAddress) return 1;
+                          return 0;
+                        });
+                      }
+
+                      const firstAddress = sortedAddresses[0];
                       const mutations = firstAddress.mutations || [];
 
                       // Helper functions for your styling - Nouvelles couleurs spécifiées
@@ -1126,7 +1150,28 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                       if (firstMutation) {
                         // Create a function to render mutation data - show ALL mutations, not just 5
-                        const allMutations = mutations; // Remove the slice(0, 5) limit
+                        // Sort mutations to prioritize searched address if available
+                        let allMutations = mutations;
+                        if (searchParams?.address && searchParams?.coordinates) {
+                          const searchedCoords = searchParams.coordinates;
+                          allMutations = [...mutations].sort((a, b) => {
+                            const aMatchesCoords =
+                              Math.abs(a.longitude - searchedCoords[0]) < 0.0001 && Math.abs(a.latitude - searchedCoords[1]) < 0.0001;
+                            const bMatchesCoords =
+                              Math.abs(b.longitude - searchedCoords[0]) < 0.0001 && Math.abs(b.latitude - searchedCoords[1]) < 0.0001;
+                            if (aMatchesCoords && !bMatchesCoords) return -1;
+                            if (!aMatchesCoords && bMatchesCoords) return 1;
+                            const aDate = new Date(a.date || 0);
+                            const bDate = new Date(b.date || 0);
+                            return bDate.getTime() - aDate.getTime();
+                          });
+                        } else {
+                          allMutations = [...mutations].sort((a, b) => {
+                            const aDate = new Date(a.date || 0);
+                            const bDate = new Date(b.date || 0);
+                            return bDate.getTime() - aDate.getTime();
+                          });
+                        }
                         let currentIndex = 0;
 
                         const renderMutation = index => {
@@ -1218,7 +1263,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                ">
                    Vendu le <strong style="color: #000;">${formatFrenchDate(soldDate || '')}</strong>
                </div>
-               
+
                ${
                  allMutations.length > 1
                    ? `
@@ -1230,7 +1275,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                  justify-content: center;
                  gap: 4px;
                  padding: 4px;
-                 
+
                ">
                  <button class="prev-btn" style="
                    padding: 4px 8px;
@@ -1276,8 +1321,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                           // Convert current mutation to property format
                           const currentMutation = allMutations[currentIndex];
-                          // Get the address from the parent address object, not from mutation
-                          const parentAddress = addresses && addresses.length > 0 ? addresses[0] : null;
+                          // Get the address from the sorted addresses (first one is the searched address)
+                          const parentAddress = sortedAddresses && sortedAddresses.length > 0 ? sortedAddresses[0] : null;
                           setMobileSheetProperty({
                             address: parentAddress?.adresse_complete || 'Adresse non disponible',
                             city: parentAddress?.commune || 'Ville non disponible',
@@ -1517,8 +1562,23 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
           // Helper function to create popup content
           const createPopupContent = (addresses: any[]) => {
-            if (addresses.length === 1) {
-              const address = addresses[0];
+            // Sort addresses to prioritize searched address if available
+            let sortedAddresses = addresses;
+            if (searchParamsRef.current?.address) {
+              const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
+
+              sortedAddresses = [...addresses].sort((a, b) => {
+                const aMatchesAddress = a.adresse_complete.toLowerCase().trim() === searchedAddress;
+                const bMatchesAddress = b.adresse_complete.toLowerCase().trim() === searchedAddress;
+
+                if (aMatchesAddress && !bMatchesAddress) return -1;
+                if (!aMatchesAddress && bMatchesAddress) return 1;
+                return 0;
+              });
+            }
+
+            if (sortedAddresses.length === 1) {
+              const address = sortedAddresses[0];
               return `
                 <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
                   <div style="font-weight: bold; font-size: 14px; color: #3b82f6;">
@@ -1530,17 +1590,17 @@ const PropertyMap: React.FC<MapPageProps> = ({
               return `
                 <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
                   <div style="margin-bottom: 8px; font-weight: bold; color: #3b82f6;">
-                    ${addresses.length} adresses:
+                    ${sortedAddresses.length} adresses:
                   </div>
-                  ${addresses
+                  ${sortedAddresses
                     .map((address, index) => {
                       const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
                       return `
-                    <div 
+                    <div
                       style="
-                        margin: 4px 0; 
-                        padding: 6px; 
-                        background: #f8f9fa; 
+                        margin: 4px 0;
+                        padding: 6px;
+                        background: #f8f9fa;
                         border-radius: 4px;
                         cursor: pointer;
                         transition: background-color 0.2s;
@@ -1576,8 +1636,21 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
           // Helper function to handle mobile bottom sheet
           const handleMobileBottomSheet = (addresses: any[]) => {
-            if (addresses.length === 1) {
-              const address = addresses[0];
+            // Sort addresses to prioritize searched address if available
+            let sortedAddresses = addresses;
+            if (searchParamsRef.current?.address) {
+              const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
+              sortedAddresses = [...addresses].sort((a, b) => {
+                const aMatchesAddress = a.adresse_complete.toLowerCase().trim() === searchedAddress;
+                const bMatchesAddress = b.adresse_complete.toLowerCase().trim() === searchedAddress;
+                if (aMatchesAddress && !bMatchesAddress) return -1;
+                if (!aMatchesAddress && bMatchesAddress) return 1;
+                return 0;
+              });
+            }
+
+            if (sortedAddresses.length === 1) {
+              const address = sortedAddresses[0];
               const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
 
               if (hasMutations) {
@@ -1599,8 +1672,21 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                 setShowMobileBottomSheet(true);
               }
-            } else if (addresses.length > 1) {
-              const addressWithMutations = addresses.find(addr => addr.mutations && addr.mutations.length > 0);
+            } else if (sortedAddresses.length > 1) {
+              // For multiple addresses, prioritize the searched address even if it has fewer mutations
+              let addressWithMutations;
+              if (searchParamsRef.current?.address) {
+                // First try to find the searched address with mutations
+                const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
+                addressWithMutations = sortedAddresses.find(
+                  addr => addr.adresse_complete.toLowerCase().trim() === searchedAddress && addr.mutations && addr.mutations.length > 0,
+                );
+              }
+
+              // If searched address has no mutations, fall back to any address with mutations
+              if (!addressWithMutations) {
+                addressWithMutations = sortedAddresses.find(addr => addr.mutations && addr.mutations.length > 0);
+              }
 
               if (addressWithMutations) {
                 setMobileSheetMutations(addressWithMutations.mutations);
@@ -1636,12 +1722,26 @@ const PropertyMap: React.FC<MapPageProps> = ({
               if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
                 try {
                   const addresses = JSON.parse(feature.properties.adresses);
-
                   if (addresses && addresses.length > 0) {
+                    // Sort addresses to prioritize searched address if available
+                    let sortedAddresses = addresses;
+                    if (searchParamsRef.current?.address) {
+                      const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
+
+                      sortedAddresses = [...addresses].sort((a, b) => {
+                        const aMatchesAddress = a.adresse_complete.toLowerCase().trim() === searchedAddress;
+                        const bMatchesAddress = b.adresse_complete.toLowerCase().trim() === searchedAddress;
+
+                        if (aMatchesAddress && !bMatchesAddress) return -1;
+                        if (!aMatchesAddress && bMatchesAddress) return 1;
+                        return 0;
+                      });
+                    }
+
                     // Set up global function for address selection in multi-address popups
-                    if (addresses.length > 1) {
+                    if (sortedAddresses.length > 1) {
                       (window as any).selectAddress = (index: number) => {
-                        const clickedAddress = addresses[index];
+                        const clickedAddress = sortedAddresses[index];
                         const hasMutations =
                           clickedAddress.mutations && Array.isArray(clickedAddress.mutations) && clickedAddress.mutations.length > 0;
 
@@ -1662,12 +1762,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     const isMobile = window.innerWidth < 768;
 
                     if (isMobile) {
-                      handleMobileBottomSheet(addresses);
+                      handleMobileBottomSheet(sortedAddresses);
                       return; // Don't create Mapbox popup on mobile
                     }
 
                     // Create click popup for desktop
-                    const popupContent = createPopupContent(addresses);
+                    const popupContent = createPopupContent(sortedAddresses);
                     clickPopupRef.current = new mapboxgl.Popup({
                       closeButton: true,
                       closeOnClick: true,
@@ -1687,8 +1787,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     });
 
                     // Call onAddressSelect when an address is clicked (only for single address with mutations)
-                    if (addresses.length === 1) {
-                      const address = addresses[0];
+                    if (sortedAddresses.length === 1) {
+                      const address = sortedAddresses[0];
                       const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
 
                       if (hasMutations) {
@@ -2418,16 +2518,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
           }
           toggleStatsPanel();
         }}
-        className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 bg-white text-gray-600 px-2 py-1 sm:px-3 sm:py-2 rounded-lg flex items-center gap-1 text-xs sm:text-sm hover:bg-gray-50 shadow-md"
+        className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 bg-white text-gray-600 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-lg flex items-center gap-0.5 hover:bg-gray-50 shadow-md"
       >
         {showStatsPanel ? (
           <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24">
             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         ) : (
-          <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24">
-            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <img src={statsIcon} alt="Statistics" className="w-6 h-6" />
         )}
       </button>
 
@@ -2521,17 +2619,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
               }
             }
           }}
-          className="bg-white text-gray-600 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200"
+          className="relative bg-white rounded-md cursor-pointer h-9 w-9 z-10 flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200 overflow-hidden"
           title="Toggle map style"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"
-            />
-          </svg>
+          <img
+            className="absolute rounded-md cursor-pointer h-8 w-8 z-10 relative border border-white"
+            src={currentMapStyle === 'original' ? mapSatelliteIcon : mapStreetsIcon}
+            alt={currentMapStyle === 'original' ? 'Satellite view' : 'Streets view'}
+          />
         </button>
       </div>
 
