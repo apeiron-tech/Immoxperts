@@ -1792,9 +1792,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
             }
           };
 
-          // Click handler for mutations (separate from hover)
-          map.on('click', 'mutation-point', e => {
-            debugLog('Clicked mutation point:', e.features);
+          // Helper function to handle mutation point click/touch
+          const handleMutationPointInteraction = (e: any) => {
+            debugLog('Clicked/Touched mutation point:', e.features);
             if (e.features && e.features.length > 0) {
               const feature = e.features[0];
 
@@ -1887,7 +1887,87 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 }
               }
             }
-          });
+          };
+
+          // Click handler for mutations (separate from hover)
+          map.on('click', 'mutation-point', handleMutationPointInteraction);
+
+          // Touch handler for iOS devices - prevents double-tap requirement
+          // Listen to touch events on the map canvas and query features
+          let touchStartTime = 0;
+          let touchStartX = 0;
+          let touchStartY = 0;
+          let lastTouchInteraction: number = 0;
+
+          const canvas = map.getCanvasContainer();
+
+          const handleTouchStart = (e: TouchEvent) => {
+            if (e.touches && e.touches.length > 0) {
+              touchStartTime = Date.now();
+              const rect = canvas.getBoundingClientRect();
+              touchStartX = e.touches[0].clientX - rect.left;
+              touchStartY = e.touches[0].clientY - rect.top;
+            }
+          };
+
+          const handleTouchEnd = (e: TouchEvent) => {
+            const touchEndTime = Date.now();
+            const timeDiff = touchEndTime - touchStartTime;
+
+            // Prevent rapid successive triggers (debounce)
+            if (touchEndTime - lastTouchInteraction < 300) {
+              return;
+            }
+
+            // Only trigger if it's a quick tap (not a drag/scroll)
+            if (timeDiff < 300 && e.changedTouches && e.changedTouches.length > 0) {
+              const rect = canvas.getBoundingClientRect();
+              const touchX = e.changedTouches[0].clientX - rect.left;
+              const touchY = e.changedTouches[0].clientY - rect.top;
+
+              // Check if it's a tap (not a drag) - allow small movement
+              const distance = Math.sqrt(Math.pow(touchX - touchStartX, 2) + Math.pow(touchY - touchStartY, 2));
+
+              if (distance < 10) {
+                // Query features at touch point
+                const features = map.queryRenderedFeatures([touchX, touchY], { layers: ['mutation-point'] });
+
+                if (features && features.length > 0) {
+                  // Prevent default to avoid double-tap zoom
+                  e.preventDefault();
+                  lastTouchInteraction = touchEndTime;
+
+                  // Clear hover popup immediately on touch
+                  clearHoverPopup();
+
+                  // Create a mock event object with the feature for the handler
+                  const mockEvent = {
+                    features,
+                    lngLat: map.unproject([touchX, touchY]),
+                    point: new mapboxgl.Point(touchX, touchY),
+                    originalEvent: e,
+                  };
+
+                  // Trigger the same handler as click
+                  handleMutationPointInteraction(mockEvent);
+                }
+              }
+            }
+            touchStartX = 0;
+            touchStartY = 0;
+            touchStartTime = 0;
+          };
+
+          // Add touch event listeners to canvas
+          canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+          canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+          // Store handlers on map for cleanup
+          (map as any)._touchHandlers = {
+            start: handleTouchStart,
+            end: handleTouchEnd,
+            canvas,
+          };
 
           debugLog('Mutation point event handlers set up successfully');
 
@@ -2155,6 +2235,27 @@ const PropertyMap: React.FC<MapPageProps> = ({
       debugLog('Error creating map:', err);
       setMapError(`Map creation error: ${err}`);
     }
+
+    // Cleanup function
+    return () => {
+      if (mapRef.current) {
+        const map = mapRef.current;
+
+        // Remove touch event listeners if they exist
+        if ((map as any)._touchHandlers) {
+          const handlers = (map as any)._touchHandlers;
+          if (handlers.canvas) {
+            handlers.canvas.removeEventListener('touchstart', handlers.start);
+            handlers.canvas.removeEventListener('touchend', handlers.end);
+          }
+          delete (map as any)._touchHandlers;
+        }
+
+        // Remove map instance
+        map.remove();
+        mapRef.current = null;
+      }
+    };
   }, []);
 
   // Event handlers are now set up in the map load event
@@ -2592,27 +2693,79 @@ const PropertyMap: React.FC<MapPageProps> = ({
           </a>
         </div>
       </div>
-      {/* Stats Panel Toggle Button */}
-      <button
-        onClick={() => {
-          if (!showStatsPanel) {
-            setActivePropertyType(0);
+      {/* Map Controls - All buttons in a column with same size */}
+      <style>{`
+        @media (min-width: 640px) {
+          .map-control-btn {
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            min-height: 40px !important;
           }
-          toggleStatsPanel();
+          .map-control-icon-sm {
+            width: 20px !important;
+            height: 20px !important;
+            min-width: 20px !important;
+            min-height: 20px !important;
+          }
+          .map-control-icon-md {
+            width: 24px !important;
+            height: 24px !important;
+            min-width: 24px !important;
+            min-height: 24px !important;
+          }
+          .map-control-icon-lg {
+            width: 36px !important;
+            height: 36px !important;
+            min-width: 36px !important;
+            min-height: 36px !important;
+          }
+        }
+      `}</style>
+      <div
+        className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 flex flex-col gap-1"
+        style={{
+          WebkitTapHighlightColor: 'transparent',
+          touchAction: 'manipulation',
         }}
-        className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 bg-white text-gray-600 px-1 py-1 sm:px-2 sm:py-1.5 rounded-lg flex items-center gap-0.5 hover:bg-gray-50 shadow-md"
       >
-        {showStatsPanel ? (
-          <svg className="w-6 h-6 text-red-500" viewBox="0 0 24 24">
-            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <img src={statsIcon} alt="Statistics" className="w-6 h-6" />
-        )}
-      </button>
+        {/* Stats Panel Toggle Button */}
+        <button
+          onClick={() => {
+            if (!showStatsPanel) {
+              setActivePropertyType(0);
+            }
+            toggleStatsPanel();
+          }}
+          className="bg-white text-gray-600 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200 map-control-btn"
+          style={{
+            width: '32px',
+            height: '32px',
+            minWidth: '32px',
+            minHeight: '32px',
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
+          }}
+          title="Statistics"
+        >
+          {showStatsPanel ? (
+            <svg
+              className="w-5 h-5 text-red-500 map-control-icon-md"
+              style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
+              viewBox="0 0 24 24"
+            >
+              <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <img
+              src={statsIcon}
+              alt="Statistics"
+              className="map-control-icon-md"
+              style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
+            />
+          )}
+        </button>
 
-      {/* Custom Zoom Controls */}
-      <div className="absolute top-16 left-2 sm:top-20 sm:left-4 z-30 flex flex-col gap-1">
         {/* Zoom In Button */}
         <button
           onClick={() => {
@@ -2620,10 +2773,24 @@ const PropertyMap: React.FC<MapPageProps> = ({
               mapRef.current.zoomIn();
             }
           }}
-          className="bg-white text-gray-600 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200"
+          className="bg-white text-gray-600 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200 map-control-btn"
+          style={{
+            width: '32px',
+            height: '32px',
+            minWidth: '32px',
+            minHeight: '32px',
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
+          }}
           title="Zoom in"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-4 h-4 map-control-icon-sm"
+            style={{ width: '16px', height: '16px', minWidth: '16px', minHeight: '16px' }}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
         </button>
@@ -2635,10 +2802,24 @@ const PropertyMap: React.FC<MapPageProps> = ({
               mapRef.current.zoomOut();
             }
           }}
-          className="bg-white text-gray-600 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200"
+          className="bg-white text-gray-600 rounded-lg flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200 map-control-btn"
+          style={{
+            width: '32px',
+            height: '32px',
+            minWidth: '32px',
+            minHeight: '32px',
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
+          }}
           title="Zoom out"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-4 h-4 map-control-icon-sm"
+            style={{ width: '16px', height: '16px', minWidth: '16px', minHeight: '16px' }}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
           </svg>
         </button>
@@ -2701,11 +2882,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
               }
             }
           }}
-          className="relative bg-white rounded-md cursor-pointer h-9 w-9 z-10 flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200 overflow-hidden"
+          className="relative bg-white rounded-lg cursor-pointer flex items-center justify-center hover:bg-gray-50 shadow-md border border-gray-200 overflow-hidden map-control-btn"
+          style={{
+            width: '32px',
+            height: '32px',
+            minWidth: '32px',
+            minHeight: '32px',
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
+          }}
           title="Toggle map style"
         >
           <img
-            className="absolute rounded-md cursor-pointer h-8 w-8 z-10 relative border border-white"
+            className="rounded-md map-control-icon-lg"
+            style={{ width: '28px', height: '28px', minWidth: '28px', minHeight: '28px' }}
             src={currentMapStyle === 'original' ? mapSatelliteIcon : mapStreetsIcon}
             alt={currentMapStyle === 'original' ? 'Satellite view' : 'Streets view'}
           />
@@ -2864,7 +3054,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 </div>
 
                 {/* Statistics Display - Cards like Desktop */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-1.5">
                   {(() => {
                     const propertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
                     const apiTypeMap = {
@@ -2904,17 +3094,45 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                     return (
                       <>
-                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                          <p className="text-xs text-gray-600 mb-1">Nombre de ventes</p>
-                          <p className="text-sm font-semibold text-gray-900">{formatNumber(currentStat.nombre)}</p>
+                        <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center justify-center">
+                          <p
+                            className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
+                            style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
+                          >
+                            Nombre de ventes
+                          </p>
+                          <p
+                            className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
+                            style={{ fontSize: 'clamp(11px, 2.4vw, 13px)', lineHeight: '1.2' }}
+                          >
+                            {formatNumber(currentStat.nombre)}
+                          </p>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                          <p className="text-xs text-gray-600 mb-1">Prix médian</p>
-                          <p className="text-sm font-semibold text-gray-900">{formatNumber(currentStat.prixMoyen)}€</p>
+                        <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center justify-center">
+                          <p
+                            className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
+                            style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
+                          >
+                            Prix médian
+                          </p>
+                          <p
+                            className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
+                            style={{ fontSize: 'clamp(11px, 2.4vw, 13px)', lineHeight: '1.2' }}
+                          >
+                            {formatNumber(currentStat.prixMoyen)}€
+                          </p>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                          <p className="text-xs text-gray-600 mb-1">Prix médian au m²</p>
-                          <p className="text-sm font-semibold text-gray-900">
+                        <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center justify-center">
+                          <p
+                            className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
+                            style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
+                          >
+                            Prix médian au m²
+                          </p>
+                          <p
+                            className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
+                            style={{ fontSize: 'clamp(11px, 2.4vw, 13px)', lineHeight: '1.2' }}
+                          >
                             {Math.round(currentStat.prixM2Moyen || 0).toLocaleString('fr-FR')}€
                           </p>
                         </div>
