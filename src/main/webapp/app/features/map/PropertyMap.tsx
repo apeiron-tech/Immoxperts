@@ -419,12 +419,27 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // Mobile bottom sheet state
   const [showMobileBottomSheet, setShowMobileBottomSheet] = useState(false);
+  const showMobileBottomSheetRef = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    showMobileBottomSheetRef.current = showMobileBottomSheet;
+  }, [showMobileBottomSheet]);
 
   // Close all popups when filter popup opens
   useEffect(() => {
     if (isFilterOpen) {
       setShowStatsPanel(false);
       setShowMobileBottomSheet(false);
+      // Clear shadow when filter opens
+      if (mapRef.current) {
+        const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+          type: 'FeatureCollection',
+          features: [],
+        };
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+      }
     }
   }, [isFilterOpen]);
   const [mobileSheetProperty, setMobileSheetProperty] = useState<any>(null);
@@ -481,6 +496,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
     setMobileSheetProperty(null);
     setMobileSheetMutations([]);
     setMobileSheetIndex(0);
+
+    // Clear the shadow when bottom sheet closes
+    if (mapRef.current) {
+      const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: [],
+      };
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+    }
+
+    if (onMapHover) {
+      onMapHover(null);
+    }
   };
 
   // Ref to store hover popup for cleanup
@@ -1107,19 +1136,25 @@ const PropertyMap: React.FC<MapPageProps> = ({
           });
 
           map.on('mouseleave', 'mutation-point', () => {
-            // Clear the hovered-circle source (remove all features)
-            const emptyFeatureCollection: GeoJSON.FeatureCollection = {
-              type: 'FeatureCollection',
-              features: [],
-            };
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-            (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+            // On desktop, clear shadow normally. On mobile, only clear if bottom sheet is not open
+            const isMobile = window.innerWidth < 768;
+            const shouldClearShadow = !isMobile || !showMobileBottomSheetRef.current;
+
+            if (shouldClearShadow) {
+              // Clear the hovered-circle source (remove all features)
+              const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+                type: 'FeatureCollection',
+                features: [],
+              };
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+              (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+
+              if (onMapHover) {
+                onMapHover(null);
+              }
+            }
 
             map.getCanvas().style.cursor = '';
-
-            if (onMapHover) {
-              onMapHover(null);
-            }
           });
 
           map.on('mousemove', e => {
@@ -1801,6 +1836,19 @@ const PropertyMap: React.FC<MapPageProps> = ({
               // Remove hover popup if it exists (click popup will replace it)
               clearHoverPopup();
 
+              // Check if mobile device (used for shadow and popup logic)
+              const isMobile = window.innerWidth < 768;
+
+              // Keep the shadow visible for the clicked point (mobile only)
+              if (isMobile) {
+                const hoveredFeatureData: GeoJSON.FeatureCollection = {
+                  type: 'FeatureCollection',
+                  features: [feature as GeoJSON.Feature],
+                };
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+              }
+
               if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
                 try {
                   const addresses = JSON.parse(feature.properties.adresses);
@@ -1840,9 +1888,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     // Clear any existing click popup first
                     clearClickPopup();
 
-                    // Check if mobile device
-                    const isMobile = window.innerWidth < 768;
-
                     if (isMobile) {
                       handleMobileBottomSheet(sortedAddresses);
                       return; // Don't create Mapbox popup on mobile
@@ -1860,7 +1905,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       .setHTML(popupContent)
                       .addTo(map);
 
-                    // Clean up global function when popup is closed
+                    // Clean up global function when popup is closed (desktop only - shadow clears normally on desktop)
                     clickPopupRef.current.on('close', () => {
                       if ((window as any).selectAddress) {
                         delete (window as any).selectAddress;
@@ -1907,6 +1952,28 @@ const PropertyMap: React.FC<MapPageProps> = ({
               const rect = canvas.getBoundingClientRect();
               touchStartX = e.touches[0].clientX - rect.left;
               touchStartY = e.touches[0].clientY - rect.top;
+
+              // Show hover shadow on mobile when touching a mutation point
+              const features = map.queryRenderedFeatures([touchStartX, touchStartY], { layers: ['mutation-point'] });
+
+              if (features && features.length > 0) {
+                const feature = features[0];
+
+                // Add the hovered feature to show shadow effect
+                const hoveredFeatureData: GeoJSON.FeatureCollection = {
+                  type: 'FeatureCollection',
+                  features: [feature as GeoJSON.Feature],
+                };
+
+                // Update the hovered-circle source to show shadow
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+
+                // Notify PropertyList about hover
+                if (onMapHover && feature.properties?.idparcelle) {
+                  onMapHover(parseInt(feature.properties.idparcelle, 10));
+                }
+              }
             }
           };
 
@@ -1914,8 +1981,25 @@ const PropertyMap: React.FC<MapPageProps> = ({
             const touchEndTime = Date.now();
             const timeDiff = touchEndTime - touchStartTime;
 
+            // Clear hover shadow on touch end (only if bottom sheet is not open)
+            if (!showMobileBottomSheetRef.current) {
+              const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+                type: 'FeatureCollection',
+                features: [],
+              };
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+              (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+
+              if (onMapHover) {
+                onMapHover(null);
+              }
+            }
+
             // Prevent rapid successive triggers (debounce)
             if (touchEndTime - lastTouchInteraction < 300) {
+              touchStartX = 0;
+              touchStartY = 0;
+              touchStartTime = 0;
               return;
             }
 
@@ -1958,13 +2042,59 @@ const PropertyMap: React.FC<MapPageProps> = ({
             touchStartTime = 0;
           };
 
+          // Also handle touchmove to clear shadow when dragging (only if bottom sheet is not open)
+          const handleTouchMove = (e: TouchEvent) => {
+            if (e.touches && e.touches.length > 0) {
+              // If bottom sheet is open, keep the shadow and don't update it
+              if (showMobileBottomSheetRef.current) {
+                return;
+              }
+
+              const rect = canvas.getBoundingClientRect();
+              const touchX = e.touches[0].clientX - rect.left;
+              const touchY = e.touches[0].clientY - rect.top;
+
+              // Clear hover shadow if moved away from point
+              const features = map.queryRenderedFeatures([touchX, touchY], { layers: ['mutation-point'] });
+
+              if (features && features.length === 0) {
+                // Moved away from mutation point, clear shadow
+                const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+                  type: 'FeatureCollection',
+                  features: [],
+                };
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+
+                if (onMapHover) {
+                  onMapHover(null);
+                }
+              } else if (features && features.length > 0) {
+                // Still over a mutation point, show shadow
+                const feature = features[0];
+                const hoveredFeatureData: GeoJSON.FeatureCollection = {
+                  type: 'FeatureCollection',
+                  features: [feature as GeoJSON.Feature],
+                };
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+
+                if (onMapHover && feature.properties?.idparcelle) {
+                  onMapHover(parseInt(feature.properties.idparcelle, 10));
+                }
+              }
+            }
+          };
+
           // Add touch event listeners to canvas
           canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+          canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
           canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 
           // Store handlers on map for cleanup
           (map as any)._touchHandlers = {
             start: handleTouchStart,
+            move: handleTouchMove,
             end: handleTouchEnd,
             canvas,
           };
@@ -2246,6 +2376,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           const handlers = (map as any)._touchHandlers;
           if (handlers.canvas) {
             handlers.canvas.removeEventListener('touchstart', handlers.start);
+            handlers.canvas.removeEventListener('touchmove', handlers.move);
             handlers.canvas.removeEventListener('touchend', handlers.end);
           }
           delete (map as any)._touchHandlers;
