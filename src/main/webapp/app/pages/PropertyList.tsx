@@ -53,7 +53,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [hoveredPropertyId, setHoveredPropertyId] = useState<number | null>(null);
   const [mapHoveredPropertyId, setMapHoveredPropertyId] = useState<number | null>(null);
-  const [sortOption, setSortOption] = useState<SortOption>('');
+  const [sortOption, setSortOption] = useState<SortOption>('price-asc');
 
   // **KEY ADDITION**: Store the currently active filters in this component
   const [currentActiveFilters, setCurrentActiveFilters] = useState<FilterState | null>(null);
@@ -228,7 +228,8 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
       }
 
       // Transform mutation data into our Property interface
-      const allProperties: Property[] = [];
+      // Use a Map to track unique addresses - only keep first mutation per address
+      const addressMap = new Map<string, Property>();
 
       mutationData.forEach((feature: any, featureIndex: number) => {
         if (!feature?.properties?.adresses) {
@@ -245,35 +246,41 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
           }
 
           addresses.forEach((address: any, addressIndex: number) => {
-            if (address.mutations && Array.isArray(address.mutations)) {
-              address.mutations.forEach((mutation: any, mutationIndex: number) => {
-                const uniqueId = `${feature.properties.idparcelle || featureIndex}-${addressIndex}-${mutationIndex}-${Date.now()}`;
+            // Create a unique key for this address (normalize address string)
+            const addressKey = (address.adresse_complete || 'Adresse inconnue').toLowerCase().trim();
 
-                const property: Property = {
-                  id:
-                    typeof uniqueId === 'string'
-                      ? Number(`${feature.properties.idparcelle || featureIndex}${addressIndex}${mutationIndex}${Date.now()}`)
-                      : uniqueId, // Ensure absolutely unique numeric ID
-                  address: address.adresse_complete || 'Adresse inconnue',
-                  city: address.commune || '',
-                  numericPrice: mutation.valeur || 0,
-                  numericSurface: mutation.sbati || 0,
-                  price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
-                  surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
-                  type: mutation.type_groupe || 'Type inconnu',
-                  soldDate: mutation.date || '',
-                  pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
-                  rooms: mutation.nbpprinc || '',
-                  terrain: mutation.sterr ? `${mutation.sterr.toLocaleString('fr-FR')} m²` : '',
-                  coordinates: feature.geometry?.coordinates ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] : [0, 0],
-                  rawData: {
-                    terrain: mutation.sterr || 0,
-                    mutationType: mutation.id?.toString() || '',
-                    department: address.commune || '',
-                  },
-                };
-                allProperties.push(property);
-              });
+            // Only process if we haven't seen this address before
+            if (!addressMap.has(addressKey) && address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0) {
+              // Take only the first mutation from this address
+              const mutation = address.mutations[0];
+              const uniqueId = `${feature.properties.idparcelle || featureIndex}-${addressIndex}-0-${Date.now()}`;
+
+              const property: Property = {
+                id:
+                  typeof uniqueId === 'string'
+                    ? Number(`${feature.properties.idparcelle || featureIndex}${addressIndex}0${Date.now()}`)
+                    : uniqueId, // Ensure absolutely unique numeric ID
+                address: address.adresse_complete || 'Adresse inconnue',
+                city: address.commune || '',
+                numericPrice: mutation.valeur || 0,
+                numericSurface: mutation.sbati || 0,
+                price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
+                surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
+                type: mutation.type_groupe || 'Type inconnu',
+                soldDate: mutation.date || '',
+                pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
+                rooms: mutation.nbpprinc || '',
+                terrain: mutation.sterr ? `${mutation.sterr.toLocaleString('fr-FR')} m²` : '',
+                coordinates: feature.geometry?.coordinates ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] : [0, 0],
+                rawData: {
+                  terrain: mutation.sterr || 0,
+                  mutationType: mutation.id?.toString() || '',
+                  department: address.commune || '',
+                },
+              };
+
+              // Store in map with normalized address as key
+              addressMap.set(addressKey, property);
             }
           });
         } catch (error) {
@@ -281,8 +288,14 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
         }
       });
 
-      // Limit to max 50 properties
-      const limitedProperties = allProperties.slice(0, 50);
+      // Convert map values to array
+      const allProperties: Property[] = Array.from(addressMap.values());
+
+      // Sort by price ascending (lowest price first) before limiting
+      const sortedByPrice = allProperties.sort((a, b) => a.numericPrice - b.numericPrice);
+
+      // Limit to max 100 properties
+      const limitedProperties = sortedByPrice.slice(0, 100);
 
       // Set new properties and update version
       setProperties(limitedProperties);
