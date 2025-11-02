@@ -491,7 +491,19 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                       <button
                         key={suggestion.id}
                         className="w-full px-5 py-4 text-left hover:bg-gray-50 border-b border-gray-50 last:border-b-0 transition-colors first:rounded-t-2xl last:rounded-b-2xl flex items-start gap-3"
-                        onClick={() => handleSuggestionSelect(suggestion)}
+                        onClick={e => {
+                          e.preventDefault();
+                          handleSuggestionSelect(suggestion);
+                        }}
+                        onMouseDown={e => {
+                          // Prevent input blur before click registers
+                          e.preventDefault();
+                        }}
+                        onTouchEnd={e => {
+                          e.preventDefault();
+                          handleSuggestionSelect(suggestion);
+                        }}
+                        style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', cursor: 'pointer' }}
                       >
                         {/* Icon based on type */}
                         <div className="flex-shrink-0 mt-1">
@@ -699,7 +711,19 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                     <button
                       key={suggestion.id}
                       className="w-full px-4 py-3 text-left hover:bg-gray-100 border-b border-gray-100 last:border-b-0 transition-colors flex items-start gap-3"
-                      onClick={() => handleSuggestionSelect(suggestion)}
+                      onClick={e => {
+                        e.preventDefault();
+                        handleSuggestionSelect(suggestion);
+                      }}
+                      onMouseDown={e => {
+                        // Prevent input blur before click registers
+                        e.preventDefault();
+                      }}
+                      onTouchEnd={e => {
+                        e.preventDefault();
+                        handleSuggestionSelect(suggestion);
+                      }}
+                      style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', cursor: 'pointer' }}
                     >
                       {/* Icon based on type */}
                       <div className="flex-shrink-0 mt-0.5">

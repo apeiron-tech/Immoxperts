@@ -160,16 +160,26 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
         break;
       case 'sqm-desc':
         result = result.sort((a, b) => {
-          const pricePerSqmA = a.numericSurface > 0 ? a.numericPrice / a.numericSurface : 0;
-          const pricePerSqmB = b.numericSurface > 0 ? b.numericPrice / b.numericSurface : 0;
-          return pricePerSqmB - pricePerSqmA;
+          // If either property has no surface, put it at the end
+          if (a.numericSurface <= 0 && b.numericSurface <= 0) return 0;
+          if (a.numericSurface <= 0) return 1; // Put a at the end
+          if (b.numericSurface <= 0) return -1; // Put b at the end
+
+          const pricePerSqmA = a.numericPrice / a.numericSurface;
+          const pricePerSqmB = b.numericPrice / b.numericSurface;
+          return pricePerSqmB - pricePerSqmA; // Descending: highest first
         });
         break;
       case 'sqm-asc':
         result = result.sort((a, b) => {
-          const pricePerSqmA = a.numericSurface > 0 ? a.numericPrice / a.numericSurface : 0;
-          const pricePerSqmB = b.numericSurface > 0 ? b.numericPrice / b.numericSurface : 0;
-          return pricePerSqmA - pricePerSqmB;
+          // If either property has no surface, put it at the end
+          if (a.numericSurface <= 0 && b.numericSurface <= 0) return 0;
+          if (a.numericSurface <= 0) return 1; // Put a at the end
+          if (b.numericSurface <= 0) return -1; // Put b at the end
+
+          const pricePerSqmA = a.numericPrice / a.numericSurface;
+          const pricePerSqmB = b.numericPrice / b.numericSurface;
+          return pricePerSqmA - pricePerSqmB; // Ascending: lowest first
         });
         break;
       default:
