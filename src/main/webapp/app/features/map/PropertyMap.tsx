@@ -212,6 +212,24 @@ const calculateMedian = (values: number[]) => {
   }
 };
 
+// Helper function to format city name with arrondissement for Paris
+const formatCityWithArrondissement = (city: string, postcode: string | null): string => {
+  if (!postcode || !city) return city;
+
+  // Check if it's Paris and has a postal code starting with 750
+  const parisPostcodeRegex = /^750(\d{2})$/;
+  const match = postcode.match(parisPostcodeRegex);
+
+  if (match && city.toLowerCase().includes('paris')) {
+    const arrondissement = parseInt(match[1], 10);
+    // Format: 1 -> 1er, others -> 2e, 3e, etc.
+    const suffix = arrondissement === 1 ? 'er' : 'e';
+    return `Paris ${arrondissement}${suffix}`;
+  }
+
+  return city;
+};
+
 // Function to get INSEE code from coordinates
 const getINSEECodeFromCoords = async (lng: number, lat: number) => {
   try {
@@ -227,9 +245,14 @@ const getINSEECodeFromCoords = async (lng: number, lat: number) => {
       const feature = response.data.features[0];
       const properties = feature.properties;
 
+      const city = properties.city || properties.name;
+      const postcode = properties.postcode || null;
+      const formattedCity = formatCityWithArrondissement(city, postcode);
+
       return {
-        city: properties.city || properties.name,
+        city: formattedCity,
         insee: properties.citycode,
+        postcode,
       };
     }
     return null;
