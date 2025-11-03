@@ -212,22 +212,67 @@ const calculateMedian = (values: number[]) => {
   }
 };
 
-// Helper function to format city name with arrondissement for Paris
-const formatCityWithArrondissement = (city: string, postcode: string | null): string => {
-  if (!postcode || !city) return city;
+// Helper function to format city name with arrondissement
+const formatCityWithArrondissement = (city: string, postcode: string | null, context?: string): string => {
+  if (!city) return city;
+
+  // Try to detect arrondissement from city name (e.g., "Paris 12e Arrondissement", "12e Arrondissement")
+  const arrondissementInNameRegex = /(\d+)(?:er|e|ème)?\s*(?:arrondissement|arr\.?)/i;
+  const nameMatch = city.match(arrondissementInNameRegex);
+
+  if (nameMatch) {
+    const arrondissementNum = parseInt(nameMatch[1], 10);
+    // Extract base city name (remove arrondissement part)
+    const baseCity = city.replace(/\s*\d+(?:er|e|ème)?\s*(?:arrondissement|arr\.?)/gi, '').trim();
+
+    if (baseCity.toLowerCase().includes('paris') || city.toLowerCase().includes('paris')) {
+      const suffix = arrondissementNum === 1 ? 'er' : 'e';
+      return `Paris ${arrondissementNum}${suffix}`;
+    }
+
+    // For other cities, keep the base name and add arrondissement in a cleaner format
+    if (baseCity) {
+      const suffix = arrondissementNum === 1 ? 'er' : 'e';
+      return `${baseCity} ${arrondissementNum}${suffix}`;
+    }
+  }
 
   // Check if it's Paris and has a postal code starting with 750
-  const parisPostcodeRegex = /^750(\d{2})$/;
-  const match = postcode.match(parisPostcodeRegex);
+  if (postcode) {
+    const parisPostcodeRegex = /^750(\d{2})$/;
+    const match = postcode.match(parisPostcodeRegex);
 
-  if (match && city.toLowerCase().includes('paris')) {
-    const arrondissement = parseInt(match[1], 10);
-    // Format: 1 -> 1er, others -> 2e, 3e, etc.
-    const suffix = arrondissement === 1 ? 'er' : 'e';
-    return `Paris ${arrondissement}${suffix}`;
+    if (match && (city.toLowerCase().includes('paris') || context?.toLowerCase().includes('paris'))) {
+      const arrondissement = parseInt(match[1], 10);
+      // Format: 1 -> 1er, others -> 2e, 3e, etc.
+      const suffix = arrondissement === 1 ? 'er' : 'e';
+      return `Paris ${arrondissement}${suffix}`;
+    }
+  }
+
+  // Check context for arrondissement information (from OSM data)
+  if (context) {
+    const contextArrondissementRegex = /(\d+)(?:er|e|ème)?\s*(?:arrondissement|arr\.?)/i;
+    const contextMatch = context.match(contextArrondissementRegex);
+
+    if (contextMatch) {
+      const arrondissementNum = parseInt(contextMatch[1], 10);
+      if (city.toLowerCase().includes('paris')) {
+        const suffix = arrondissementNum === 1 ? 'er' : 'e';
+        return `Paris ${arrondissementNum}${suffix}`;
+      }
+    }
   }
 
   return city;
+};
+
+// Helper function to check if current city is a Paris arrondissement
+const isParisArrondissement = (cityName: string): boolean => {
+  if (!cityName) return false;
+  // Check if it matches patterns like "Paris 6e", "Paris 12e", "Paris 1er", etc.
+  const parisArrondissementRegex = /^Paris\s+\d+(?:er|e|ème)$/i;
+  return parisArrondissementRegex.test(cityName.trim());
 };
 
 // Function to get INSEE code from coordinates
@@ -247,7 +292,34 @@ const getINSEECodeFromCoords = async (lng: number, lat: number) => {
 
       const city = properties.city || properties.name;
       const postcode = properties.postcode || null;
-      const formattedCity = formatCityWithArrondissement(city, postcode);
+
+      // Try to get OSM data for additional context (arrondissement detection)
+      let osmContext: string | null = null;
+      try {
+        const osmResponse = await axios.get(API_ENDPOINTS.adresses.osmReverse, {
+          params: {
+            lat,
+            lon: lng,
+          },
+        });
+
+        if (osmResponse.data && osmResponse.data.address) {
+          const address = osmResponse.data.address;
+          // Check for arrondissement in various OSM fields
+          osmContext =
+            address.suburb ||
+            address.neighbourhood ||
+            address.quarter ||
+            address.district ||
+            address.city_district ||
+            osmResponse.data.display_name ||
+            null;
+        }
+      } catch (osmErr) {
+        // OSM data is optional, continue without it
+      }
+
+      const formattedCity = formatCityWithArrondissement(city, postcode, osmContext || undefined);
 
       return {
         city: formattedCity,
@@ -3104,7 +3176,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         }}
                         className="bg-white font-medium relative w-full border border-gray-300 rounded-md shadow-sm pl-3 pr-10 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm py-2"
                       >
-                        <option value={currentCity}>{currentCity}</option>
+                        <option value={currentCity}>
+                          {isParisArrondissement(currentCity) ? `Arrondissement (${currentCity})` : currentCity}
+                        </option>
                         <option value="Zone affichée">Zone affichée</option>
                         <option value={hasQuartier ? currentQuartier : 'Quartier (non disponible)'}>
                           {hasQuartier ? currentQuartier : 'Quartier (non disponible)'}
@@ -3311,7 +3385,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     className="border border-gray-300 rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer w-full sm:min-w-[120px]"
                     style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
                   >
-                    <option value="commune">Commune ({currentCity})</option>
+                    <option value="commune">
+                      {isParisArrondissement(currentCity) ? `Arrondissement (${currentCity})` : `Commune (${currentCity})`}
+                    </option>
                     <option value="zone">Zone affichée</option>
                     <option value="quartier">
                       {hasQuartier ? `Quartier (${currentQuartier || 'Chargement...'})` : 'Quartier (non disponible)'}
