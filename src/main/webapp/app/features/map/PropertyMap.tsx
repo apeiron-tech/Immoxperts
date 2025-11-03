@@ -2614,6 +2614,15 @@ const PropertyMap: React.FC<MapPageProps> = ({
     }
   }, [dataVersion, statsScope]); // Trigger when dataVersion or statsScope changes
 
+  // **NEW**: Automatically switch to commune if quartier is selected (quartier option is hidden)
+  useEffect(() => {
+    if (statsScope === 'quartier') {
+      debugLog('Quartier option is hidden, switching to commune');
+      setStatsScope('commune');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount to reset any existing quartier selection
+
   // **NEW**: Handle statsScope change - reset stats to zeros for quartier, reload for commune
   useEffect(() => {
     if (statsScope === 'quartier') {
@@ -3214,9 +3223,10 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           {isCityArrondissement(currentCity) ? `Arrondissement (${currentCity})` : currentCity}
                         </option>
                         <option value="Zone affichée">Zone affichée</option>
-                        <option value={hasQuartier ? currentQuartier : 'Quartier (non disponible)'}>
+                        {/* Quartier option temporarily hidden - not finished yet */}
+                        {/* <option value={hasQuartier ? currentQuartier : 'Quartier (non disponible)'}>
                           {hasQuartier ? currentQuartier : 'Quartier (non disponible)'}
-                        </option>
+                        </option> */}
                       </select>
                     </div>
                   </div>
@@ -3423,9 +3433,10 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       {isCityArrondissement(currentCity) ? `Arrondissement (${currentCity})` : `Commune (${currentCity})`}
                     </option>
                     <option value="zone">Zone affichée</option>
-                    <option value="quartier">
+                    {/* Quartier option temporarily hidden - not finished yet */}
+                    {/* <option value="quartier">
                       {hasQuartier ? `Quartier (${currentQuartier || 'Chargement...'})` : 'Quartier (non disponible)'}
-                    </option>
+                    </option> */}
                   </select>
                 </div>
               </div>
