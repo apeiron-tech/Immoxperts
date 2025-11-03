@@ -212,9 +212,16 @@ const calculateMedian = (values: number[]) => {
   }
 };
 
-// Helper function to format city name with arrondissement
+// Helper function to detect and format city name with arrondissement
 const formatCityWithArrondissement = (city: string, postcode: string | null, context?: string): string => {
   if (!city) return city;
+
+  // Mapping of cities with arrondissements and their postal code patterns
+  const citiesWithArrondissements: Record<string, { basePostcode: number; maxArrondissement: number; name: string }> = {
+    paris: { basePostcode: 75000, maxArrondissement: 20, name: 'Paris' },
+    marseille: { basePostcode: 13000, maxArrondissement: 16, name: 'Marseille' },
+    lyon: { basePostcode: 69000, maxArrondissement: 9, name: 'Lyon' },
+  };
 
   // Try to detect arrondissement from city name (e.g., "Paris 12e Arrondissement", "12e Arrondissement")
   const arrondissementInNameRegex = /(\d+)(?:er|e|ème)?\s*(?:arrondissement|arr\.?)/i;
@@ -225,28 +232,43 @@ const formatCityWithArrondissement = (city: string, postcode: string | null, con
     // Extract base city name (remove arrondissement part)
     const baseCity = city.replace(/\s*\d+(?:er|e|ème)?\s*(?:arrondissement|arr\.?)/gi, '').trim();
 
-    if (baseCity.toLowerCase().includes('paris') || city.toLowerCase().includes('paris')) {
-      const suffix = arrondissementNum === 1 ? 'er' : 'e';
-      return `Paris ${arrondissementNum}${suffix}`;
+    // Check if the base city matches one of our known cities with arrondissements
+    const cityLower = baseCity.toLowerCase();
+    for (const [key, info] of Object.entries(citiesWithArrondissements)) {
+      if (cityLower.includes(key) || city.toLowerCase().includes(key)) {
+        if (arrondissementNum >= 1 && arrondissementNum <= info.maxArrondissement) {
+          const suffix = arrondissementNum === 1 ? 'er' : 'e';
+          return `${info.name} ${arrondissementNum}${suffix}`;
+        }
+      }
     }
 
-    // For other cities, keep the base name and add arrondissement in a cleaner format
+    // For other cities with arrondissement in name, format it
     if (baseCity) {
       const suffix = arrondissementNum === 1 ? 'er' : 'e';
       return `${baseCity} ${arrondissementNum}${suffix}`;
     }
   }
 
-  // Check if it's Paris and has a postal code starting with 750
+  // Check postal code to detect arrondissements
   if (postcode) {
-    const parisPostcodeRegex = /^750(\d{2})$/;
-    const match = postcode.match(parisPostcodeRegex);
+    const postcodeNum = parseInt(postcode, 10);
+    if (!isNaN(postcodeNum)) {
+      for (const [key, info] of Object.entries(citiesWithArrondissements)) {
+        const minPostcode = info.basePostcode + 1;
+        const maxPostcode = info.basePostcode + info.maxArrondissement;
 
-    if (match && (city.toLowerCase().includes('paris') || context?.toLowerCase().includes('paris'))) {
-      const arrondissement = parseInt(match[1], 10);
-      // Format: 1 -> 1er, others -> 2e, 3e, etc.
-      const suffix = arrondissement === 1 ? 'er' : 'e';
-      return `Paris ${arrondissement}${suffix}`;
+        if (postcodeNum >= minPostcode && postcodeNum <= maxPostcode) {
+          const arrondissement = postcodeNum - info.basePostcode;
+          const cityLower = city.toLowerCase();
+
+          // Verify city name matches
+          if (cityLower.includes(key) || context?.toLowerCase().includes(key)) {
+            const suffix = arrondissement === 1 ? 'er' : 'e';
+            return `${info.name} ${arrondissement}${suffix}`;
+          }
+        }
+      }
     }
   }
 
@@ -257,9 +279,15 @@ const formatCityWithArrondissement = (city: string, postcode: string | null, con
 
     if (contextMatch) {
       const arrondissementNum = parseInt(contextMatch[1], 10);
-      if (city.toLowerCase().includes('paris')) {
-        const suffix = arrondissementNum === 1 ? 'er' : 'e';
-        return `Paris ${arrondissementNum}${suffix}`;
+      const cityLower = city.toLowerCase();
+
+      for (const [key, info] of Object.entries(citiesWithArrondissements)) {
+        if (cityLower.includes(key) || context.toLowerCase().includes(key)) {
+          if (arrondissementNum >= 1 && arrondissementNum <= info.maxArrondissement) {
+            const suffix = arrondissementNum === 1 ? 'er' : 'e';
+            return `${info.name} ${arrondissementNum}${suffix}`;
+          }
+        }
       }
     }
   }
@@ -267,12 +295,18 @@ const formatCityWithArrondissement = (city: string, postcode: string | null, con
   return city;
 };
 
-// Helper function to check if current city is a Paris arrondissement
-const isParisArrondissement = (cityName: string): boolean => {
+// Helper function to check if current city is an arrondissement (Paris, Marseille, Lyon, etc.)
+const isCityArrondissement = (cityName: string): boolean => {
   if (!cityName) return false;
-  // Check if it matches patterns like "Paris 6e", "Paris 12e", "Paris 1er", etc.
-  const parisArrondissementRegex = /^Paris\s+\d+(?:er|e|ème)$/i;
-  return parisArrondissementRegex.test(cityName.trim());
+
+  // Cities with arrondissements and their patterns
+  const arrondissementPatterns = [
+    /^Paris\s+\d+(?:er|e|ème)$/i, // Paris 6e, Paris 1er
+    /^Marseille\s+\d+(?:er|e|ème)$/i, // Marseille 1er, Marseille 6e
+    /^Lyon\s+\d+(?:er|e|ème)$/i, // Lyon 1er, Lyon 6e
+  ];
+
+  return arrondissementPatterns.some(pattern => pattern.test(cityName.trim()));
 };
 
 // Function to get INSEE code from coordinates
@@ -3177,7 +3211,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         className="bg-white font-medium relative w-full border border-gray-300 rounded-md shadow-sm pl-3 pr-10 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm py-2"
                       >
                         <option value={currentCity}>
-                          {isParisArrondissement(currentCity) ? `Arrondissement (${currentCity})` : currentCity}
+                          {isCityArrondissement(currentCity) ? `Arrondissement (${currentCity})` : currentCity}
                         </option>
                         <option value="Zone affichée">Zone affichée</option>
                         <option value={hasQuartier ? currentQuartier : 'Quartier (non disponible)'}>
@@ -3386,7 +3420,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
                   >
                     <option value="commune">
-                      {isParisArrondissement(currentCity) ? `Arrondissement (${currentCity})` : `Commune (${currentCity})`}
+                      {isCityArrondissement(currentCity) ? `Arrondissement (${currentCity})` : `Commune (${currentCity})`}
                     </option>
                     <option value="zone">Zone affichée</option>
                     <option value="quartier">
