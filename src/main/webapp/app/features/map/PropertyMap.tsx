@@ -212,6 +212,69 @@ const calculateMedian = (values: number[]) => {
   }
 };
 
+// Helper function to format city name with arrondissement
+const formatCityWithArrondissement = (city: string, postcode: string | null, context?: string): string => {
+  if (!city) return city;
+
+  // Try to detect arrondissement from city name (e.g., "Paris 12e Arrondissement", "12e Arrondissement")
+  const arrondissementInNameRegex = /(\d+)(?:er|e|ème)?\s*(?:arrondissement|arr\.?)/i;
+  const nameMatch = city.match(arrondissementInNameRegex);
+
+  if (nameMatch) {
+    const arrondissementNum = parseInt(nameMatch[1], 10);
+    // Extract base city name (remove arrondissement part)
+    const baseCity = city.replace(/\s*\d+(?:er|e|ème)?\s*(?:arrondissement|arr\.?)/gi, '').trim();
+
+    if (baseCity.toLowerCase().includes('paris') || city.toLowerCase().includes('paris')) {
+      const suffix = arrondissementNum === 1 ? 'er' : 'e';
+      return `Paris ${arrondissementNum}${suffix}`;
+    }
+
+    // For other cities, keep the base name and add arrondissement in a cleaner format
+    if (baseCity) {
+      const suffix = arrondissementNum === 1 ? 'er' : 'e';
+      return `${baseCity} ${arrondissementNum}${suffix}`;
+    }
+  }
+
+  // Check if it's Paris and has a postal code starting with 750
+  if (postcode) {
+    const parisPostcodeRegex = /^750(\d{2})$/;
+    const match = postcode.match(parisPostcodeRegex);
+
+    if (match && (city.toLowerCase().includes('paris') || context?.toLowerCase().includes('paris'))) {
+      const arrondissement = parseInt(match[1], 10);
+      // Format: 1 -> 1er, others -> 2e, 3e, etc.
+      const suffix = arrondissement === 1 ? 'er' : 'e';
+      return `Paris ${arrondissement}${suffix}`;
+    }
+  }
+
+  // Check context for arrondissement information (from OSM data)
+  if (context) {
+    const contextArrondissementRegex = /(\d+)(?:er|e|ème)?\s*(?:arrondissement|arr\.?)/i;
+    const contextMatch = context.match(contextArrondissementRegex);
+
+    if (contextMatch) {
+      const arrondissementNum = parseInt(contextMatch[1], 10);
+      if (city.toLowerCase().includes('paris')) {
+        const suffix = arrondissementNum === 1 ? 'er' : 'e';
+        return `Paris ${arrondissementNum}${suffix}`;
+      }
+    }
+  }
+
+  return city;
+};
+
+// Helper function to check if current city is a Paris arrondissement
+const isParisArrondissement = (cityName: string): boolean => {
+  if (!cityName) return false;
+  // Check if it matches patterns like "Paris 6e", "Paris 12e", "Paris 1er", etc.
+  const parisArrondissementRegex = /^Paris\s+\d+(?:er|e|ème)$/i;
+  return parisArrondissementRegex.test(cityName.trim());
+};
+
 // Function to get INSEE code from coordinates
 const getINSEECodeFromCoords = async (lng: number, lat: number) => {
   try {
@@ -227,9 +290,41 @@ const getINSEECodeFromCoords = async (lng: number, lat: number) => {
       const feature = response.data.features[0];
       const properties = feature.properties;
 
+      const city = properties.city || properties.name;
+      const postcode = properties.postcode || null;
+
+      // Try to get OSM data for additional context (arrondissement detection)
+      let osmContext: string | null = null;
+      try {
+        const osmResponse = await axios.get(API_ENDPOINTS.adresses.osmReverse, {
+          params: {
+            lat,
+            lon: lng,
+          },
+        });
+
+        if (osmResponse.data && osmResponse.data.address) {
+          const address = osmResponse.data.address;
+          // Check for arrondissement in various OSM fields
+          osmContext =
+            address.suburb ||
+            address.neighbourhood ||
+            address.quarter ||
+            address.district ||
+            address.city_district ||
+            osmResponse.data.display_name ||
+            null;
+        }
+      } catch (osmErr) {
+        // OSM data is optional, continue without it
+      }
+
+      const formattedCity = formatCityWithArrondissement(city, postcode, osmContext || undefined);
+
       return {
-        city: properties.city || properties.name,
+        city: formattedCity,
         insee: properties.citycode,
+        postcode,
       };
     }
     return null;
@@ -423,12 +518,27 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // Mobile bottom sheet state
   const [showMobileBottomSheet, setShowMobileBottomSheet] = useState(false);
+  const showMobileBottomSheetRef = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    showMobileBottomSheetRef.current = showMobileBottomSheet;
+  }, [showMobileBottomSheet]);
 
   // Close all popups when filter popup opens
   useEffect(() => {
     if (isFilterOpen) {
       setShowStatsPanel(false);
       setShowMobileBottomSheet(false);
+      // Clear shadow when filter opens
+      if (mapRef.current) {
+        const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+          type: 'FeatureCollection',
+          features: [],
+        };
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+      }
     }
   }, [isFilterOpen]);
   const [mobileSheetProperty, setMobileSheetProperty] = useState<any>(null);
@@ -485,6 +595,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
     setMobileSheetProperty(null);
     setMobileSheetMutations([]);
     setMobileSheetIndex(0);
+
+    // Clear the shadow when bottom sheet closes
+    if (mapRef.current) {
+      const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: [],
+      };
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+    }
+
+    if (onMapHover) {
+      onMapHover(null);
+    }
   };
 
   // Ref to store hover popup for cleanup
@@ -1111,19 +1235,25 @@ const PropertyMap: React.FC<MapPageProps> = ({
           });
 
           map.on('mouseleave', 'mutation-point', () => {
-            // Clear the hovered-circle source (remove all features)
-            const emptyFeatureCollection: GeoJSON.FeatureCollection = {
-              type: 'FeatureCollection',
-              features: [],
-            };
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-            (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+            // On desktop, clear shadow normally. On mobile, only clear if bottom sheet is not open
+            const isMobile = window.innerWidth < 768;
+            const shouldClearShadow = !isMobile || !showMobileBottomSheetRef.current;
+
+            if (shouldClearShadow) {
+              // Clear the hovered-circle source (remove all features)
+              const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+                type: 'FeatureCollection',
+                features: [],
+              };
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+              (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+
+              if (onMapHover) {
+                onMapHover(null);
+              }
+            }
 
             map.getCanvas().style.cursor = '';
-
-            if (onMapHover) {
-              onMapHover(null);
-            }
           });
 
           map.on('mousemove', e => {
@@ -1805,6 +1935,19 @@ const PropertyMap: React.FC<MapPageProps> = ({
               // Remove hover popup if it exists (click popup will replace it)
               clearHoverPopup();
 
+              // Check if mobile device (used for shadow and popup logic)
+              const isMobile = window.innerWidth < 768;
+
+              // Keep the shadow visible for the clicked point (mobile only)
+              if (isMobile) {
+                const hoveredFeatureData: GeoJSON.FeatureCollection = {
+                  type: 'FeatureCollection',
+                  features: [feature as GeoJSON.Feature],
+                };
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+              }
+
               if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
                 try {
                   const addresses = JSON.parse(feature.properties.adresses);
@@ -1844,9 +1987,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     // Clear any existing click popup first
                     clearClickPopup();
 
-                    // Check if mobile device
-                    const isMobile = window.innerWidth < 768;
-
                     if (isMobile) {
                       handleMobileBottomSheet(sortedAddresses);
                       return; // Don't create Mapbox popup on mobile
@@ -1864,7 +2004,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       .setHTML(popupContent)
                       .addTo(map);
 
-                    // Clean up global function when popup is closed
+                    // Clean up global function when popup is closed (desktop only - shadow clears normally on desktop)
                     clickPopupRef.current.on('close', () => {
                       if ((window as any).selectAddress) {
                         delete (window as any).selectAddress;
@@ -1911,6 +2051,28 @@ const PropertyMap: React.FC<MapPageProps> = ({
               const rect = canvas.getBoundingClientRect();
               touchStartX = e.touches[0].clientX - rect.left;
               touchStartY = e.touches[0].clientY - rect.top;
+
+              // Show hover shadow on mobile when touching a mutation point
+              const features = map.queryRenderedFeatures([touchStartX, touchStartY], { layers: ['mutation-point'] });
+
+              if (features && features.length > 0) {
+                const feature = features[0];
+
+                // Add the hovered feature to show shadow effect
+                const hoveredFeatureData: GeoJSON.FeatureCollection = {
+                  type: 'FeatureCollection',
+                  features: [feature as GeoJSON.Feature],
+                };
+
+                // Update the hovered-circle source to show shadow
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+
+                // Notify PropertyList about hover
+                if (onMapHover && feature.properties?.idparcelle) {
+                  onMapHover(parseInt(feature.properties.idparcelle, 10));
+                }
+              }
             }
           };
 
@@ -1918,8 +2080,25 @@ const PropertyMap: React.FC<MapPageProps> = ({
             const touchEndTime = Date.now();
             const timeDiff = touchEndTime - touchStartTime;
 
+            // Clear hover shadow on touch end (only if bottom sheet is not open)
+            if (!showMobileBottomSheetRef.current) {
+              const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+                type: 'FeatureCollection',
+                features: [],
+              };
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+              (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+
+              if (onMapHover) {
+                onMapHover(null);
+              }
+            }
+
             // Prevent rapid successive triggers (debounce)
             if (touchEndTime - lastTouchInteraction < 300) {
+              touchStartX = 0;
+              touchStartY = 0;
+              touchStartTime = 0;
               return;
             }
 
@@ -1962,13 +2141,59 @@ const PropertyMap: React.FC<MapPageProps> = ({
             touchStartTime = 0;
           };
 
+          // Also handle touchmove to clear shadow when dragging (only if bottom sheet is not open)
+          const handleTouchMove = (e: TouchEvent) => {
+            if (e.touches && e.touches.length > 0) {
+              // If bottom sheet is open, keep the shadow and don't update it
+              if (showMobileBottomSheetRef.current) {
+                return;
+              }
+
+              const rect = canvas.getBoundingClientRect();
+              const touchX = e.touches[0].clientX - rect.left;
+              const touchY = e.touches[0].clientY - rect.top;
+
+              // Clear hover shadow if moved away from point
+              const features = map.queryRenderedFeatures([touchX, touchY], { layers: ['mutation-point'] });
+
+              if (features && features.length === 0) {
+                // Moved away from mutation point, clear shadow
+                const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+                  type: 'FeatureCollection',
+                  features: [],
+                };
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+
+                if (onMapHover) {
+                  onMapHover(null);
+                }
+              } else if (features && features.length > 0) {
+                // Still over a mutation point, show shadow
+                const feature = features[0];
+                const hoveredFeatureData: GeoJSON.FeatureCollection = {
+                  type: 'FeatureCollection',
+                  features: [feature as GeoJSON.Feature],
+                };
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+
+                if (onMapHover && feature.properties?.idparcelle) {
+                  onMapHover(parseInt(feature.properties.idparcelle, 10));
+                }
+              }
+            }
+          };
+
           // Add touch event listeners to canvas
           canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+          canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
           canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 
           // Store handlers on map for cleanup
           (map as any)._touchHandlers = {
             start: handleTouchStart,
+            move: handleTouchMove,
             end: handleTouchEnd,
             canvas,
           };
@@ -2250,6 +2475,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           const handlers = (map as any)._touchHandlers;
           if (handlers.canvas) {
             handlers.canvas.removeEventListener('touchstart', handlers.start);
+            handlers.canvas.removeEventListener('touchmove', handlers.move);
             handlers.canvas.removeEventListener('touchend', handlers.end);
           }
           delete (map as any)._touchHandlers;
@@ -2954,7 +3180,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         }}
                         className="bg-white font-medium relative w-full border border-gray-300 rounded-md shadow-sm pl-3 pr-10 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm py-2"
                       >
-                        <option value={currentCity}>{currentCity}</option>
+                        <option value={currentCity}>
+                          {isParisArrondissement(currentCity) ? `Arrondissement (${currentCity})` : currentCity}
+                        </option>
                         <option value="Zone affichée">Zone affichée</option>
                         <option value={hasQuartier ? currentQuartier : 'Quartier (non disponible)'}>
                           {hasQuartier ? currentQuartier : 'Quartier (non disponible)'}
@@ -3161,7 +3389,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     className="border border-gray-300 rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer w-full sm:min-w-[120px]"
                     style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
                   >
-                    <option value="commune">Commune ({currentCity})</option>
+                    <option value="commune">
+                      {isParisArrondissement(currentCity) ? `Arrondissement (${currentCity})` : `Commune (${currentCity})`}
+                    </option>
                     <option value="zone">Zone affichée</option>
                     <option value="quartier">
                       {hasQuartier ? `Quartier (${currentQuartier || 'Chargement...'})` : 'Quartier (non disponible)'}
