@@ -152,6 +152,90 @@ public class AdresseServiceImpl implements AdresseService {
             // Quartier variants
             case "QUA":
                 return "Quartier";
+            // Centre variants
+            case "CTRE":
+            case "CC":
+                return "Centre";
+            // Voie variants
+            case "VTE":
+            case "VC":
+            case "VOIE":
+                return "Voie";
+            // Escalier variants
+            case "ESC":
+                return "Escalier";
+            // Sente variants
+            case "SEN":
+                return "Sente";
+            // Enclave variants
+            case "ENC":
+                return "Enclave";
+            // Rocade variants
+            case "ROC":
+                return "Rocade";
+            // Poterne variants
+            case "PTR":
+                return "Poterne";
+            // Port variants
+            case "PRT":
+                return "Port";
+            // Galerie variants
+            case "GAL":
+                return "Galerie";
+            // Zone variants
+            case "ZI":
+            case "ZA":
+            case "ZAC":
+                return "Zone";
+            // Maison variants
+            case "MAIS":
+                return "Maison";
+            // Chemin Départemental variant
+            case "CD":
+                return "Chemin";
+            // Traverse variants
+            case "TRA":
+                return "Traverse";
+            // Parc variant
+            case "PARC":
+                return "Parc";
+            // Raccordement variants
+            case "RAC":
+                return "Raccordement";
+            // Descente variants
+            case "DSC":
+                return "Descente";
+            // Ruelle variants
+            case "RPE":
+            case "RLE":
+                return "Ruelle";
+            // Habitation variants
+            case "HAB":
+                return "Habitation";
+            // Chevauchant variants
+            case "CHV":
+                return "Chevauchant";
+            // Cour variants
+            case "COUR":
+                return "Cour";
+            // Petite variants
+            case "PTTE":
+                return "Petite";
+            // Tasse variants
+            case "TSSE":
+                return "Tasse";
+            // Village variants
+            case "VGE":
+                return "Village";
+            // Viaduc variants
+            case "VIA":
+                return "Viaduc";
+            // Camp variants
+            case "CAMP":
+                return "Camp";
+            // Clos variants
+            case "CLOS":
+                return "Clos";
             default:
                 // If it's already a full word, remove accents
                 return token;

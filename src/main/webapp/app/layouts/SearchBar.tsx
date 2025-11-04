@@ -13,50 +13,97 @@ const normalizeAccents = (str: string): string => {
     .replace(/Ç/g, 'C'); // Handle 'Ç' specifically
 };
 
-// Utility function to expand French address abbreviations
-const expandAddressAbbreviations = (str: string): string => {
-  // Common French address abbreviations mapping
+// Utility function to expand French address abbreviations for scoring
+const expandAbbreviationsForScoring = (str: string): string => {
+  // Common French address abbreviations mapping (without accents for matching)
   const abbreviations: { [key: string]: string } = {
-    'BD ': 'BOULEVARD ',
-    'BVD ': 'BOULEVARD ',
-    'BD. ': 'BOULEVARD ',
-    'BVD. ': 'BOULEVARD ',
-    'AV ': 'AVENUE ',
-    'AV. ': 'AVENUE ',
-    'AVE ': 'AVENUE ',
-    'AVE. ': 'AVENUE ',
-    'R ': 'RUE ',
-    'R. ': 'RUE ',
-    'PL ': 'PLACE ',
-    'PL. ': 'PLACE ',
-    'SQ ': 'SQUARE ',
-    'SQ. ': 'SQUARE ',
-    'CRS ': 'COURS ',
-    'CRS. ': 'COURS ',
-    'PROM ': 'PROMENADE ',
-    'PROM. ': 'PROMENADE ',
-    'IMP ': 'IMPASSE ',
-    'IMP. ': 'IMPASSE ',
-    'CHEMIN ': 'CHEMIN ',
-    'CH ': 'CHEMIN ',
-    'CH. ': 'CHEMIN ',
-    'BLVD ': 'BOULEVARD ',
-    'BLVD. ': 'BOULEVARD ',
-    'ALLEE ': 'ALLÉE ',
-    'ALLEE. ': 'ALLÉE ',
-    'ALL ': 'ALLÉE ',
-    'ALL. ': 'ALLÉE ',
+    RTE: 'ROUTE',
+    RT: 'ROUTE',
+    AV: 'AVENUE',
+    AVE: 'AVENUE',
+    AVEN: 'AVENUE',
+    BD: 'BOULEVARD',
+    BVD: 'BOULEVARD',
+    BLVD: 'BOULEVARD',
+    BOUL: 'BOULEVARD',
+    R: 'RUE',
+    RU: 'RUE',
+    PL: 'PLACE',
+    PLC: 'PLACE',
+    PLE: 'PLACE',
+    RES: 'RESIDENCE',
+    RESID: 'RESIDENCE',
+    ALL: 'ALLEE',
+    AL: 'ALLEE',
+    IMP: 'IMPASSE',
+    CH: 'CHEMIN',
+    CHEM: 'CHEMIN',
+    CHE: 'CHEMIN',
+    CRS: 'COURS',
+    CR: 'COURS',
+    SQ: 'SQUARE',
+    PROM: 'PROMENADE',
+    QU: 'QUAI',
+    Q: 'QUAI',
+    QUAI: 'QUAI',
+    LOT: 'LOTISSEMENT',
+    HAM: 'HAMEAU',
+    PAS: 'PASSAGE',
+    PASS: 'PASSAGE',
+    GDE: 'GRANDE',
+    GD: 'GRANDE',
+    GRD: 'GRANDE',
+    FG: 'FAUBOURG',
+    MTE: 'MONTEE',
+    NTE: 'MONTEE',
+    ESP: 'ESPLANADE',
+    DOM: 'DOMAINE',
+    CITE: 'CITE',
+    QUA: 'QUARTIER',
+    CTRE: 'CENTRE',
+    VTE: 'VOIE',
+    VC: 'VOIE',
+    ESC: 'ESCALIER',
+    CLOS: 'CLOS',
+    SEN: 'SENTE',
+    ENC: 'ENCLAVE',
+    ROC: 'ROCADE',
+    PTR: 'POTERNE',
+    PRT: 'PORT',
+    GAL: 'GALERIE',
+    ZI: 'ZONE',
+    MAIS: 'MAISON',
+    CD: 'CHEMIN',
+    TRA: 'TRAVERSE',
+    PARC: 'PARC',
+    RAC: 'RACCORDEMENT',
+    DSC: 'DESCENTE',
+    RPE: 'RUELLE',
+    RLE: 'RUELLE',
+    HAB: 'HABITATION',
+    CHV: 'CHEVAUCHANT',
+    COUR: 'COUR',
+    PTTE: 'PETITE',
+    TSSE: 'TASSE',
+    ZAC: 'ZONE',
+    ZA: 'ZONE',
+    VGE: 'VILLAGE',
+    CC: 'CENTRE',
+    VOIE: 'VOIE',
+    GR: 'GRANDE',
+    VIA: 'VIADUC',
+    CAMP: 'CAMP',
   };
 
-  // Replace abbreviations (case-insensitive)
-  let expanded = str.toUpperCase();
-  Object.keys(abbreviations).forEach(abbr => {
-    // Use word boundary to ensure we match complete words only
-    const regex = new RegExp(`\\b${abbr.replace(/\./g, '\\.')}`, 'gi');
-    expanded = expanded.replace(regex, abbreviations[abbr]);
-  });
-
-  return expanded;
+  // Split into tokens and expand each one
+  return str
+    .toUpperCase()
+    .split(/\s+/)
+    .map(token => {
+      const cleanToken = token.replace(/[.,;]/g, ''); // Remove punctuation
+      return abbreviations[cleanToken] || token;
+    })
+    .join(' ');
 };
 
 interface SearchBarProps {
@@ -361,9 +408,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           // Score and sort cities
           const scoredCities = cities
             .map(suggestion => {
-              // Normalize BOTH query and display for accent-insensitive matching
-              const queryNormalized = normalizeAccents(searchQuery.toLowerCase().trim());
-              const displayNormalized = normalizeAccents(suggestion.displayName.toLowerCase());
+              // Normalize AND expand abbreviations for BOTH query and display
+              // Step 1: Expand abbreviations (RTE → ROUTE)
+              const queryExpanded = expandAbbreviationsForScoring(searchQuery);
+              const displayExpanded = expandAbbreviationsForScoring(suggestion.displayName);
+              // Step 2: Remove accents (Résidence → RESIDENCE)
+              const queryNormalized = normalizeAccents(queryExpanded.toLowerCase().trim());
+              const displayNormalized = normalizeAccents(displayExpanded.toLowerCase());
               let score = 10000; // Base score for cities (always prioritized)
 
               // Split query into tokens for multi-token matching
@@ -408,9 +459,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           // Score and sort addresses
           const scoredAddresses = addresses
             .map(suggestion => {
-              // Normalize BOTH query and display for accent-insensitive matching
-              const queryNormalized = normalizeAccents(searchQuery.toLowerCase().trim());
-              const displayNormalized = normalizeAccents(suggestion.displayName.toLowerCase());
+              // Normalize AND expand abbreviations for BOTH query and display
+              // Step 1: Expand abbreviations (RTE → ROUTE)
+              const queryExpanded = expandAbbreviationsForScoring(searchQuery);
+              const displayExpanded = expandAbbreviationsForScoring(suggestion.displayName);
+              // Step 2: Remove accents (Résidence → RESIDENCE)
+              const queryNormalized = normalizeAccents(queryExpanded.toLowerCase().trim());
+              const displayNormalized = normalizeAccents(displayExpanded.toLowerCase());
               let score = 5000; // Base score for addresses (lower than cities)
 
               // Split query into tokens for multi-token matching (like backend does)
