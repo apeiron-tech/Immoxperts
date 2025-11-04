@@ -107,7 +107,10 @@ function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (.
 
 // Helper functions for stats panel
 const formatNumber = (num: number) => {
-  return new Intl.NumberFormat('fr-FR').format(num);
+  return new Intl.NumberFormat('fr-FR', {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(Math.round(num || 0));
 };
 
 const getStatsShortTypeName = (type: string) => {
@@ -212,9 +215,16 @@ const calculateMedian = (values: number[]) => {
   }
 };
 
-// Helper function to format city name with arrondissement
+// Helper function to detect and format city name with arrondissement
 const formatCityWithArrondissement = (city: string, postcode: string | null, context?: string): string => {
   if (!city) return city;
+
+  // Mapping of cities with arrondissements and their postal code patterns
+  const citiesWithArrondissements: Record<string, { basePostcode: number; maxArrondissement: number; name: string }> = {
+    paris: { basePostcode: 75000, maxArrondissement: 20, name: 'Paris' },
+    marseille: { basePostcode: 13000, maxArrondissement: 16, name: 'Marseille' },
+    lyon: { basePostcode: 69000, maxArrondissement: 9, name: 'Lyon' },
+  };
 
   // Try to detect arrondissement from city name (e.g., "Paris 12e Arrondissement", "12e Arrondissement")
   const arrondissementInNameRegex = /(\d+)(?:er|e|ème)?\s*(?:arrondissement|arr\.?)/i;
@@ -225,28 +235,43 @@ const formatCityWithArrondissement = (city: string, postcode: string | null, con
     // Extract base city name (remove arrondissement part)
     const baseCity = city.replace(/\s*\d+(?:er|e|ème)?\s*(?:arrondissement|arr\.?)/gi, '').trim();
 
-    if (baseCity.toLowerCase().includes('paris') || city.toLowerCase().includes('paris')) {
-      const suffix = arrondissementNum === 1 ? 'er' : 'e';
-      return `Paris ${arrondissementNum}${suffix}`;
+    // Check if the base city matches one of our known cities with arrondissements
+    const cityLower = baseCity.toLowerCase();
+    for (const [key, info] of Object.entries(citiesWithArrondissements)) {
+      if (cityLower.includes(key) || city.toLowerCase().includes(key)) {
+        if (arrondissementNum >= 1 && arrondissementNum <= info.maxArrondissement) {
+          const suffix = arrondissementNum === 1 ? 'er' : 'e';
+          return `${info.name} ${arrondissementNum}${suffix}`;
+        }
+      }
     }
 
-    // For other cities, keep the base name and add arrondissement in a cleaner format
+    // For other cities with arrondissement in name, format it
     if (baseCity) {
       const suffix = arrondissementNum === 1 ? 'er' : 'e';
       return `${baseCity} ${arrondissementNum}${suffix}`;
     }
   }
 
-  // Check if it's Paris and has a postal code starting with 750
+  // Check postal code to detect arrondissements
   if (postcode) {
-    const parisPostcodeRegex = /^750(\d{2})$/;
-    const match = postcode.match(parisPostcodeRegex);
+    const postcodeNum = parseInt(postcode, 10);
+    if (!isNaN(postcodeNum)) {
+      for (const [key, info] of Object.entries(citiesWithArrondissements)) {
+        const minPostcode = info.basePostcode + 1;
+        const maxPostcode = info.basePostcode + info.maxArrondissement;
 
-    if (match && (city.toLowerCase().includes('paris') || context?.toLowerCase().includes('paris'))) {
-      const arrondissement = parseInt(match[1], 10);
-      // Format: 1 -> 1er, others -> 2e, 3e, etc.
-      const suffix = arrondissement === 1 ? 'er' : 'e';
-      return `Paris ${arrondissement}${suffix}`;
+        if (postcodeNum >= minPostcode && postcodeNum <= maxPostcode) {
+          const arrondissement = postcodeNum - info.basePostcode;
+          const cityLower = city.toLowerCase();
+
+          // Verify city name matches
+          if (cityLower.includes(key) || context?.toLowerCase().includes(key)) {
+            const suffix = arrondissement === 1 ? 'er' : 'e';
+            return `${info.name} ${arrondissement}${suffix}`;
+          }
+        }
+      }
     }
   }
 
@@ -257,9 +282,15 @@ const formatCityWithArrondissement = (city: string, postcode: string | null, con
 
     if (contextMatch) {
       const arrondissementNum = parseInt(contextMatch[1], 10);
-      if (city.toLowerCase().includes('paris')) {
-        const suffix = arrondissementNum === 1 ? 'er' : 'e';
-        return `Paris ${arrondissementNum}${suffix}`;
+      const cityLower = city.toLowerCase();
+
+      for (const [key, info] of Object.entries(citiesWithArrondissements)) {
+        if (cityLower.includes(key) || context.toLowerCase().includes(key)) {
+          if (arrondissementNum >= 1 && arrondissementNum <= info.maxArrondissement) {
+            const suffix = arrondissementNum === 1 ? 'er' : 'e';
+            return `${info.name} ${arrondissementNum}${suffix}`;
+          }
+        }
       }
     }
   }
@@ -267,12 +298,18 @@ const formatCityWithArrondissement = (city: string, postcode: string | null, con
   return city;
 };
 
-// Helper function to check if current city is a Paris arrondissement
-const isParisArrondissement = (cityName: string): boolean => {
+// Helper function to check if current city is an arrondissement (Paris, Marseille, Lyon, etc.)
+const isCityArrondissement = (cityName: string): boolean => {
   if (!cityName) return false;
-  // Check if it matches patterns like "Paris 6e", "Paris 12e", "Paris 1er", etc.
-  const parisArrondissementRegex = /^Paris\s+\d+(?:er|e|ème)$/i;
-  return parisArrondissementRegex.test(cityName.trim());
+
+  // Cities with arrondissements and their patterns
+  const arrondissementPatterns = [
+    /^Paris\s+\d+(?:er|e|ème)$/i, // Paris 6e, Paris 1er
+    /^Marseille\s+\d+(?:er|e|ème)$/i, // Marseille 1er, Marseille 6e
+    /^Lyon\s+\d+(?:er|e|ème)$/i, // Lyon 1er, Lyon 6e
+  ];
+
+  return arrondissementPatterns.some(pattern => pattern.test(cityName.trim()));
 };
 
 // Function to get INSEE code from coordinates
@@ -831,8 +868,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
         // **NEW**: Recalculate zone stats immediately after initial data is loaded
         if (statsScope === 'zone') {
           setTimeout(() => {
-            if (mapRef.current && mapRef.current.getSource('mutations-live')) {
-              const features = mapRef.current.querySourceFeatures('mutations-live');
+            if (mapRef.current && mapRef.current.getLayer('mutation-point')) {
+              // Use queryRenderedFeatures to get only visible mutations in the current viewport
+              const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
               const calculatedStats = calculateZoneStats(features);
               setZoneStats(calculatedStats);
             }
@@ -924,9 +962,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
           // **ADDITIONAL**: Force zone stats recalculation right after property list update
           if (statsScope === 'zone') {
             setTimeout(() => {
-              const features = mapRef.current.querySourceFeatures('mutations-live');
-              const calculatedStats = calculateZoneStats(features);
-              setZoneStats(calculatedStats);
+              if (mapRef.current && mapRef.current.getLayer('mutation-point')) {
+                // Use queryRenderedFeatures to get only visible mutations in the current viewport
+                const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
+                const calculatedStats = calculateZoneStats(features);
+                setZoneStats(calculatedStats);
+              }
             }, 500); // Wait for property list to finish updating
           }
         }
@@ -934,8 +975,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
         // **NEW**: Recalculate zone stats immediately after new data is loaded
         if (statsScope === 'zone') {
           setTimeout(() => {
-            if (mapRef.current && mapRef.current.getSource('mutations-live')) {
-              const features = mapRef.current.querySourceFeatures('mutations-live');
+            if (mapRef.current && mapRef.current.getLayer('mutation-point')) {
+              // Use queryRenderedFeatures to get only visible mutations in the current viewport
+              const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
               const calculatedStats = calculateZoneStats(features);
               setZoneStats(calculatedStats);
             }
@@ -2550,10 +2592,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // **NEW**: Calculate zone statistics when scope is "zone" and map has data
   useEffect(() => {
-    if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
+    if (statsScope === 'zone' && mapRef.current && mapRef.current.getLayer('mutation-point')) {
       // Small delay to ensure map data is loaded
       setTimeout(() => {
-        const features = mapRef.current.querySourceFeatures('mutations-live');
+        // Use queryRenderedFeatures to get only visible mutations in the current viewport
+        const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
+        debugLog('Visible mutations in zone:', features.length);
         const calculatedStats = calculateZoneStats(features);
 
         setZoneStats(calculatedStats);
@@ -2563,9 +2607,11 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // **NEW**: Recalculate zone stats when map moves (if zone scope is selected)
   const recalculateZoneStatsIfNeeded = useCallback(() => {
-    if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
+    if (statsScope === 'zone' && mapRef.current && mapRef.current.getLayer('mutation-point')) {
       setTimeout(() => {
-        const features = mapRef.current.querySourceFeatures('mutations-live');
+        // Use queryRenderedFeatures to get only visible mutations in the current viewport
+        const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
+        debugLog('Recalculating zone stats, visible mutations:', features.length);
         const calculatedStats = calculateZoneStats(features);
         setZoneStats(calculatedStats);
       }, 300); // Longer delay to ensure data is fully loaded
@@ -2574,15 +2620,25 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // **NEW**: Recalculate zone stats when data version changes (triggered by PropertyList)
   useEffect(() => {
-    if (statsScope === 'zone' && dataVersion !== undefined && mapRef.current && mapRef.current.getSource('mutations-live')) {
+    if (statsScope === 'zone' && dataVersion !== undefined && mapRef.current && mapRef.current.getLayer('mutation-point')) {
       // Small delay to ensure map rendering is complete
       setTimeout(() => {
-        const features = mapRef.current.querySourceFeatures('mutations-live');
+        // Use queryRenderedFeatures to get only visible mutations in the current viewport
+        const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
+        debugLog('Recalculating zone stats after data update, visible mutations:', features.length);
         const calculatedStats = calculateZoneStats(features);
         setZoneStats(calculatedStats);
       }, 300);
     }
   }, [dataVersion, statsScope]); // Trigger when dataVersion or statsScope changes
+
+  // **NEW**: Automatically switch to commune if quartier is selected (quartier option is hidden)
+  useEffect(() => {
+    if (statsScope === 'quartier') {
+      debugLog('Quartier option is hidden, switching to commune');
+      setStatsScope('commune');
+    }
+  }, []); // Only run once on mount to reset any existing quartier selection
 
   // **NEW**: Handle statsScope change - reset stats to zeros for quartier, reload for commune
   useEffect(() => {
@@ -3181,12 +3237,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         className="bg-white font-medium relative w-full border border-gray-300 rounded-md shadow-sm pl-3 pr-10 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm py-2"
                       >
                         <option value={currentCity}>
-                          {isParisArrondissement(currentCity) ? `Arrondissement (${currentCity})` : currentCity}
+                          {isCityArrondissement(currentCity) ? `Arrondissement (${currentCity})` : currentCity}
                         </option>
                         <option value="Zone affichée">Zone affichée</option>
-                        <option value={hasQuartier ? currentQuartier : 'Quartier (non disponible)'}>
+                        {/* Quartier option temporarily hidden - not finished yet */}
+                        {/* <option value={hasQuartier ? currentQuartier : 'Quartier (non disponible)'}>
                           {hasQuartier ? currentQuartier : 'Quartier (non disponible)'}
-                        </option>
+                        </option> */}
                       </select>
                     </div>
                   </div>
@@ -3304,8 +3361,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     const match = currentStatsData.find(item => item.typeGroupe === apiTypeName);
                     const currentStat = {
                       nombre: match?.nombreMutations || match?.nombre || 0,
-                      prixMoyen: match?.prixMedian || match?.prixMoyen || 0,
-                      prixM2Moyen: match?.prixM2Median || match?.prixM2Moyen || 0,
+                      prixMoyen: match?.prixMoyenDec2024 || match?.prixMoyen || 0,
+                      prixM2Moyen: match?.prixM2MoyenDec2024 || match?.prixM2Moyen || 0,
                     };
 
                     if (isLoading || (statsScope === 'quartier' && isLoadingQuartier)) {
@@ -3345,7 +3402,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                             className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
                             style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
                           >
-                            Prix médian
+                            Prix moyen
                           </p>
                           <p
                             className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
@@ -3359,7 +3416,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                             className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
                             style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
                           >
-                            Prix médian au m²
+                            Prix moyen au m²
                           </p>
                           <p
                             className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
@@ -3390,12 +3447,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
                   >
                     <option value="commune">
-                      {isParisArrondissement(currentCity) ? `Arrondissement (${currentCity})` : `Commune (${currentCity})`}
+                      {isCityArrondissement(currentCity) ? `Arrondissement (${currentCity})` : `Commune (${currentCity})`}
                     </option>
                     <option value="zone">Zone affichée</option>
-                    <option value="quartier">
+                    {/* Quartier option temporarily hidden - not finished yet */}
+                    {/* <option value="quartier">
                       {hasQuartier ? `Quartier (${currentQuartier || 'Chargement...'})` : 'Quartier (non disponible)'}
-                    </option>
+                    </option> */}
                   </select>
                 </div>
               </div>
@@ -3447,8 +3505,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 return {
                   typeBien: typeName,
                   nombre: match?.nombreMutations || match?.nombre || 0,
-                  prixMoyen: match?.prixMedian || match?.prixMoyen || 0,
-                  prixM2Moyen: match?.prixM2Median || match?.prixM2Moyen || 0,
+                  prixMoyen: match?.prixMoyenDec2024 || match?.prixMoyen || 0,
+                  prixM2Moyen: match?.prixM2MoyenDec2024 || match?.prixM2Moyen || 0,
                 };
               });
 
@@ -3485,13 +3543,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         </p>
                       </div>
                       <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1">Prix médian</p>
+                        <p className="text-xs text-gray-600 mb-1">Prix moyen</p>
                         <p className="text-sm sm:text-base font-semibold text-gray-900">
                           {formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€
                         </p>
                       </div>
                       <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1">Prix médian au m²</p>
+                        <p className="text-xs text-gray-600 mb-1">Prix moyen au m²</p>
                         <p className="text-sm sm:text-base font-semibold text-gray-900">
                           {Math.round(normalizedStats[activePropertyType]?.prixM2Moyen || 0).toLocaleString('fr-FR')}€
                         </p>

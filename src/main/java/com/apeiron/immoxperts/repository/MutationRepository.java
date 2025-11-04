@@ -67,10 +67,10 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
     @Query(
         value = """
         SELECT
-            type_groupe,
+            type_bien,
             nombre_mutations,
-            prix_median,
-            prix_m2_median
+            prix_moyen_dec2024,
+            prix_m2_moyen_dec2024
         FROM dvf.mutation_stats_by_city
         WHERE code_insee = :codeInsee
         ORDER BY nombre_mutations DESC
