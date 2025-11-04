@@ -107,7 +107,10 @@ function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (.
 
 // Helper functions for stats panel
 const formatNumber = (num: number) => {
-  return new Intl.NumberFormat('fr-FR').format(num);
+  return new Intl.NumberFormat('fr-FR', {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(Math.round(num || 0));
 };
 
 const getStatsShortTypeName = (type: string) => {
@@ -3354,8 +3357,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     const match = currentStatsData.find(item => item.typeGroupe === apiTypeName);
                     const currentStat = {
                       nombre: match?.nombreMutations || match?.nombre || 0,
-                      prixMoyen: match?.prixMedianDec2024 || match?.prixMedian || match?.prixMoyen || 0,
-                      prixM2Moyen: match?.prixM2MedianDec2024 || match?.prixM2Median || match?.prixM2Moyen || 0,
+                      prixMoyen: match?.prixMoyenDec2024 || match?.prixMoyen || 0,
+                      prixM2Moyen: match?.prixM2MoyenDec2024 || match?.prixM2Moyen || 0,
                     };
 
                     if (isLoading || (statsScope === 'quartier' && isLoadingQuartier)) {
@@ -3395,7 +3398,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                             className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
                             style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
                           >
-                            Prix médian
+                            Prix moyen
                           </p>
                           <p
                             className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
@@ -3409,7 +3412,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                             className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
                             style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
                           >
-                            Prix médian au m²
+                            Prix moyen au m²
                           </p>
                           <p
                             className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
@@ -3498,8 +3501,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 return {
                   typeBien: typeName,
                   nombre: match?.nombreMutations || match?.nombre || 0,
-                  prixMoyen: match?.prixMedianDec2024 || match?.prixMedian || match?.prixMoyen || 0,
-                  prixM2Moyen: match?.prixM2MedianDec2024 || match?.prixM2Median || match?.prixM2Moyen || 0,
+                  prixMoyen: match?.prixMoyenDec2024 || match?.prixMoyen || 0,
+                  prixM2Moyen: match?.prixM2MoyenDec2024 || match?.prixM2Moyen || 0,
                 };
               });
 
@@ -3536,13 +3539,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         </p>
                       </div>
                       <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1">Prix médian</p>
+                        <p className="text-xs text-gray-600 mb-1">Prix moyen</p>
                         <p className="text-sm sm:text-base font-semibold text-gray-900">
                           {formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€
                         </p>
                       </div>
                       <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1">Prix médian au m²</p>
+                        <p className="text-xs text-gray-600 mb-1">Prix moyen au m²</p>
                         <p className="text-sm sm:text-base font-semibold text-gray-900">
                           {Math.round(normalizedStats[activePropertyType]?.prixM2Moyen || 0).toLocaleString('fr-FR')}€
                         </p>

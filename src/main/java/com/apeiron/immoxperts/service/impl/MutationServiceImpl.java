@@ -379,9 +379,9 @@ public class MutationServiceImpl implements MutationService {
     private StatsByCityDTO buildStatsByCityDTO(Object[] row) {
         String typeGroupe = (String) row[0];
         Integer nombreMutations = ((Number) row[1]).intValue();
-        Double prixMedianDec2024 = row[2] != null ? ((Number) row[2]).doubleValue() : null;
-        Double prixM2MedianDec2024 = row[3] != null ? ((Number) row[3]).doubleValue() : null;
+        Double prixMoyenDec2024 = row[2] != null ? ((Number) row[2]).doubleValue() : null;
+        Double prixM2MoyenDec2024 = row[3] != null ? ((Number) row[3]).doubleValue() : null;
 
-        return new StatsByCityDTO(typeGroupe, nombreMutations, prixMedianDec2024, prixM2MedianDec2024);
+        return new StatsByCityDTO(typeGroupe, nombreMutations, prixMoyenDec2024, prixM2MoyenDec2024);
     }
 }
