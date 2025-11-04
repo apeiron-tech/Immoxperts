@@ -861,8 +861,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
         // **NEW**: Recalculate zone stats immediately after initial data is loaded
         if (statsScope === 'zone') {
           setTimeout(() => {
-            if (mapRef.current && mapRef.current.getSource('mutations-live')) {
-              const features = mapRef.current.querySourceFeatures('mutations-live');
+            if (mapRef.current && mapRef.current.getLayer('mutation-point')) {
+              // Use queryRenderedFeatures to get only visible mutations in the current viewport
+              const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
               const calculatedStats = calculateZoneStats(features);
               setZoneStats(calculatedStats);
             }
@@ -954,9 +955,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
           // **ADDITIONAL**: Force zone stats recalculation right after property list update
           if (statsScope === 'zone') {
             setTimeout(() => {
-              const features = mapRef.current.querySourceFeatures('mutations-live');
-              const calculatedStats = calculateZoneStats(features);
-              setZoneStats(calculatedStats);
+              if (mapRef.current && mapRef.current.getLayer('mutation-point')) {
+                // Use queryRenderedFeatures to get only visible mutations in the current viewport
+                const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
+                const calculatedStats = calculateZoneStats(features);
+                setZoneStats(calculatedStats);
+              }
             }, 500); // Wait for property list to finish updating
           }
         }
@@ -964,8 +968,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
         // **NEW**: Recalculate zone stats immediately after new data is loaded
         if (statsScope === 'zone') {
           setTimeout(() => {
-            if (mapRef.current && mapRef.current.getSource('mutations-live')) {
-              const features = mapRef.current.querySourceFeatures('mutations-live');
+            if (mapRef.current && mapRef.current.getLayer('mutation-point')) {
+              // Use queryRenderedFeatures to get only visible mutations in the current viewport
+              const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
               const calculatedStats = calculateZoneStats(features);
               setZoneStats(calculatedStats);
             }
@@ -2580,10 +2585,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // **NEW**: Calculate zone statistics when scope is "zone" and map has data
   useEffect(() => {
-    if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
+    if (statsScope === 'zone' && mapRef.current && mapRef.current.getLayer('mutation-point')) {
       // Small delay to ensure map data is loaded
       setTimeout(() => {
-        const features = mapRef.current.querySourceFeatures('mutations-live');
+        // Use queryRenderedFeatures to get only visible mutations in the current viewport
+        const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
+        debugLog('Visible mutations in zone:', features.length);
         const calculatedStats = calculateZoneStats(features);
 
         setZoneStats(calculatedStats);
@@ -2593,9 +2600,11 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // **NEW**: Recalculate zone stats when map moves (if zone scope is selected)
   const recalculateZoneStatsIfNeeded = useCallback(() => {
-    if (statsScope === 'zone' && mapRef.current && mapRef.current.getSource('mutations-live')) {
+    if (statsScope === 'zone' && mapRef.current && mapRef.current.getLayer('mutation-point')) {
       setTimeout(() => {
-        const features = mapRef.current.querySourceFeatures('mutations-live');
+        // Use queryRenderedFeatures to get only visible mutations in the current viewport
+        const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
+        debugLog('Recalculating zone stats, visible mutations:', features.length);
         const calculatedStats = calculateZoneStats(features);
         setZoneStats(calculatedStats);
       }, 300); // Longer delay to ensure data is fully loaded
@@ -2604,10 +2613,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // **NEW**: Recalculate zone stats when data version changes (triggered by PropertyList)
   useEffect(() => {
-    if (statsScope === 'zone' && dataVersion !== undefined && mapRef.current && mapRef.current.getSource('mutations-live')) {
+    if (statsScope === 'zone' && dataVersion !== undefined && mapRef.current && mapRef.current.getLayer('mutation-point')) {
       // Small delay to ensure map rendering is complete
       setTimeout(() => {
-        const features = mapRef.current.querySourceFeatures('mutations-live');
+        // Use queryRenderedFeatures to get only visible mutations in the current viewport
+        const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
+        debugLog('Recalculating zone stats after data update, visible mutations:', features.length);
         const calculatedStats = calculateZoneStats(features);
         setZoneStats(calculatedStats);
       }, 300);
@@ -2620,7 +2631,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
       debugLog('Quartier option is hidden, switching to commune');
       setStatsScope('commune');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount to reset any existing quartier selection
 
   // **NEW**: Handle statsScope change - reset stats to zeros for quartier, reload for commune
@@ -3344,8 +3354,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     const match = currentStatsData.find(item => item.typeGroupe === apiTypeName);
                     const currentStat = {
                       nombre: match?.nombreMutations || match?.nombre || 0,
-                      prixMoyen: match?.prixMedian || match?.prixMoyen || 0,
-                      prixM2Moyen: match?.prixM2Median || match?.prixM2Moyen || 0,
+                      prixMoyen: match?.prixMedianDec2024 || match?.prixMedian || match?.prixMoyen || 0,
+                      prixM2Moyen: match?.prixM2MedianDec2024 || match?.prixM2Median || match?.prixM2Moyen || 0,
                     };
 
                     if (isLoading || (statsScope === 'quartier' && isLoadingQuartier)) {
@@ -3488,8 +3498,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 return {
                   typeBien: typeName,
                   nombre: match?.nombreMutations || match?.nombre || 0,
-                  prixMoyen: match?.prixMedian || match?.prixMoyen || 0,
-                  prixM2Moyen: match?.prixM2Median || match?.prixM2Moyen || 0,
+                  prixMoyen: match?.prixMedianDec2024 || match?.prixMedian || match?.prixMoyen || 0,
+                  prixM2Moyen: match?.prixM2MedianDec2024 || match?.prixM2Median || match?.prixM2Moyen || 0,
                 };
               });
 
