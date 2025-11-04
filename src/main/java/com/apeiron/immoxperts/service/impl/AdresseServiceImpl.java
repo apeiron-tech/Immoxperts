@@ -7,6 +7,7 @@ import com.apeiron.immoxperts.service.dto.AddressSearchDTO;
 import com.apeiron.immoxperts.service.dto.AddressSuggestionProjection;
 import com.apeiron.immoxperts.service.dto.AdresseDTO;
 import com.apeiron.immoxperts.service.mapper.AdresseMapper;
+import java.text.Normalizer;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -36,6 +37,127 @@ public class AdresseServiceImpl implements AdresseService {
         this.adresseMapper = adresseMapper;
     }
 
+    /**
+     * Remove accents from text for better matching
+     * Example: "Résidence" -> "Residence"
+     */
+    private String removeAccents(String text) {
+        if (text == null) {
+            return null;
+        }
+        // Normalize to decomposed form (separate base chars from diacritics)
+        String normalized = Normalizer.normalize(text, Normalizer.Form.NFD);
+        // Remove all diacritical marks
+        return normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+    }
+
+    /**
+     * Normalize address abbreviations to full words WITHOUT accents
+     * The database stores full words WITH accents, but ILIKE is accent-insensitive
+     * when using the trigram indexes properly
+     */
+    private String normalizeAbbreviation(String token) {
+        if (token == null || token.isEmpty()) {
+            return token;
+        }
+
+        String upperToken = token.toUpperCase();
+
+        // Expand abbreviations to full words (will be used with % similarity search)
+        switch (upperToken) {
+            // Route variants
+            case "RTE":
+            case "RT":
+                return "Route";
+            // Avenue variants
+            case "AV":
+            case "AVE":
+            case "AVEN":
+                return "Avenue";
+            // Boulevard variants
+            case "BD":
+            case "BVD":
+            case "BLVD":
+            case "BOUL":
+                return "Boulevard";
+            // Rue variants
+            case "R":
+            case "RU":
+                return "Rue";
+            // Place variants
+            case "PL":
+            case "PLC":
+                return "Place";
+            // Résidence variants (return without accent for ILIKE matching)
+            case "RES":
+            case "RESID":
+                return "Residence";
+            // Allée variants (return without accent)
+            case "ALL":
+            case "AL":
+                return "Allee";
+            // Impasse variants
+            case "IMP":
+                return "Impasse";
+            // Chemin variants
+            case "CH":
+            case "CHEM":
+            case "CHE":
+                return "Chemin";
+            // Cours variants
+            case "CRS":
+            case "CR":
+                return "Cours";
+            // Square variants
+            case "SQ":
+                return "Square";
+            // Promenade variants
+            case "PROM":
+                return "Promenade";
+            // Quai variants
+            case "QU":
+            case "Q":
+                return "Quai";
+            // Lotissement variants
+            case "LOT":
+                return "Lotissement";
+            // Hameau variants
+            case "HAM":
+                return "Hameau";
+            // Passage variants
+            case "PAS":
+            case "PASS":
+                return "Passage";
+            // Grande variants
+            case "GDE":
+            case "GD":
+            case "GRD":
+                return "Grande";
+            // Faubourg variants
+            case "FG":
+                return "Faubourg";
+            // Montée variants
+            case "MTE":
+            case "NTE":
+                return "Montee";
+            // Esplanade variants
+            case "ESP":
+                return "Esplanade";
+            // Domaine variants
+            case "DOM":
+                return "Domaine";
+            // Cité variants
+            case "CITE":
+                return "Cite";
+            // Quartier variants
+            case "QUA":
+                return "Quartier";
+            default:
+                // If it's already a full word, remove accents
+                return token;
+        }
+    }
+
     @Override
     public AdresseDTO save(AdresseDTO adresseDTO) {
         LOG.debug("Request to save Adresse : {}", adresseDTO);
@@ -57,11 +179,16 @@ public class AdresseServiceImpl implements AdresseService {
             String cleanToken = token.trim();
             // Keep tokens that are at least 1 character (numbers included)
             if (!cleanToken.isEmpty()) {
-                validTokens.add(cleanToken);
+                // Normalize abbreviations (e.g., RTE -> Route, RES -> Résidence)
+                String normalizedToken = normalizeAbbreviation(cleanToken);
+                // Remove accents for DB matching (Résidence -> Residence)
+                // ILIKE is case-insensitive but NOT accent-insensitive
+                normalizedToken = removeAccents(normalizedToken);
+                validTokens.add(normalizedToken);
             }
         }
 
-        LOG.debug("Search tokens: {}", validTokens);
+        LOG.debug("Search tokens (after normalization): {}", validTokens);
 
         List<AddressSuggestionProjection> results;
 
