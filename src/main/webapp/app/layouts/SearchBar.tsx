@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import FilterPopup from '../features/property/FilterPopup';
 import { FilterState } from '../types/filters';
 import { API_ENDPOINTS } from 'app/config/api.config';
+import frenchCities from '../data/french-cities.json';
 
 // Utility function to normalize accented characters
 const normalizeAccents = (str: string): string => {
@@ -12,50 +13,97 @@ const normalizeAccents = (str: string): string => {
     .replace(/Ç/g, 'C'); // Handle 'Ç' specifically
 };
 
-// Utility function to expand French address abbreviations
-const expandAddressAbbreviations = (str: string): string => {
-  // Common French address abbreviations mapping
+// Utility function to expand French address abbreviations for scoring
+const expandAbbreviationsForScoring = (str: string): string => {
+  // Common French address abbreviations mapping (without accents for matching)
   const abbreviations: { [key: string]: string } = {
-    'BD ': 'BOULEVARD ',
-    'BVD ': 'BOULEVARD ',
-    'BD. ': 'BOULEVARD ',
-    'BVD. ': 'BOULEVARD ',
-    'AV ': 'AVENUE ',
-    'AV. ': 'AVENUE ',
-    'AVE ': 'AVENUE ',
-    'AVE. ': 'AVENUE ',
-    'R ': 'RUE ',
-    'R. ': 'RUE ',
-    'PL ': 'PLACE ',
-    'PL. ': 'PLACE ',
-    'SQ ': 'SQUARE ',
-    'SQ. ': 'SQUARE ',
-    'CRS ': 'COURS ',
-    'CRS. ': 'COURS ',
-    'PROM ': 'PROMENADE ',
-    'PROM. ': 'PROMENADE ',
-    'IMP ': 'IMPASSE ',
-    'IMP. ': 'IMPASSE ',
-    'CHEMIN ': 'CHEMIN ',
-    'CH ': 'CHEMIN ',
-    'CH. ': 'CHEMIN ',
-    'BLVD ': 'BOULEVARD ',
-    'BLVD. ': 'BOULEVARD ',
-    'ALLEE ': 'ALLÉE ',
-    'ALLEE. ': 'ALLÉE ',
-    'ALL ': 'ALLÉE ',
-    'ALL. ': 'ALLÉE ',
+    RTE: 'ROUTE',
+    RT: 'ROUTE',
+    AV: 'AVENUE',
+    AVE: 'AVENUE',
+    AVEN: 'AVENUE',
+    BD: 'BOULEVARD',
+    BVD: 'BOULEVARD',
+    BLVD: 'BOULEVARD',
+    BOUL: 'BOULEVARD',
+    R: 'RUE',
+    RU: 'RUE',
+    PL: 'PLACE',
+    PLC: 'PLACE',
+    PLE: 'PLACE',
+    RES: 'RESIDENCE',
+    RESID: 'RESIDENCE',
+    ALL: 'ALLEE',
+    AL: 'ALLEE',
+    IMP: 'IMPASSE',
+    CH: 'CHEMIN',
+    CHEM: 'CHEMIN',
+    CHE: 'CHEMIN',
+    CRS: 'COURS',
+    CR: 'COURS',
+    SQ: 'SQUARE',
+    PROM: 'PROMENADE',
+    QU: 'QUAI',
+    Q: 'QUAI',
+    QUAI: 'QUAI',
+    LOT: 'LOTISSEMENT',
+    HAM: 'HAMEAU',
+    PAS: 'PASSAGE',
+    PASS: 'PASSAGE',
+    GDE: 'GRANDE',
+    GD: 'GRANDE',
+    GRD: 'GRANDE',
+    FG: 'FAUBOURG',
+    MTE: 'MONTEE',
+    NTE: 'MONTEE',
+    ESP: 'ESPLANADE',
+    DOM: 'DOMAINE',
+    CITE: 'CITE',
+    QUA: 'QUARTIER',
+    CTRE: 'CENTRE',
+    VTE: 'VOIE',
+    VC: 'VOIE',
+    ESC: 'ESCALIER',
+    CLOS: 'CLOS',
+    SEN: 'SENTE',
+    ENC: 'ENCLAVE',
+    ROC: 'ROCADE',
+    PTR: 'POTERNE',
+    PRT: 'PORT',
+    GAL: 'GALERIE',
+    ZI: 'ZONE',
+    MAIS: 'MAISON',
+    CD: 'CHEMIN',
+    TRA: 'TRAVERSE',
+    PARC: 'PARC',
+    RAC: 'RACCORDEMENT',
+    DSC: 'DESCENTE',
+    RPE: 'RUELLE',
+    RLE: 'RUELLE',
+    HAB: 'HABITATION',
+    CHV: 'CHEVAUCHANT',
+    COUR: 'COUR',
+    PTTE: 'PETITE',
+    TSSE: 'TASSE',
+    ZAC: 'ZONE',
+    ZA: 'ZONE',
+    VGE: 'VILLAGE',
+    CC: 'CENTRE',
+    VOIE: 'VOIE',
+    GR: 'GRANDE',
+    VIA: 'VIADUC',
+    CAMP: 'CAMP',
   };
 
-  // Replace abbreviations (case-insensitive)
-  let expanded = str.toUpperCase();
-  Object.keys(abbreviations).forEach(abbr => {
-    // Use word boundary to ensure we match complete words only
-    const regex = new RegExp(`\\b${abbr.replace(/\./g, '\\.')}`, 'gi');
-    expanded = expanded.replace(regex, abbreviations[abbr]);
-  });
-
-  return expanded;
+  // Split into tokens and expand each one
+  return str
+    .toUpperCase()
+    .split(/\s+/)
+    .map(token => {
+      const cleanToken = token.replace(/[.,;]/g, ''); // Remove punctuation
+      return abbreviations[cleanToken] || token;
+    })
+    .join(' ');
 };
 
 interface SearchBarProps {
@@ -117,7 +165,45 @@ interface UnifiedSuggestion {
   originalData: LocalAddressFeature | OSMPlace;
 }
 
-// Function to fetch cities/communes from OpenStreetMap via backend proxy
+// Interface for local city data
+interface LocalCity {
+  name: string;
+  postcode: string;
+  department: string;
+  lat: number;
+  lon: number;
+  type: 'city' | 'arrondissement';
+}
+
+// FAST local search in French cities (NO API call!)
+const searchLocalCities = (query: string): LocalCity[] => {
+  const normalized = normalizeAccents(query).toLowerCase();
+
+  return (frenchCities as LocalCity[])
+    .filter(city => {
+      const cityName = normalizeAccents(city.name).toLowerCase();
+      return cityName.startsWith(normalized) || cityName.includes(' ' + normalized);
+    })
+    .slice(0, 10); // Top 10 results
+};
+
+// Convert local city to OSMPlace format for compatibility
+const convertLocalCityToOSMPlace = (city: LocalCity): OSMPlace => ({
+  place_id: Math.random() * 1000000, // Generate fake ID
+  display_name: `${city.name}, ${city.department}, France`,
+  lat: city.lat.toString(),
+  lon: city.lon.toString(),
+  type: city.type === 'arrondissement' ? 'administrative' : 'city',
+  class: 'place',
+  addresstype: city.type === 'arrondissement' ? 'suburb' : 'city',
+  address: {
+    city: city.name,
+    postcode: city.postcode,
+    county: city.department,
+  },
+});
+
+// Fallback: fetch from OSM only if local search finds nothing
 const fetchOSMPlaces = async (query: string): Promise<OSMPlace[]> => {
   try {
     // Use backend proxy to avoid CORS issues
@@ -270,15 +356,34 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
         try {
           setIsLoading(true);
 
-          // Expand abbreviations first, then normalize the search query before sending to APIs
-          const expandedQuery = expandAddressAbbreviations(searchQuery);
-          const normalizedQuery = normalizeAccents(expandedQuery);
+          // Send the ORIGINAL query to backend - let backend handle abbreviations and accents
+          // Only normalize accents for local city search
+          const normalizedQueryForCities = normalizeAccents(searchQuery);
 
-          // Fetch from both APIs in parallel
-          const [backendResponse, osmPlaces] = await Promise.all([
-            fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(normalizedQuery)}`).then(res => (res.ok ? res.json() : [])),
-            fetchOSMPlaces(normalizedQuery),
-          ]);
+          // Detect if query contains a number (address search vs city search)
+          const hasNumber = /\d/.test(searchQuery);
+
+          // 1. INSTANT local search first (only for city searches, not addresses!)
+          const localCities = hasNumber ? [] : searchLocalCities(normalizedQueryForCities);
+          const localOSMPlaces = localCities.map(convertLocalCityToOSMPlace);
+
+          // 2. Fetch backend addresses (always, for both address and city searches)
+          const backendResponse = await fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(searchQuery)}`).then(res =>
+            res.ok ? res.json() : [],
+          );
+
+          // 3. Only call OSM for CITY searches (no numbers), and if local search found few results
+          let osmPlaces = localOSMPlaces;
+          if (!hasNumber && localCities.length < 3) {
+            const remoteCities = await fetchOSMPlaces(normalizedQueryForCities);
+            // Combine local + remote, deduplicate by name
+            const seen = new Set(localCities.map(c => c.name.toLowerCase()));
+            const uniqueRemote = remoteCities.filter(place => {
+              const name = (place.address?.city || place.name || place.display_name.split(',')[0]).toLowerCase();
+              return !seen.has(name);
+            });
+            osmPlaces = [...localOSMPlaces, ...uniqueRemote];
+          }
 
           // Convert and merge results
           const backendSuggestions: UnifiedSuggestion[] = (backendResponse as LocalAddressFeature[]).map(convertBackendToUnified);
@@ -296,35 +401,116 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
             );
           });
 
-          // Combine: OSM cities/communes first, then backend addresses
-          const combinedSuggestions = [...deduplicatedOSMSuggestions, ...backendSuggestions];
+          // Separate cities and addresses for better organization
+          const cities = deduplicatedOSMSuggestions;
+          const addresses = backendSuggestions;
 
-          // Sort by relevance: closest match first
-          const sortedSuggestions = combinedSuggestions.sort((a, b) => {
-            const queryLower = searchQuery.toLowerCase().trim();
-            const aLower = a.displayName.toLowerCase();
-            const bLower = b.displayName.toLowerCase();
+          // Score and sort cities
+          const scoredCities = cities
+            .map(suggestion => {
+              // Normalize AND expand abbreviations for BOTH query and display
+              // Step 1: Expand abbreviations (RTE → ROUTE)
+              const queryExpanded = expandAbbreviationsForScoring(searchQuery);
+              const displayExpanded = expandAbbreviationsForScoring(suggestion.displayName);
+              // Step 2: Remove accents (Résidence → RESIDENCE)
+              const queryNormalized = normalizeAccents(queryExpanded.toLowerCase().trim());
+              const displayNormalized = normalizeAccents(displayExpanded.toLowerCase());
+              let score = 10000; // Base score for cities (always prioritized)
 
-            // Priority 1: Exact start match
-            const aStartsWith = aLower.startsWith(queryLower);
-            const bStartsWith = bLower.startsWith(queryLower);
-            if (aStartsWith && !bStartsWith) return -1;
-            if (!aStartsWith && bStartsWith) return 1;
+              // Split query into tokens for multi-token matching
+              const queryTokens = queryNormalized.split(/\s+/).filter(t => t.length > 0);
+              const displayTokens = displayNormalized.split(/\s+/);
 
-            // Priority 2: Word boundary match (space before query)
-            const aWordStart = aLower.includes(' ' + queryLower);
-            const bWordStart = bLower.includes(' ' + queryLower);
-            if (aWordStart && !bWordStart) return -1;
-            if (!aWordStart && bWordStart) return 1;
+              // Check if ALL query tokens are present in display
+              const allTokensPresent = queryTokens.every(qToken => displayTokens.some(dToken => dToken.includes(qToken)));
 
-            // Priority 3: Shorter addresses first
-            if (a.displayName.length !== b.displayName.length) {
-              return a.displayName.length - b.displayName.length;
-            }
+              if (!allTokensPresent) {
+                return { suggestion, score: -1 }; // Filter out if not all tokens match
+              }
 
-            // Priority 4: Alphabetical
-            return a.displayName.localeCompare(b.displayName);
-          });
+              // Count exact token matches (higher is better)
+              const exactMatches = queryTokens.filter(qToken => displayTokens.some(dToken => dToken === qToken)).length;
+              score += exactMatches * 300;
+
+              // Count start-matches (query token starts display token)
+              const startMatches = queryTokens.filter(qToken => displayTokens.some(dToken => dToken.startsWith(qToken))).length;
+              score += startMatches * 200;
+
+              // Bonus scoring based on match quality
+              if (displayNormalized.startsWith(queryNormalized)) {
+                score += 1000; // Exact start match
+              }
+
+              // Penalty for extra words (favor shorter, more precise results)
+              const extraTokens = displayTokens.length - queryTokens.length;
+              if (extraTokens > 0) {
+                score -= extraTokens * 30; // Smaller penalty for cities
+              }
+
+              // Bonus for short city names
+              if (suggestion.displayName.length < 15) score += 100;
+
+              return { suggestion, score };
+            })
+            .filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .map(item => item.suggestion);
+
+          // Score and sort addresses
+          const scoredAddresses = addresses
+            .map(suggestion => {
+              // Normalize AND expand abbreviations for BOTH query and display
+              // Step 1: Expand abbreviations (RTE → ROUTE)
+              const queryExpanded = expandAbbreviationsForScoring(searchQuery);
+              const displayExpanded = expandAbbreviationsForScoring(suggestion.displayName);
+              // Step 2: Remove accents (Résidence → RESIDENCE)
+              const queryNormalized = normalizeAccents(queryExpanded.toLowerCase().trim());
+              const displayNormalized = normalizeAccents(displayExpanded.toLowerCase());
+              let score = 5000; // Base score for addresses (lower than cities)
+
+              // Split query into tokens for multi-token matching (like backend does)
+              const queryTokens = queryNormalized.split(/\s+/).filter(t => t.length > 0);
+              const displayTokens = displayNormalized.split(/\s+/);
+
+              // Check if ALL query tokens are present in display
+              const allTokensPresent = queryTokens.every(qToken => displayTokens.some(dToken => dToken.includes(qToken)));
+
+              if (!allTokensPresent) {
+                return { suggestion, score: -1 }; // Filter out if not all tokens match
+              }
+
+              // Count exact token matches (higher is better)
+              const exactMatches = queryTokens.filter(qToken => displayTokens.some(dToken => dToken === qToken)).length;
+              score += exactMatches * 300;
+
+              // Count start-matches (query token starts display token)
+              const startMatches = queryTokens.filter(qToken => displayTokens.some(dToken => dToken.startsWith(qToken))).length;
+              score += startMatches * 200;
+
+              // Bonus scoring based on match quality
+              if (displayNormalized.startsWith(queryNormalized)) {
+                score += 1000; // Exact start match
+              }
+
+              // Penalty for extra words (favor shorter, more precise results)
+              const extraTokens = displayTokens.length - queryTokens.length;
+              if (extraTokens > 0) {
+                score -= extraTokens * 50; // Penalize each extra word
+              }
+
+              // Bonus for shorter addresses (more precise)
+              if (displayTokens.length <= queryTokens.length + 2) {
+                score += 200; // Close match in length
+              }
+
+              return { suggestion, score };
+            })
+            .filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .map(item => item.suggestion);
+
+          // Combine: Cities first (top 5), then addresses (top 15)
+          const sortedSuggestions = [...scoredCities.slice(0, 5), ...scoredAddresses.slice(0, 15)];
 
           setSuggestions(sortedSuggestions);
           setShowSuggestions(true);
@@ -344,7 +530,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
         setSuggestions([]);
         setShowSuggestions(false);
       }
-    }, 300);
+    }, 100); // Reduced from 300ms - local search is instant!
 
     return () => clearTimeout(handler);
   }, [searchQuery, isSelectionMade, onCloseOtherPopups]);
