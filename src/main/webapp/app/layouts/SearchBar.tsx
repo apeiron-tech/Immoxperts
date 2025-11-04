@@ -204,10 +204,12 @@ const convertLocalCityToOSMPlace = (city: LocalCity): OSMPlace => ({
 });
 
 // Fallback: fetch from OSM only if local search finds nothing
-const fetchOSMPlaces = async (query: string): Promise<OSMPlace[]> => {
+const fetchOSMPlaces = async (query: string, signal?: AbortSignal): Promise<OSMPlace[]> => {
   try {
-    // Use backend proxy to avoid CORS issues
-    const response = await fetch(`${API_ENDPOINTS.adresses.osmPlaces}?q=${encodeURIComponent(query)}`);
+    // Use backend proxy to avoid CORS issues, with optional abort signal
+    const response = await fetch(`${API_ENDPOINTS.adresses.osmPlaces}?q=${encodeURIComponent(query)}`, {
+      signal,
+    });
 
     if (!response.ok) {
       return [];
@@ -228,6 +230,10 @@ const fetchOSMPlaces = async (query: string): Promise<OSMPlace[]> => {
 
     return filtered;
   } catch (error) {
+    // Ignore abort errors
+    if (error.name === 'AbortError') {
+      return [];
+    }
     return [];
   }
 };
@@ -351,6 +357,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
   // Debounce search input - Fetch from both backend and OSM
   useEffect(() => {
+    // Create AbortController for this request
+    const abortController = new AbortController();
+    const signal = abortController.signal;
+
+    // Create unique request ID to ignore stale responses
+    const requestId = Date.now();
+    const currentRequestIdRef = { current: requestId };
+
     const handler = setTimeout(async () => {
       if (searchQuery.length > 2 && !isSelectionMade) {
         try {
@@ -368,14 +382,26 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           const localOSMPlaces = localCities.map(convertLocalCityToOSMPlace);
 
           // 2. Fetch backend addresses (always, for both address and city searches)
-          const backendResponse = await fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(searchQuery)}`).then(res =>
-            res.ok ? res.json() : [],
-          );
+          // Add AbortController signal to fetch
+          const backendResponse = await fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(searchQuery)}`, {
+            signal,
+          }).then(res => (res.ok ? res.json() : []));
+
+          // Check if this request is still valid (not aborted, still the latest)
+          if (signal.aborted) {
+            return; // Request was cancelled, ignore results
+          }
 
           // 3. Only call OSM for CITY searches (no numbers), and if local search found few results
           let osmPlaces = localOSMPlaces;
           if (!hasNumber && localCities.length < 3) {
-            const remoteCities = await fetchOSMPlaces(normalizedQueryForCities);
+            const remoteCities = await fetchOSMPlaces(normalizedQueryForCities, signal);
+
+            // Check again if request is still valid after OSM call
+            if (signal.aborted) {
+              return;
+            }
+
             // Combine local + remote, deduplicate by name
             const seen = new Set(localCities.map(c => c.name.toLowerCase()));
             const uniqueRemote = remoteCities.filter(place => {
@@ -512,19 +538,31 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           // Combine: Cities first (top 5), then addresses (top 15)
           const sortedSuggestions = [...scoredCities.slice(0, 5), ...scoredAddresses.slice(0, 15)];
 
-          setSuggestions(sortedSuggestions);
-          setShowSuggestions(true);
-          // Close other popups when suggestions open
-          onCloseOtherPopups?.();
-          // Close stats popup if it exists
-          if ((window as any).closeStatsPopup) {
-            (window as any).closeStatsPopup();
+          // Final check: only update if request wasn't aborted
+          if (!signal.aborted) {
+            setSuggestions(sortedSuggestions);
+            setShowSuggestions(true);
+            // Close other popups when suggestions open
+            onCloseOtherPopups?.();
+            // Close stats popup if it exists
+            if ((window as any).closeStatsPopup) {
+              (window as any).closeStatsPopup();
+            }
           }
         } catch (error) {
-          // Error fetching address suggestions
-          setSuggestions([]);
+          // Ignore errors from aborted requests
+          if (error.name === 'AbortError') {
+            return;
+          }
+          // Other errors: clear suggestions only if not aborted
+          if (!signal.aborted) {
+            setSuggestions([]);
+          }
         } finally {
-          setIsLoading(false);
+          // Only update loading state if not aborted
+          if (!signal.aborted) {
+            setIsLoading(false);
+          }
         }
       } else {
         setSuggestions([]);
@@ -532,7 +570,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       }
     }, 100); // Reduced from 300ms - local search is instant!
 
-    return () => clearTimeout(handler);
+    // Cleanup: abort ongoing requests when component unmounts or searchQuery changes
+    return () => {
+      clearTimeout(handler);
+      abortController.abort(); // Cancel any ongoing fetch requests
+    };
   }, [searchQuery, isSelectionMade, onCloseOtherPopups]);
 
   const handleSuggestionSelect = (suggestion: UnifiedSuggestion): void => {
