@@ -203,41 +203,6 @@ const convertLocalCityToOSMPlace = (city: LocalCity): OSMPlace => ({
   },
 });
 
-// Fallback: fetch from OSM only if local search finds nothing
-const fetchOSMPlaces = async (query: string, signal?: AbortSignal): Promise<OSMPlace[]> => {
-  try {
-    // Use backend proxy to avoid CORS issues, with optional abort signal
-    const response = await fetch(`${API_ENDPOINTS.adresses.osmPlaces}?q=${encodeURIComponent(query)}`, {
-      signal,
-    });
-
-    if (!response.ok) {
-      return [];
-    }
-
-    const data = await response.json();
-
-    // Filter to only include cities, towns, villages (communes)
-    const filtered = data.filter(
-      (place: OSMPlace) =>
-        place.type === 'administrative' ||
-        place.addresstype === 'city' ||
-        place.addresstype === 'town' ||
-        place.addresstype === 'village' ||
-        place.addresstype === 'municipality' ||
-        place.class === 'place',
-    );
-
-    return filtered;
-  } catch (error) {
-    // Ignore abort errors
-    if (error.name === 'AbortError') {
-      return [];
-    }
-    return [];
-  }
-};
-
 // Convert backend address to unified suggestion
 const convertBackendToUnified = (feature: LocalAddressFeature): UnifiedSuggestion => ({
   id: `backend-${feature.idadresse}`,
@@ -392,24 +357,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
             return; // Request was cancelled, ignore results
           }
 
-          // 3. Only call OSM for CITY searches (no numbers), and if local search found few results
-          let osmPlaces = localOSMPlaces;
-          if (!hasNumber && localCities.length < 3) {
-            const remoteCities = await fetchOSMPlaces(normalizedQueryForCities, signal);
-
-            // Check again if request is still valid after OSM call
-            if (signal.aborted) {
-              return;
-            }
-
-            // Combine local + remote, deduplicate by name
-            const seen = new Set(localCities.map(c => c.name.toLowerCase()));
-            const uniqueRemote = remoteCities.filter(place => {
-              const name = (place.address?.city || place.name || place.display_name.split(',')[0]).toLowerCase();
-              return !seen.has(name);
-            });
-            osmPlaces = [...localOSMPlaces, ...uniqueRemote];
-          }
+          // 3. Use only LOCAL city search (no external OSM API calls needed)
+          const osmPlaces = localOSMPlaces;
 
           // Convert and merge results
           const backendSuggestions: UnifiedSuggestion[] = (backendResponse as LocalAddressFeature[]).map(convertBackendToUnified);
