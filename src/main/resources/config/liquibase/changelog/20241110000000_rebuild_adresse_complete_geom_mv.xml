@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="20241110000000-1" author="asriel">
+        <sql>
+            DROP MATERIALIZED VIEW IF EXISTS dvf.adresse_complete_geom_mv CASCADE;
+
+            CREATE MATERIALIZED VIEW dvf.adresse_complete_geom_mv AS
+            WITH adresse_source AS (
+                SELECT
+                    a.idadresse,
+                    pa.idpar,
+                    COALESCE(trim(unaccent(a.novoie::text)), '') AS raw_novoie,
+                    COALESCE(trim(unaccent(a.btq::text)), '') AS raw_btq,
+                    COALESCE(trim(unaccent(a.voie::text)), '') AS raw_voie,
+                    COALESCE(trim(unaccent(a.codepostal::text)), '') AS raw_codepostal,
+                    COALESCE(trim(unaccent(a.commune::text)), '') AS raw_commune,
+                    COALESCE(
+                        trim(
+                            unaccent(
+                                CASE a.typvoie
+                                    WHEN 'FG' THEN 'Faubourg'
+                                    WHEN 'N' THEN 'Nord'
+                                    WHEN 'ESC' THEN 'Escalier'
+                                    WHEN 'VTE' THEN 'Voie Terrestre'
+                                    WHEN 'MTE' THEN 'Montee'
+                                    WHEN 'PL' THEN 'Place'
+                                    WHEN 'IMP' THEN 'Impasse'
+                                    WHEN 'CAMP' THEN 'Camp'
+                                    WHEN 'VC' THEN 'Voie Communale'
+                                    WHEN 'CLOS' THEN 'Clos'
+                                    WHEN 'CTRE' THEN 'Centre'
+                                    WHEN 'SEN' THEN 'Sente'
+                                    WHEN 'RUE' THEN 'Rue'
+                                    WHEN 'ESP' THEN 'Esplanade'
+                                    WHEN 'ENC' THEN 'Enclave'
+                                    WHEN 'ROC' THEN 'Rocade'
+                                    WHEN 'PTR' THEN 'Poterne'
+                                    WHEN 'DOM' THEN 'Domaine'
+                                    WHEN 'SQ' THEN 'Square'
+                                    WHEN 'PRT' THEN 'Port'
+                                    WHEN 'CRS' THEN 'Cours'
+                                    WHEN 'GAL' THEN 'Galerie'
+                                    WHEN 'PLE' THEN 'Place'
+                                    WHEN 'BD' THEN 'Boulevard'
+                                    WHEN 'ZI' THEN 'Zone Industrielle'
+                                    WHEN 'RTE' THEN 'Route'
+                                    WHEN 'PROM' THEN 'Promenade'
+                                    WHEN 'QUAI' THEN 'Quai'
+                                    WHEN 'RES' THEN 'Residence'
+                                    WHEN 'PAS' THEN 'Passage'
+                                    WHEN 'HAM' THEN 'Hameau'
+                                    WHEN 'MAIS' THEN 'Maison'
+                                    WHEN 'CD' THEN 'Chemin Departemental'
+                                    WHEN 'TRA' THEN 'Traverse'
+                                    WHEN 'PARC' THEN 'Parc'
+                                    WHEN 'RAC' THEN 'Raccordement'
+                                    WHEN 'DSC' THEN 'Descente'
+                                    WHEN 'LOT' THEN 'Lotissement'
+                                    WHEN 'RPE' THEN 'Ruelle'
+                                    WHEN 'CHEM' THEN 'Chemin'
+                                    WHEN 'HAB' THEN 'Habitation'
+                                    WHEN 'QUA' THEN 'Quartier'
+                                    WHEN 'CHV' THEN 'Chevauchant'
+                                    WHEN 'ALL' THEN 'Allee'
+                                    WHEN 'COUR' THEN 'Cour'
+                                    WHEN 'PTTE' THEN 'Petite'
+                                    WHEN 'TSSE' THEN 'Tasse'
+                                    WHEN 'ZAC' THEN 'Zone Amenagement Concerte'
+                                    WHEN 'CHE' THEN 'Chemin'
+                                    WHEN 'ZA' THEN 'Zone Activite'
+                                    WHEN 'VGE' THEN 'Village'
+                                    WHEN 'RLE' THEN 'Ruelle'
+                                    WHEN 'CC' THEN 'Centre Commercial'
+                                    WHEN 'CITE' THEN 'Cite'
+                                    WHEN 'VOIE' THEN 'Voie'
+                                    WHEN 'CR' THEN 'Chemin Rural'
+                                    WHEN 'GR' THEN 'Grande Randonnee'
+                                    WHEN 'NTE' THEN 'Montee'
+                                    WHEN 'VIA' THEN 'Viaduc'
+                                    WHEN 'AV' THEN 'Avenue'
+                                    ELSE COALESCE(a.typvoie, '')
+                                END
+                            )
+                        ),
+                        ''
+                    ) AS raw_type_voie,
+                    pg.point_geom
+                FROM dvf.parcelle_adresse_mv pa
+                JOIN dvf.adresse a ON a.idadresse = pa.idadresse
+                JOIN dvf.parcelles_geojson_mv pg ON pg.idparcelle::text = pa.idpar::text
+                WHERE pg.point_geom IS NOT NULL
+                  AND a.commune IS NOT NULL
+                  AND a.voie IS NOT NULL
+            )
+            SELECT
+                adresse_source.idadresse,
+                adresse_source.idpar,
+                upper(
+                    trim(
+                        regexp_replace(
+                            concat_ws(
+                                ' ',
+                                NULLIF(concat(adresse_source.raw_novoie, adresse_source.raw_btq), ''),
+                                NULLIF(adresse_source.raw_type_voie, ''),
+                                NULLIF(adresse_source.raw_voie, ''),
+                                NULLIF(adresse_source.raw_codepostal, ''),
+                                NULLIF(adresse_source.raw_commune, '')
+                            ),
+                            '\s+',
+                            ' ',
+                            'g'
+                        )
+                    )
+                ) AS adresse_complete,
+                upper(concat(adresse_source.raw_novoie, adresse_source.raw_btq)) AS numero,
+                upper(NULLIF(adresse_source.raw_voie, '')) AS nom_voie,
+                upper(NULLIF(adresse_source.raw_type_voie, '')) AS type_voie,
+                upper(NULLIF(adresse_source.raw_codepostal, '')) AS codepostal,
+                upper(NULLIF(adresse_source.raw_commune, '')) AS commune,
+                adresse_source.point_geom,
+                st_y(adresse_source.point_geom) AS latitude,
+                st_x(adresse_source.point_geom) AS longitude
+            FROM adresse_source;
+
+            ALTER MATERIALIZED VIEW dvf.adresse_complete_geom_mv OWNER TO postgres;
+
+            CREATE INDEX idx_adresse_complete_geom_mv_adresse_complete ON dvf.adresse_complete_geom_mv USING gin (adresse_complete gin_trgm_ops);
+            CREATE INDEX idx_adresse_complete_geom_mv_nom_voie ON dvf.adresse_complete_geom_mv USING gin (nom_voie gin_trgm_ops);
+            CREATE INDEX idx_adresse_complete_geom_mv_type_voie ON dvf.adresse_complete_geom_mv USING gin (type_voie gin_trgm_ops);
+            CREATE INDEX idx_adresse_complete_geom_mv_numero ON dvf.adresse_complete_geom_mv USING gin (numero gin_trgm_ops);
+            CREATE INDEX idx_adresse_complete_geom_mv_commune ON dvf.adresse_complete_geom_mv USING gin (commune gin_trgm_ops);
+            CREATE INDEX idx_adresse_complete_geom_mv_sort ON dvf.adresse_complete_geom_mv (commune, nom_voie, numero);
+            CREATE INDEX idx_adresse_complete_geom_mv_idadresse ON dvf.adresse_complete_geom_mv (idadresse);
+        </sql>
+        <rollback>
+            DROP MATERIALIZED VIEW IF EXISTS dvf.adresse_complete_geom_mv;
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
+
+

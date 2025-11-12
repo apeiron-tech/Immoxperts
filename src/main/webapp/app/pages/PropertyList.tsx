@@ -256,14 +256,28 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
           }
 
           addresses.forEach((address: any, addressIndex: number) => {
-            // Create a unique key for this address (normalize address string)
-            const addressKey = (address.adresse_complete || 'Adresse inconnue').toLowerCase().trim();
+            const parcelId = feature.properties?.idparcelle ?? `parcel-${featureIndex}`;
+            const rawAddressKey = (address.adresse_complete || 'Adresse inconnue').toLowerCase().trim();
+            const uniqueAddressKey = `${parcelId}-${address.idadresse ?? addressIndex}-${rawAddressKey}`;
 
-            // Only process if we haven't seen this address before
-            if (!addressMap.has(addressKey) && address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0) {
-              // Take only the first mutation from this address
-              const mutation = address.mutations[0];
+            if (
+              !addressMap.has(uniqueAddressKey) &&
+              address.mutations &&
+              Array.isArray(address.mutations) &&
+              address.mutations.length > 0
+            ) {
+              // Find the first mutation with a valid type_bien (not null)
+              const mutation = address.mutations.find(m => m.type_bien != null) || address.mutations[0];
               const uniqueId = `${feature.properties.idparcelle || featureIndex}-${addressIndex}-0-${Date.now()}`;
+
+              // Extract surface values using fallback for old/new field names
+              const builtSurface = mutation.surface_batiment ?? mutation.sbati ?? 0;
+              const landSurface = mutation.surface_terrain ?? mutation.sterr ?? 0;
+              const propertyType = mutation.type_bien ?? mutation.type_groupe ?? 'Type inconnu';
+
+              const coordinates: [number, number] = feature.geometry?.coordinates
+                ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]]
+                : [0, 0];
 
               const property: Property = {
                 id:
@@ -273,24 +287,24 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                 address: address.adresse_complete || 'Adresse inconnue',
                 city: address.commune || '',
                 numericPrice: mutation.valeur || 0,
-                numericSurface: mutation.sbati || 0,
+                numericSurface: builtSurface,
                 price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
-                surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
-                type: mutation.type_groupe || 'Type inconnu',
+                surface: builtSurface > 0 ? `${builtSurface.toLocaleString('fr-FR')} m²` : '',
+                type: propertyType,
                 soldDate: mutation.date || '',
                 pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
                 rooms: mutation.nbpprinc || '',
-                terrain: mutation.sterr ? `${mutation.sterr.toLocaleString('fr-FR')} m²` : '',
-                coordinates: feature.geometry?.coordinates ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] : [0, 0],
+                terrain: landSurface > 0 ? `${landSurface.toLocaleString('fr-FR')} m²` : '',
+                coordinates,
                 rawData: {
-                  terrain: mutation.sterr || 0,
+                  terrain: landSurface,
                   mutationType: mutation.id?.toString() || '',
                   department: address.commune || '',
                 },
               };
 
               // Store in map with normalized address as key
-              addressMap.set(addressKey, property);
+              addressMap.set(uniqueAddressKey, property);
             }
           });
         } catch (error) {
@@ -339,26 +353,36 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
     // If mutations are provided directly from the map, convert them to Property format
     if (address.mutations && Array.isArray(address.mutations)) {
-      const mutationProperties: Property[] = address.mutations.map((mutation: any, index: number) => ({
-        id: Date.now() + index,
-        address: address.address,
-        city: address.city,
-        numericPrice: mutation.valeur || 0,
-        numericSurface: mutation.sbati || 0,
-        price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
-        surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
-        type: mutation.type_groupe || 'Type inconnu',
-        soldDate: mutation.date || '',
-        pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
-        rooms: mutation.nbpprinc || '',
-        terrain: mutation.sterr ? `${mutation.sterr.toLocaleString('fr-FR')} m²` : '',
-        coordinates: [0, 0], // Not needed for display
-        rawData: {
-          terrain: mutation.sterr || 0,
-          mutationType: mutation.id?.toString() || '',
-          department: address.city,
-        },
-      }));
+      // Filter out mutations with null type_bien and map to Property format
+      const mutationProperties: Property[] = address.mutations
+        .filter((mutation: any) => mutation.type_bien != null)
+        .map((mutation: any, index: number) => {
+          // Extract surface values using fallback for old/new field names
+          const builtSurface = mutation.surface_batiment ?? mutation.sbati ?? 0;
+          const landSurface = mutation.surface_terrain ?? mutation.sterr ?? 0;
+          const propertyType = mutation.type_bien ?? mutation.type_groupe ?? 'Type inconnu';
+
+          return {
+            id: Date.now() + index,
+            address: address.address,
+            city: address.city,
+            numericPrice: mutation.valeur || 0,
+            numericSurface: builtSurface,
+            price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
+            surface: builtSurface > 0 ? `${builtSurface.toLocaleString('fr-FR')} m²` : '',
+            type: propertyType,
+            soldDate: mutation.date || '',
+            pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
+            rooms: mutation.nbpprinc || '',
+            terrain: landSurface > 0 ? `${landSurface.toLocaleString('fr-FR')} m²` : '',
+            coordinates: [0, 0], // Not needed for display
+            rawData: {
+              terrain: landSurface,
+              mutationType: mutation.id?.toString() || '',
+              department: address.city,
+            },
+          };
+        });
 
       setSimilarProperties(mutationProperties);
       setCurrentIndex(0);

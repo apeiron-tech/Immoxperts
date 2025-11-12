@@ -31,13 +31,15 @@ interface PropertyCardProps {
 // These helpers are great, no changes needed.
 const getShortTypeName = (typeBien: string) => {
   const names = {
-    Appartement: 'Appartement',
-    Maison: 'Maison',
-    'Local industriel. commercial ou assimilé': 'Local',
-    Terrain: 'Terrain',
+    'Local Commercial': 'Local',
     'Bien Multiple': 'Bien Multiple',
+    Maison: 'Maison',
+    Appartement: 'Appartement',
+    Terrain: 'Terrain',
+    // Legacy names for backward compatibility
+    'Local industriel. commercial ou assimilé': 'Local',
   };
-  return names[typeBien as keyof typeof names] || typeBien.split(' ')[0];
+  return names[typeBien as keyof typeof names] || typeBien;
 };
 
 // Helper function to check if a value exists and is not empty
@@ -63,15 +65,18 @@ const formatPropertyDetails = (rooms: any, surface: string, terrain?: string): s
 };
 
 const getPropertyTypeColor = (propertyType: string) => {
-  const colorMap = {
+  // First normalize the type name
+  const shortType = getShortTypeName(propertyType);
+
+  const colorMap: { [key: string]: string } = {
     Appartement: '#504CC5', // #504CC5 - Violet
     Maison: '#7A72D5', // #7A72D5 - Violet clair
     Terrain: '#4F96D6', // #4F96D6 - Bleu
     Local: '#205F9D', // #205F9D - Bleu foncé
     'Bien Multiple': '#022060', // #022060 - Bleu très foncé
   };
-  const shortType = getShortTypeName(propertyType);
-  return colorMap[shortType as keyof typeof colorMap] || '#9CA3AF';
+
+  return colorMap[shortType] || '#9CA3AF';
 };
 
 // Helper function to format date to French format

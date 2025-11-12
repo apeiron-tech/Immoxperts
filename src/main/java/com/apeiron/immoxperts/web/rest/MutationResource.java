@@ -110,9 +110,63 @@ public class MutationResource {
             Integer[] roomCounts = parseIntegerArray(roomCount);
             Set<String> allowedTypes = propertyTypes != null ? Set.of(propertyTypes) : null;
 
+            // Debug logging
+            LOG.debug("Property types received: {}", propertyType);
+            LOG.debug("Property types mapped: {}", propertyTypes != null ? String.join(",", propertyTypes) : "null");
+            LOG.debug("Room counts: {}", roomCounts != null ? Arrays.toString(roomCounts) : "null");
+
             // Parse dates
             LocalDate startDate = parseLocalDate(minDate);
             LocalDate endDate = parseLocalDate(maxDate);
+
+            // Treat default values as NULL (no filter)
+            BigDecimal effectiveMinPrice = (minSellPrice != null && minSellPrice.compareTo(BigDecimal.ZERO) > 0) ? minSellPrice : null;
+            BigDecimal effectiveMaxPrice = (maxSellPrice != null && maxSellPrice.compareTo(new BigDecimal("20000000")) < 0)
+                ? maxSellPrice
+                : null;
+            BigDecimal effectiveMinPriceM2 = (minSquareMeterPrice != null && minSquareMeterPrice.compareTo(BigDecimal.ZERO) > 0)
+                ? minSquareMeterPrice
+                : null;
+            BigDecimal effectiveMaxPriceM2 = (maxSquareMeterPrice != null && maxSquareMeterPrice.compareTo(new BigDecimal("40000")) < 0)
+                ? maxSquareMeterPrice
+                : null;
+            Integer effectiveMinSurface = (minSurface != null && minSurface > 0) ? minSurface : null;
+            Integer effectiveMaxSurface = (maxSurface != null && maxSurface < 400) ? maxSurface : null;
+            Integer effectiveMinSurfaceLand = (minSurfaceLand != null && minSurfaceLand > 0) ? minSurfaceLand : null;
+            Integer effectiveMaxSurfaceLand = (maxSurfaceLand != null && maxSurfaceLand < 50000) ? maxSurfaceLand : null;
+
+            LOG.info("=== SEARCH REQUEST ===");
+            LOG.info("Bounds: west={}, south={}, east={}, north={}", west, south, east, north);
+            LOG.info("Property types: {}", propertyTypes != null ? String.join(",", propertyTypes) : "ALL");
+            LOG.info("Room counts: {}", roomCounts != null ? Arrays.toString(roomCounts) : "ALL");
+            LOG.info(
+                "Price filters - Original: min={}, max={} -> Effective: min={}, max={}",
+                minSellPrice,
+                maxSellPrice,
+                effectiveMinPrice,
+                effectiveMaxPrice
+            );
+            LOG.info(
+                "PriceM2 filters - Original: min={}, max={} -> Effective: min={}, max={}",
+                minSquareMeterPrice,
+                maxSquareMeterPrice,
+                effectiveMinPriceM2,
+                effectiveMaxPriceM2
+            );
+            LOG.info(
+                "Surface filters - Original: min={}, max={} -> Effective: min={}, max={}",
+                minSurface,
+                maxSurface,
+                effectiveMinSurface,
+                effectiveMaxSurface
+            );
+            LOG.info(
+                "Terrain filters - Original: min={}, max={} -> Effective: min={}, max={}",
+                minSurfaceLand,
+                maxSurfaceLand,
+                effectiveMinSurfaceLand,
+                effectiveMaxSurfaceLand
+            );
 
             // ✅ Appel repository avec TOUS les paramètres
             List<String> results = mutationRepository.findAggregatedMutations(
@@ -122,14 +176,14 @@ public class MutationResource {
                 north,
                 propertyTypes, // Types de propriétés
                 roomCounts, // Nombre de pièces
-                minSellPrice, // Prix minimum
-                maxSellPrice, // Prix maximum
-                minSurface, // Surface bâtie min
-                maxSurface, // Surface bâtie max
-                minSurfaceLand, // Surface terrain min
-                maxSurfaceLand, // Surface terrain max
-                minSquareMeterPrice, // Prix m² min
-                maxSquareMeterPrice, // Prix m² max
+                effectiveMinPrice, // Prix minimum
+                effectiveMaxPrice, // Prix maximum
+                effectiveMinSurface, // Surface bâtie min
+                effectiveMaxSurface, // Surface bâtie max
+                effectiveMinSurfaceLand, // Surface terrain min
+                effectiveMaxSurfaceLand, // Surface terrain max
+                effectiveMinPriceM2, // Prix m² min
+                effectiveMaxPriceM2, // Prix m² max
                 startDate, // Date début
                 endDate, // Date fin
                 limit // Limite résultats
@@ -172,6 +226,8 @@ public class MutationResource {
                 })
                 .collect(Collectors.toList());
 
+            LOG.info("Results: {} raw results from DB, {} features after filtering", results.size(), features.size());
+
             Map<String, Object> geoJsonCollection = Map.of("type", "FeatureCollection", "features", features, "total", features.size());
 
             return ResponseEntity.ok(geoJsonCollection);
@@ -193,8 +249,10 @@ public class MutationResource {
                     List<Map<String, Object>> filteredMutations = mutations
                         .stream()
                         .filter(mutation -> {
+                            String typeBien = (String) mutation.get("type_bien");
                             String typeGroupe = (String) mutation.get("type_groupe");
-                            return allowedTypes.contains(typeGroupe);
+                            String effectiveType = typeBien != null ? typeBien : typeGroupe;
+                            return effectiveType != null && allowedTypes.contains(effectiveType);
                         })
                         .collect(Collectors.toList());
 
@@ -284,5 +342,23 @@ public class MutationResource {
         List<StatsByCityDTO> stats = mutationServiceImp.getStatsByCodeInsee(codeInsee);
 
         return ResponseEntity.ok(stats);
+    }
+
+    @GetMapping("/parcel/{parcelId}")
+    public ResponseEntity<String> getParcelAddresses(@PathVariable String parcelId) {
+        LOG.debug("REST request to get addresses for parcel: {}", parcelId);
+
+        try {
+            String parcelData = mutationRepository.findParcelAddresses(parcelId);
+
+            if (parcelData == null || parcelData.trim().isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            return ResponseEntity.ok().header("Content-Type", "application/json").body(parcelData);
+        } catch (Exception e) {
+            LOG.error("Error fetching parcel addresses for parcelId: {}", parcelId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }
