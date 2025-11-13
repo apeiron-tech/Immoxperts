@@ -33,24 +33,29 @@ const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick
 
   // Helper functions (same as in hover popup)
   const getPropertyTypeColor = (propertyType: string) => {
-    const colors: { [key: string]: string } = {
-      Appartement: '#6929CF',
-      Maison: '#121852',
-      Terrain: '#2971CF',
-      Local: '#862CC7',
-      'Bien Multiple': '#381EB0',
-    };
+    // First normalize the type name
     const shortType = getShortTypeName(propertyType);
+
+    const colors: { [key: string]: string } = {
+      Appartement: '#504CC5', // #504CC5 - Violet
+      Maison: '#7A72D5', // #7A72D5 - Violet clair
+      Terrain: '#4F96D6', // #4F96D6 - Bleu
+      Local: '#205F9D', // #205F9D - Bleu foncé
+      'Bien Multiple': '#022060', // #022060 - Bleu très foncé
+    };
+
     return colors[shortType] || '#9CA3AF';
   };
 
   const getShortTypeName = (propertyType: string) => {
     const shortNames: { [key: string]: string } = {
-      Appartement: 'Appartement',
-      Maison: 'Maison',
-      Terrain: 'Terrain',
       'Local Commercial': 'Local',
       'Bien Multiple': 'Bien Multiple',
+      Maison: 'Maison',
+      Appartement: 'Appartement',
+      Terrain: 'Terrain',
+      // Legacy names for backward compatibility
+      'Local industriel. commercial ou assimilé': 'Local',
     };
     return shortNames[propertyType] || propertyType;
   };

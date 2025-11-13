@@ -41,7 +41,7 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             MIN(latitude) as latitude,
             MIN(longitude) as longitude
         FROM dvf.adresse_complete_geom_mv
-        WHERE adresse_complete_search ILIKE CONCAT('%', UPPER(:q), '%')
+        WHERE adresse_complete ILIKE CONCAT('%', UPPER(:q), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
         LIMIT 50
@@ -63,7 +63,7 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             MIN(latitude) as latitude,
             MIN(longitude) as longitude
         FROM dvf.adresse_complete_geom_mv
-        WHERE adresse_complete_search ILIKE CONCAT('%', UPPER(:token1), '%')
+        WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
         LIMIT 50
@@ -85,8 +85,8 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             MIN(latitude) as latitude,
             MIN(longitude) as longitude
         FROM dvf.adresse_complete_geom_mv
-        WHERE adresse_complete_search ILIKE CONCAT('%', UPPER(:token1), '%')
-          AND adresse_complete_search ILIKE CONCAT('%', UPPER(:token2), '%')
+        WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
+          AND adresse_complete ILIKE CONCAT('%', UPPER(:token2), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
         LIMIT 50
@@ -108,9 +108,9 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             MIN(latitude) as latitude,
             MIN(longitude) as longitude
         FROM dvf.adresse_complete_geom_mv
-        WHERE adresse_complete_search ILIKE CONCAT('%', UPPER(:token1), '%')
-          AND adresse_complete_search ILIKE CONCAT('%', UPPER(:token2), '%')
-          AND adresse_complete_search ILIKE CONCAT('%', UPPER(:token3), '%')
+        WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
+          AND adresse_complete ILIKE CONCAT('%', UPPER(:token2), '%')
+          AND adresse_complete ILIKE CONCAT('%', UPPER(:token3), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
         LIMIT 50
@@ -136,10 +136,10 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             MIN(latitude) as latitude,
             MIN(longitude) as longitude
         FROM dvf.adresse_complete_geom_mv
-        WHERE adresse_complete_search ILIKE CONCAT('%', UPPER(:token1), '%')
-          AND adresse_complete_search ILIKE CONCAT('%', UPPER(:token2), '%')
-          AND adresse_complete_search ILIKE CONCAT('%', UPPER(:token3), '%')
-          AND adresse_complete_search ILIKE CONCAT('%', UPPER(:token4), '%')
+        WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
+          AND adresse_complete ILIKE CONCAT('%', UPPER(:token2), '%')
+          AND adresse_complete ILIKE CONCAT('%', UPPER(:token3), '%')
+          AND adresse_complete ILIKE CONCAT('%', UPPER(:token4), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
         LIMIT 50
@@ -166,11 +166,11 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             MIN(latitude) as latitude,
             MIN(longitude) as longitude
         FROM dvf.adresse_complete_geom_mv
-        WHERE adresse_complete_search ILIKE CONCAT('%', UPPER(:token1), '%')
-          AND adresse_complete_search ILIKE CONCAT('%', UPPER(:token2), '%')
-          AND adresse_complete_search ILIKE CONCAT('%', UPPER(:token3), '%')
-          AND adresse_complete_search ILIKE CONCAT('%', UPPER(:token4), '%')
-          AND adresse_complete_search ILIKE CONCAT('%', UPPER(:token5), '%')
+        WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
+          AND adresse_complete ILIKE CONCAT('%', UPPER(:token2), '%')
+          AND adresse_complete ILIKE CONCAT('%', UPPER(:token3), '%')
+          AND adresse_complete ILIKE CONCAT('%', UPPER(:token4), '%')
+          AND adresse_complete ILIKE CONCAT('%', UPPER(:token5), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
         ORDER BY commune, nom_voie, numero
         LIMIT 50

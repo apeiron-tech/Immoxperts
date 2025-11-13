@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import axios from 'axios';
 import './styles/mapbox-popup.css';
-import { API_ENDPOINTS } from 'app/config/api.config';
+import { API_ENDPOINTS, API_BASE_URL } from 'app/config/api.config';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { FilterState } from '../../types/filters';
 import MobilePropertyBottomSheet from '../property/MobilePropertyBottomSheet';
@@ -12,15 +12,50 @@ const mapStreetsIcon = '/content/assets/20251029-091227.jpg';
 const statsIcon = '/content/assets/statimg.png';
 
 // Types definitions
+interface MutationDetails {
+  id?: number;
+  idmutation?: number;
+  type_bien?: string;
+  type_groupe?: string;
+  valeur?: number;
+  prix_m2?: number;
+  nbpprinc?: number;
+  surface_batiment?: number;
+  sbati?: number;
+  surface_terrain?: number;
+  sterr?: number;
+  date?: string;
+  longitude?: number;
+  latitude?: number;
+  [key: string]: unknown;
+}
+
+interface AddressDetails {
+  commune?: string;
+  idadresse?: number;
+  codepostal?: string;
+  adresse_complete?: string;
+  mutations?: MutationDetails[];
+  [key: string]: unknown;
+}
+
+interface FeatureProperties {
+  numero?: string;
+  commune?: string;
+  prefixe?: string;
+  section?: string;
+  idparcelle?: string | number;
+  adresses?: AddressDetails[] | string | null;
+  [key: string]: unknown;
+}
+
 interface Feature {
   type: 'Feature';
   geometry: {
     type: 'Point';
     coordinates: [number, number];
   };
-  properties: {
-    [key: string]: any;
-  };
+  properties: FeatureProperties;
   id?: string | number;
 }
 
@@ -58,25 +93,11 @@ interface MapPageProps {
   selectedProperty?: Property | null;
   hoveredProperty?: Property | null;
   filterState?: FilterState;
-  onDataUpdate?: (mutationData: any[]) => void; // **NEW**: Callback to update PropertyCard data
+  onDataUpdate?: (mutationData: Feature[]) => void; // **NEW**: Callback to update PropertyCard data
   onMapHover?: (propertyId: number | null) => void; // **NEW**: Callback for map hover
   dataVersion?: number; // **NEW**: Data version to trigger zone stats recalculation
   isFilterOpen?: boolean; // **NEW**: Track if filter popup is open to close other popups
   onCloseStatsPopup?: () => void; // **NEW**: Callback to close stats popup
-}
-
-interface AddressProperties {
-  id: string | number;
-  numero: string;
-  nomVoie: string;
-  codeCommune: string;
-}
-
-interface ParcelProperties {
-  id: string | number;
-  commune: string;
-  contenance: number;
-  numero: string;
 }
 
 // Type guard to check if geometry is a Point
@@ -88,6 +109,99 @@ interface PointGeometry {
 function isPointGeometry(geometry: any): geometry is PointGeometry {
   return geometry && geometry.type === 'Point' && Array.isArray(geometry.coordinates);
 }
+
+const isAddressDetailsArray = (value: unknown): value is AddressDetails[] => Array.isArray(value);
+
+const parseAddresses = (adresses: FeatureProperties['adresses']): AddressDetails[] => {
+  if (!adresses) {
+    return [];
+  }
+  if (isAddressDetailsArray(adresses)) {
+    return adresses;
+  }
+  if (typeof adresses === 'string') {
+    try {
+      const parsed = JSON.parse(adresses);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+  return [];
+};
+
+const getMutationTypeLabel = (mutation?: MutationDetails): string => {
+  if (!mutation) {
+    return 'Type inconnu';
+  }
+  const preferredType = mutation.type_bien ?? mutation.type_groupe;
+  if (typeof preferredType === 'string' && preferredType.trim().length > 0) {
+    return preferredType;
+  }
+  return 'Type inconnu';
+};
+
+const getBuiltSurfaceValue = (mutation?: MutationDetails): number => {
+  if (!mutation) {
+    return 0;
+  }
+  const value = mutation.surface_batiment ?? mutation.sbati;
+  return typeof value === 'number' ? value : 0;
+};
+
+const getLandSurfaceValue = (mutation?: MutationDetails): number => {
+  if (!mutation) {
+    return 0;
+  }
+  const value = mutation.surface_terrain ?? mutation.sterr;
+  return typeof value === 'number' ? value : 0;
+};
+
+const formatSurfaceValue = (value?: number | null): string => {
+  if (typeof value !== 'number' || Number.isNaN(value) || value <= 0) {
+    return '';
+  }
+  return `${value.toLocaleString('fr-FR')} m²`;
+};
+
+const getMutationId = (mutation?: MutationDetails): string | number => {
+  if (!mutation) {
+    return crypto.randomUUID?.() ?? `mutation-${Date.now()}`;
+  }
+  if (mutation.idmutation !== undefined) {
+    return mutation.idmutation;
+  }
+  if (mutation.id !== undefined) {
+    return mutation.id;
+  }
+  const datePart = mutation.date ?? 'unknown-date';
+  const valuePart = mutation.valeur !== undefined ? mutation.valeur : 'unknown-value';
+  const typePart = mutation.type_bien ?? mutation.type_groupe ?? 'unknown-type';
+  return `${datePart}-${valuePart}-${typePart}`;
+};
+
+const formatPricePerSqm = (price?: number | null, surface?: number | null, terrain?: number | null, propertyType?: string): string => {
+  if (typeof price !== 'number' || Number.isNaN(price) || price <= 0) {
+    return 'N/A';
+  }
+
+  const isTerrain = propertyType?.toLowerCase().includes('terrain') ?? false;
+
+  if (isTerrain) {
+    if (typeof terrain !== 'number' || Number.isNaN(terrain) || terrain <= 0) {
+      return 'N/A';
+    }
+    const pricePerSqm = Math.round(price / terrain);
+    return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+  }
+
+  if (typeof surface !== 'number' || Number.isNaN(surface) || surface <= 0) {
+    return 'N/A';
+  }
+
+  const pricePerSqm = Math.round(price / surface);
+  return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+};
 
 // Set access token
 mapboxgl.accessToken = 'pk.eyJ1IjoiaW1tb3hwZXJ0IiwiYSI6ImNtZXV3bGtyNzBiYmQybXNoMnE5NmUzYWsifQ.mGxg2EbZxRAQJ4sOapI63w';
@@ -146,17 +260,18 @@ const calculateZoneStats = (mapFeatures: any[]) => {
     mapFeatures.forEach(feature => {
       if (feature.properties && feature.properties.adresses) {
         try {
-          const addresses =
-            typeof feature.properties.adresses === 'string' ? JSON.parse(feature.properties.adresses) : feature.properties.adresses;
+          const addresses = parseAddresses(feature.properties.adresses);
 
-          if (Array.isArray(addresses)) {
-            addresses.forEach(address => {
+          if (addresses.length > 0) {
+            addresses.forEach((address: AddressDetails) => {
               if (address.mutations && Array.isArray(address.mutations)) {
-                address.mutations.forEach(mutation => {
-                  if (mutation.type_groupe === mutationTypeName) {
+                address.mutations.forEach((mutation: MutationDetails) => {
+                  const mutationType = getMutationTypeLabel(mutation);
+                  if (mutationType === mutationTypeName) {
                     // Only add if we haven't seen this mutation ID before
-                    if (!uniqueMutations.has(mutation.id)) {
-                      uniqueMutations.set(mutation.id, mutation);
+                    const mutationKey = getMutationId(mutation);
+                    if (!uniqueMutations.has(mutationKey)) {
+                      uniqueMutations.set(mutationKey, mutation);
                     }
                   }
                 });
@@ -594,14 +709,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
       // Update property data
       const mutation = mobileSheetMutations[newIndex];
+      const mutationTypeLabel = getMutationTypeLabel(mutation);
+      const builtSurface = getBuiltSurfaceValue(mutation);
+      const landSurface = getLandSurfaceValue(mutation);
+      const priceValue = typeof mutation.valeur === 'number' ? mutation.valeur : 0;
+      const calculatedPricePerSqm = formatPricePerSqm(priceValue, builtSurface, landSurface, mutationTypeLabel);
       setMobileSheetProperty({
         address: mobileSheetProperty.address,
         city: mobileSheetProperty.city,
-        price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
-        pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
-        type: mutation.type_groupe || 'Type inconnu',
+        price: `${priceValue.toLocaleString('fr-FR')} €`,
+        pricePerSqm: calculatedPricePerSqm === 'N/A' ? '' : calculatedPricePerSqm,
+        type: mutationTypeLabel,
         rooms: mutation.nbpprinc || '',
-        surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
+        surface: formatSurfaceValue(builtSurface),
+        terrain: formatSurfaceValue(landSurface),
         soldDate: mutation.date ? new Date(mutation.date).toLocaleDateString('fr-FR') : '',
       });
     }
@@ -614,14 +735,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
       // Update property data
       const mutation = mobileSheetMutations[newIndex];
+      const mutationTypeLabel = getMutationTypeLabel(mutation);
+      const builtSurface = getBuiltSurfaceValue(mutation);
+      const landSurface = getLandSurfaceValue(mutation);
+      const priceValue = typeof mutation.valeur === 'number' ? mutation.valeur : 0;
+      const calculatedPricePerSqm = formatPricePerSqm(priceValue, builtSurface, landSurface, mutationTypeLabel);
       setMobileSheetProperty({
         address: mobileSheetProperty.address,
         city: mobileSheetProperty.city,
-        price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
-        pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
-        type: mutation.type_groupe || 'Type inconnu',
+        price: `${priceValue.toLocaleString('fr-FR')} €`,
+        pricePerSqm: calculatedPricePerSqm === 'N/A' ? '' : calculatedPricePerSqm,
+        type: mutationTypeLabel,
         rooms: mutation.nbpprinc || '',
-        surface: mutation.sbati ? `${mutation.sbati.toLocaleString('fr-FR')} m²` : '',
+        surface: formatSurfaceValue(builtSurface),
+        terrain: formatSurfaceValue(landSurface),
         soldDate: mutation.date ? new Date(mutation.date).toLocaleDateString('fr-FR') : '',
       });
     }
@@ -758,6 +885,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // Helper function to convert filter state to API parameters
   const convertFilterStateToParams = (currentFilterState: FilterState) => {
+    const DEFAULT_PROPERTY_TYPES = ['0', '1', '2', '4', '5'];
+    const SURFACE_DEFAULT_MIN = 0;
+    const SURFACE_DEFAULT_MAX = 400;
+    const TERRAIN_DEFAULT_MIN = 0;
+    const TERRAIN_DEFAULT_MAX = 50000;
+    const ALL_ROOM_COUNTS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+
     // Convert property types to API format
     const propertyTypeMap = {
       appartement: '0', // Appartement
@@ -772,35 +906,54 @@ const PropertyMap: React.FC<MapPageProps> = ({
       .map(([type, _]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
       .filter(Boolean);
 
-    // Convert room counts to API format
-    const roomCountMap = {
-      studio: '1',
-      deuxPieces: '2',
-      troisPieces: '3',
-      quatrePieces: '4',
-      cinqPiecesPlus: '5,6,7,8,9,10',
+    const propertyTypeParam = selectedPropertyTypes.length > 0 ? selectedPropertyTypes.join(',') : DEFAULT_PROPERTY_TYPES.join(',');
+
+    const hasMaisonOrAppartement =
+      selectedPropertyTypes.length === 0 || selectedPropertyTypes.includes('0') || selectedPropertyTypes.includes('1');
+
+    // Convert room counts to API format (unique values)
+    const roomCountMap: Record<string, string[]> = {
+      studio: ['1'],
+      deuxPieces: ['2'],
+      troisPieces: ['3'],
+      quatrePieces: ['4'],
+      cinqPiecesPlus: ['5', '6', '7', '8', '9', '10'],
     };
 
-    const selectedRoomCounts = Object.entries(currentFilterState.roomCounts)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([room, _]) => roomCountMap[room as keyof typeof roomCountMap])
-      .filter(Boolean)
-      .join(',');
+    const selectedRoomValues = new Set<string>();
+    Object.entries(currentFilterState.roomCounts).forEach(([room, isSelected]) => {
+      if (isSelected) {
+        roomCountMap[room]?.forEach(value => selectedRoomValues.add(value));
+      }
+    });
+
+    const sortedRoomValues = Array.from(selectedRoomValues).sort((a, b) => Number(a) - Number(b));
+    const selectedRoomCounts = sortedRoomValues.join(',');
+    const isRoomFilterActive = sortedRoomValues.length > 0 && sortedRoomValues.length < ALL_ROOM_COUNTS.length;
+    const shouldIncludeRoomCount = hasMaisonOrAppartement && isRoomFilterActive;
 
     // Convert date range from months to actual dates
     const startDate = new Date(2014, 0, 1); // January 2014
     const minDate = new Date(startDate.getTime() + currentFilterState.dateRange[0] * 30 * 24 * 60 * 60 * 1000);
     const maxDate = new Date(startDate.getTime() + currentFilterState.dateRange[1] * 30 * 24 * 60 * 60 * 1000);
 
+    const [surfaceMin, surfaceMax] = currentFilterState.surfaceRange;
+    const isSurfaceFilterActive = surfaceMin > SURFACE_DEFAULT_MIN || surfaceMax < SURFACE_DEFAULT_MAX;
+    const shouldIncludeSurfaceFilter = hasMaisonOrAppartement && isSurfaceFilterActive;
+
+    const [terrainMin, terrainMax] = currentFilterState.terrainRange;
+    const isTerrainFilterActive = terrainMin > TERRAIN_DEFAULT_MIN || terrainMax < TERRAIN_DEFAULT_MAX;
+    const shouldIncludeTerrainFilter = isTerrainFilterActive;
+
     return {
-      propertyType: selectedPropertyTypes.length > 0 ? selectedPropertyTypes.join(',') : '0,1,2,4,5',
+      propertyType: propertyTypeParam,
       roomCount: selectedRoomCounts || '1,2,3,4,5,6,7,8,9,10',
       minSellPrice: currentFilterState.priceRange[0].toString(),
       maxSellPrice: currentFilterState.priceRange[1].toString(),
-      minSurface: currentFilterState.surfaceRange[0].toString(),
-      maxSurface: currentFilterState.surfaceRange[1].toString(),
-      minSurfaceLand: currentFilterState.terrainRange[0].toString(), // Using terrain range for land
-      maxSurfaceLand: currentFilterState.terrainRange[1].toString(),
+      minSurface: surfaceMin.toString(),
+      maxSurface: surfaceMax.toString(),
+      minSurfaceLand: terrainMin.toString(),
+      maxSurfaceLand: terrainMax.toString(),
       minSquareMeterPrice: currentFilterState.pricePerSqmRange[0].toString(),
       maxSquareMeterPrice: currentFilterState.pricePerSqmRange[1].toString(),
       minDate: minDate.toISOString().split('T')[0],
@@ -823,13 +976,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
       const params = new URLSearchParams({
         bounds: bounds.join(','),
         propertyType: '0,1,2,4,5', // All property types
-        roomCount: '1,2,3,4,5,6,7,8,9,10', // All room counts
         minSellPrice: '0',
         maxSellPrice: '20000000',
-        minSurface: '0',
-        maxSurface: '400',
-        minSurfaceLand: '0',
-        maxSurfaceLand: '50000',
         minSquareMeterPrice: '0',
         maxSquareMeterPrice: '40000',
         minDate: '2013-12-31',
@@ -1138,9 +1286,23 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
           // Parcel click functionality - make clicked parcels blue
           let clickedParcelId: string | number | null = null;
+          let parcelPopup: mapboxgl.Popup | null = null;
 
-          map.on('click', 'parcelles-layer', (e: mapboxgl.MapMouseEvent) => {
+          map.on('click', 'parcelles-layer', async (e: mapboxgl.MapMouseEvent) => {
+            // Prevent event from bubbling to mutation points
+            e.preventDefault();
+
             if (e.features && e.features.length > 0) {
+              const feature = e.features[0];
+
+              // The parcel ID is in the 'id' property, not 'idparcelle'
+              const parcelId = feature.properties?.id || feature.properties?.idparcelle;
+
+              if (!parcelId) {
+                console.warn('No parcelId found in feature properties', feature.properties);
+                return;
+              }
+
               // Remove blue from previously clicked parcel
               if (clickedParcelId !== null) {
                 map.setFeatureState(
@@ -1164,6 +1326,91 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   },
                   { clicked: true },
                 );
+              }
+
+              // Close existing parcel popup if any
+              if (parcelPopup) {
+                parcelPopup.remove();
+                parcelPopup = null;
+              }
+
+              try {
+                // Fetch parcel addresses from API
+                const response = await axios.get(`${API_BASE_URL}/api/mutations/parcel/${parcelId}`);
+                const parcelData = response.data;
+
+                if (!parcelData || !parcelData.adresses || parcelData.adresses.length === 0) {
+                  console.warn('No addresses found for parcel:', parcelId, parcelData);
+                  return;
+                }
+
+                const addresses = Array.isArray(parcelData.adresses) ? parcelData.adresses : [];
+                const sortedAddresses = sortAddressesForDisplay(addresses);
+                const isMobileDevice = window.innerWidth < 768;
+
+                // Set up global function for address selection similar to point popup
+                if (sortedAddresses.length > 1) {
+                  (window as any).selectAddress = (index: number) => {
+                    const clickedAddress = sortedAddresses[index];
+                    const hasMutations =
+                      clickedAddress.mutations && Array.isArray(clickedAddress.mutations) && clickedAddress.mutations.length > 0;
+
+                    if (hasMutations) {
+                      onAddressSelect?.({
+                        address: clickedAddress.adresse_complete,
+                        city: clickedAddress.commune,
+                        mutations: clickedAddress.mutations,
+                      });
+                    }
+
+                    if (window.innerWidth < 768) {
+                      handleMobileBottomSheet([clickedAddress]);
+                    }
+                  };
+                } else if (sortedAddresses.length === 1) {
+                  const singleAddress = sortedAddresses[0];
+                  const hasMutations =
+                    singleAddress.mutations && Array.isArray(singleAddress.mutations) && singleAddress.mutations.length > 0;
+
+                  if (hasMutations) {
+                    onAddressSelect?.({
+                      address: singleAddress.adresse_complete,
+                      city: singleAddress.commune,
+                      mutations: singleAddress.mutations,
+                    });
+                  }
+
+                  if (isMobileDevice) {
+                    handleMobileBottomSheet([singleAddress]);
+                  }
+                }
+
+                if (isMobileDevice && sortedAddresses.length > 1) {
+                  handleMobileBottomSheet(sortedAddresses);
+                }
+
+                // Create popup content using the same helper as mutation points (addresses only)
+                const popupContent = createPopupContent(sortedAddresses, { showMutations: false });
+
+                parcelPopup = new mapboxgl.Popup({
+                  closeButton: true,
+                  closeOnClick: true,
+                  maxWidth: '350px',
+                  offset: [0, -5],
+                })
+                  .setLngLat(e.lngLat)
+                  .setHTML(popupContent)
+                  .addTo(map);
+
+                // Add click handlers for addresses to show their mutations
+                parcelPopup.on('close', () => {
+                  parcelPopup = null;
+                  if ((window as any).selectAddress) {
+                    delete (window as any).selectAddress;
+                  }
+                });
+              } catch (err) {
+                console.error('Error fetching parcel addresses:', err);
               }
             }
           });
@@ -1326,9 +1573,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 // Create mutation data popup
                 if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
                   try {
-                    const addresses = JSON.parse(feature.properties.adresses);
+                    const addresses = parseAddresses(feature.properties.adresses);
 
-                    if (addresses && addresses.length > 0) {
+                    if (addresses.length > 0) {
                       // Sort addresses to prioritize searched address if available
                       let sortedAddresses = addresses;
                       if (searchParamsRef.current?.address) {
@@ -1366,7 +1613,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           'Local Commercial': 'Local',
                           'Bien Multiple': 'Bien Multiple',
                         };
-                        return shortNames[type];
+                        return shortNames[type] || type || 'Type inconnu';
                       };
 
                       const formatFrenchDate = dateString => {
@@ -1386,21 +1633,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           minimumFractionDigits: 0,
                           maximumFractionDigits: 0,
                         }).format(price);
-                      };
-
-                      const formatPricePerSqm = (price, surface, terrain, propertyType) => {
-                        // For terrain, use terrain size (sterr)
-                        if (propertyType && propertyType.toLowerCase().includes('terrain')) {
-                          if (!terrain || terrain === 0) return 'N/A';
-                          const pricePerSqm = Math.round(price / terrain);
-                          return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
-                        }
-                        // For other types (appartement, maison, etc.), use surface (sbati)
-                        else {
-                          if (!surface || surface === 0) return 'N/A';
-                          const pricePerSqm = Math.round(price / surface);
-                          return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
-                        }
                       };
 
                       // Get the first mutation for display
@@ -1435,11 +1667,11 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         const renderMutation = index => {
                           const mutation = allMutations[index];
                           const address = firstAddress.adresse_complete || '';
-                          const propertyTypeLabel = mutation.type_groupe || 'Default';
-                          const rooms = mutation.nbpprinc || 0;
-                          const surface = mutation.sbati || 0;
-                          const terrain = mutation.sterr || 0;
-                          const price = mutation.valeur || 0;
+                          const propertyTypeLabel = getMutationTypeLabel(mutation);
+                          const rooms = mutation.nbpprinc ?? 0;
+                          const surface = getBuiltSurfaceValue(mutation);
+                          const terrain = getLandSurfaceValue(mutation);
+                          const price = mutation.valeur ?? 0;
                           const soldDate = mutation.date || '';
                           const priceFormatted = formatPrice(price);
                           const pricePerSqm = formatPricePerSqm(price, surface, terrain, propertyTypeLabel);
@@ -1581,17 +1813,25 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           const currentMutation = allMutations[currentIndex];
                           // Get the address from the sorted addresses (first one is the searched address)
                           const parentAddress = sortedAddresses && sortedAddresses.length > 0 ? sortedAddresses[0] : null;
+                          const currentMutationTypeLabel = getMutationTypeLabel(currentMutation);
+                          const currentBuiltSurface = getBuiltSurfaceValue(currentMutation);
+                          const currentLandSurface = getLandSurfaceValue(currentMutation);
+                          const currentPriceValue = typeof currentMutation.valeur === 'number' ? currentMutation.valeur : 0;
+                          const currentPricePerSqm = formatPricePerSqm(
+                            currentPriceValue,
+                            currentBuiltSurface,
+                            currentLandSurface,
+                            currentMutationTypeLabel,
+                          );
                           setMobileSheetProperty({
                             address: parentAddress?.adresse_complete || 'Adresse non disponible',
                             city: parentAddress?.commune || 'Ville non disponible',
-                            price: `${(currentMutation.valeur || 0).toLocaleString('fr-FR')} €`,
-                            pricePerSqm: currentMutation.prix_m2
-                              ? `${Math.round(currentMutation.prix_m2).toLocaleString('fr-FR')} €/m²`
-                              : '',
-                            type: currentMutation.type_groupe || 'Type inconnu',
-                            rooms: currentMutation.nbpprinc || '',
-                            surface: currentMutation.sbati ? `${currentMutation.sbati.toLocaleString('fr-FR')} m²` : '',
-                            terrain: currentMutation.sterr ? `${currentMutation.sterr.toLocaleString('fr-FR')} m²` : '',
+                            price: `${currentPriceValue.toLocaleString('fr-FR')} €`,
+                            pricePerSqm: currentPricePerSqm === 'N/A' ? '' : currentPricePerSqm,
+                            type: currentMutationTypeLabel,
+                            rooms: currentMutation.nbpprinc ?? '',
+                            surface: formatSurfaceValue(currentBuiltSurface),
+                            terrain: formatSurfaceValue(currentLandSurface),
                             soldDate: currentMutation.date ? new Date(currentMutation.date).toLocaleDateString('fr-FR') : '',
                           });
 
@@ -1818,9 +2058,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
             }, 100); // 100ms delay
           });
 
-          // Helper function to create popup content
-          const createPopupContent = (addresses: any[]) => {
-            // Sort addresses to prioritize searched address if available
+          const sortAddressesForDisplay = (addresses: any[]) => {
             let sortedAddresses = addresses;
             if (searchParamsRef.current?.address) {
               const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
@@ -1834,7 +2072,146 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 return 0;
               });
             }
+            return sortedAddresses;
+          };
 
+          const handleMutationPointInteraction = (event: any) => {
+            const { features, lngLat } = event;
+            debugLog('Mutation point interaction triggered:', features);
+
+            if (!features || features.length === 0) {
+              return;
+            }
+
+            const feature = features[0];
+
+            // Remove existing hover popup if any
+            clearHoverPopup();
+
+            const isMobile = window.innerWidth < 768;
+
+            // Keep shadow on mobile for the tapped feature
+            if (isMobile) {
+              const hoveredFeatureData: GeoJSON.FeatureCollection = {
+                type: 'FeatureCollection',
+                features: [feature as GeoJSON.Feature],
+              };
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+              (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+            }
+
+            if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
+              try {
+                const addresses = parseAddresses(feature.properties.adresses);
+                if (addresses.length === 0) {
+                  return;
+                }
+
+                const sortedAddresses = sortAddressesForDisplay(addresses);
+
+                if (sortedAddresses.length > 1) {
+                  (window as any).selectAddress = (index: number) => {
+                    const clickedAddress = sortedAddresses[index];
+                    const hasMutations =
+                      clickedAddress.mutations && Array.isArray(clickedAddress.mutations) && clickedAddress.mutations.length > 0;
+
+                    if (hasMutations) {
+                      onAddressSelect?.({
+                        address: clickedAddress.adresse_complete,
+                        city: clickedAddress.commune,
+                        mutations: clickedAddress.mutations,
+                      });
+                    }
+                  };
+                }
+
+                if (isMobile) {
+                  handleMobileBottomSheet(sortedAddresses);
+                  return;
+                }
+
+                clearClickPopup();
+
+                const popupContent = createPopupContent(sortedAddresses);
+                clickPopupRef.current = new mapboxgl.Popup({
+                  closeButton: true,
+                  closeOnClick: true,
+                  maxWidth: '350px',
+                  offset: [0, -5],
+                })
+                  .setLngLat(feature.geometry.coordinates || lngLat)
+                  .setHTML(popupContent)
+                  .addTo(map);
+
+                clickPopupRef.current.on('close', () => {
+                  if ((window as any).selectAddress) {
+                    delete (window as any).selectAddress;
+                  }
+                  clickPopupRef.current = null;
+                });
+
+                if (sortedAddresses.length === 1) {
+                  const singleAddress = sortedAddresses[0];
+                  const hasMutations =
+                    singleAddress.mutations && Array.isArray(singleAddress.mutations) && singleAddress.mutations.length > 0;
+
+                  if (hasMutations) {
+                    onAddressSelect?.({
+                      address: singleAddress.adresse_complete,
+                      city: singleAddress.commune,
+                      mutations: singleAddress.mutations,
+                    });
+                  }
+                }
+              } catch (err) {
+                debugLog('Error parsing addresses JSON in mutation click handler:', err);
+              }
+            }
+          };
+
+          const isMobileDevice = window.innerWidth < 768;
+          if (isMobileDevice) {
+            map.on('click', 'mutation-point', handleMutationPointInteraction);
+          }
+
+          // Helper function to create popup content
+          const createPopupContent = (addresses: any[], options: { showMutations?: boolean } = {}) => {
+            const { showMutations = true } = options;
+            const sortedAddresses = sortAddressesForDisplay(addresses);
+
+            // Parcel popup style (when showMutations is false) - always use same style for 1 or multiple addresses
+            if (!showMutations) {
+              return `
+                <div style="padding: 8px 12px; font-family: 'Maven Pro', Arial, sans-serif;">
+                  <div style="font-weight: bold; font-size: 14px; color: #333; margin-bottom: 8px;">
+                    Choisissez une adresse
+                  </div>
+                  ${sortedAddresses
+                    .map((address, index) => {
+                      return `
+                    <div
+                      style="
+                        padding: 6px 0;
+                        cursor: pointer;
+                        transition: opacity 0.2s;
+                        ${index > 0 ? 'border-top: 1px solid #e5e7eb;' : ''}
+                      "
+                      onmouseover="this.style.opacity='0.7'"
+                      onmouseout="this.style.opacity='1'"
+                      onclick="window.selectAddress && window.selectAddress(${index})"
+                    >
+                      <div style="font-size: 14px; color: #3b82f6; text-transform: uppercase; font-weight: 500;">
+                        ${address.adresse_complete}
+                      </div>
+                    </div>
+                  `;
+                    })
+                    .join('')}
+                </div>
+              `;
+            }
+
+            // Mutation popup style (when showMutations is true)
             if (sortedAddresses.length === 1) {
               const address = sortedAddresses[0];
               return `
@@ -1871,17 +2248,19 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       <div style="font-weight: bold;">${address.adresse_complete}</div>
                       <div style="font-size: 11px; color: #666;">${address.commune} (${address.codepostal})</div>
                       ${
-                        hasMutations
-                          ? `
-                        <div style="font-size: 10px; color: #059669; margin-top: 2px;">
-                          ${address.mutations.length} transaction(s)
-                        </div>
-                      `
-                          : `
-                        <div style="font-size: 10px; color: #dc2626; margin-top: 2px;">
-                          Aucune transaction
-                        </div>
-                      `
+                        showMutations
+                          ? hasMutations
+                            ? `
+                          <div style="font-size: 10px; color: #059669; margin-top: 2px;">
+                            ${address.mutations.length} transaction(s)
+                          </div>
+                        `
+                            : `
+                          <div style="font-size: 10px; color: #dc2626; margin-top: 2px;">
+                            Aucune transaction
+                          </div>
+                        `
+                          : ''
                       }
                     </div>
                   `;
@@ -1916,15 +2295,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 setMobileSheetIndex(0);
 
                 const firstMutation = address.mutations[0];
+                const propertyTypeLabel = getMutationTypeLabel(firstMutation);
+                const builtSurface = getBuiltSurfaceValue(firstMutation);
+                const landSurface = getLandSurfaceValue(firstMutation);
+                const priceValue = typeof firstMutation.valeur === 'number' ? firstMutation.valeur : 0;
+                const formattedPricePerSqm = formatPricePerSqm(priceValue, builtSurface, landSurface, propertyTypeLabel);
                 setMobileSheetProperty({
                   address: address.adresse_complete, // Use the address object, not mutation
                   city: address.commune, // Use the address object, not mutation
-                  price: `${(firstMutation.valeur || 0).toLocaleString('fr-FR')} €`,
-                  pricePerSqm: firstMutation.prix_m2 ? `${Math.round(firstMutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
-                  type: firstMutation.type_groupe || 'Type inconnu',
-                  rooms: firstMutation.nbpprinc || '',
-                  surface: firstMutation.sbati ? `${firstMutation.sbati.toLocaleString('fr-FR')} m²` : '',
-                  terrain: firstMutation.sterr ? `${firstMutation.sterr.toLocaleString('fr-FR')} m²` : '',
+                  price: `${priceValue.toLocaleString('fr-FR')} €`,
+                  pricePerSqm: formattedPricePerSqm === 'N/A' ? '' : formattedPricePerSqm,
+                  type: propertyTypeLabel,
+                  rooms: firstMutation.nbpprinc ?? '',
+                  surface: formatSurfaceValue(builtSurface),
+                  terrain: formatSurfaceValue(landSurface),
                   soldDate: firstMutation.date ? new Date(firstMutation.date).toLocaleDateString('fr-FR') : '',
                 });
 
@@ -1951,15 +2335,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 setMobileSheetIndex(0);
 
                 const firstMutation = addressWithMutations.mutations[0];
+                const propertyTypeLabel = getMutationTypeLabel(firstMutation);
+                const builtSurface = getBuiltSurfaceValue(firstMutation);
+                const landSurface = getLandSurfaceValue(firstMutation);
+                const priceValue = typeof firstMutation.valeur === 'number' ? firstMutation.valeur : 0;
+                const formattedPricePerSqm = formatPricePerSqm(priceValue, builtSurface, landSurface, propertyTypeLabel);
                 setMobileSheetProperty({
                   address: addressWithMutations.adresse_complete, // Use the address object, not mutation
                   city: addressWithMutations.commune, // Use the address object, not mutation
-                  price: `${(firstMutation.valeur || 0).toLocaleString('fr-FR')} €`,
-                  pricePerSqm: firstMutation.prix_m2 ? `${Math.round(firstMutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
-                  type: firstMutation.type_groupe || 'Type inconnu',
-                  rooms: firstMutation.nbpprinc || '',
-                  surface: firstMutation.sbati ? `${firstMutation.sbati.toLocaleString('fr-FR')} m²` : '',
-                  terrain: firstMutation.sterr ? `${firstMutation.sterr.toLocaleString('fr-FR')} m²` : '',
+                  price: `${priceValue.toLocaleString('fr-FR')} €`,
+                  pricePerSqm: formattedPricePerSqm === 'N/A' ? '' : formattedPricePerSqm,
+                  type: propertyTypeLabel,
+                  rooms: firstMutation.nbpprinc ?? '',
+                  surface: formatSurfaceValue(builtSurface),
+                  terrain: formatSurfaceValue(landSurface),
                   soldDate: firstMutation.date ? new Date(firstMutation.date).toLocaleDateString('fr-FR') : '',
                 });
 
@@ -1968,122 +2357,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
             }
           };
 
-          // Helper function to handle mutation point click/touch
-          const handleMutationPointInteraction = (e: any) => {
-            debugLog('Clicked/Touched mutation point:', e.features);
-            if (e.features && e.features.length > 0) {
-              const feature = e.features[0];
-
-              // Remove hover popup if it exists (click popup will replace it)
-              clearHoverPopup();
-
-              // Check if mobile device (used for shadow and popup logic)
-              const isMobile = window.innerWidth < 768;
-
-              // Keep the shadow visible for the clicked point (mobile only)
-              if (isMobile) {
-                const hoveredFeatureData: GeoJSON.FeatureCollection = {
-                  type: 'FeatureCollection',
-                  features: [feature as GeoJSON.Feature],
-                };
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
-              }
-
-              if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
-                try {
-                  const addresses = JSON.parse(feature.properties.adresses);
-                  if (addresses && addresses.length > 0) {
-                    // Sort addresses to prioritize searched address if available
-                    let sortedAddresses = addresses;
-                    if (searchParamsRef.current?.address) {
-                      const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
-
-                      sortedAddresses = [...addresses].sort((a, b) => {
-                        const aMatchesAddress = normalizeAddress(a.adresse_complete) === normalizeAddress(searchedAddress);
-                        const bMatchesAddress = normalizeAddress(b.adresse_complete) === normalizeAddress(searchedAddress);
-
-                        if (aMatchesAddress && !bMatchesAddress) return -1;
-                        if (!aMatchesAddress && bMatchesAddress) return 1;
-                        return 0;
-                      });
-                    }
-
-                    // Set up global function for address selection in multi-address popups
-                    if (sortedAddresses.length > 1) {
-                      (window as any).selectAddress = (index: number) => {
-                        const clickedAddress = sortedAddresses[index];
-                        const hasMutations =
-                          clickedAddress.mutations && Array.isArray(clickedAddress.mutations) && clickedAddress.mutations.length > 0;
-
-                        if (hasMutations) {
-                          onAddressSelect?.({
-                            address: clickedAddress.adresse_complete,
-                            city: clickedAddress.commune,
-                            mutations: clickedAddress.mutations,
-                          });
-                        }
-                      };
-                    }
-
-                    // Clear any existing click popup first
-                    clearClickPopup();
-
-                    if (isMobile) {
-                      handleMobileBottomSheet(sortedAddresses);
-                      return; // Don't create Mapbox popup on mobile
-                    }
-
-                    // Create click popup for desktop
-                    const popupContent = createPopupContent(sortedAddresses);
-                    clickPopupRef.current = new mapboxgl.Popup({
-                      closeButton: true,
-                      closeOnClick: true,
-                      maxWidth: '350px',
-                      offset: [0, -5],
-                    })
-                      .setLngLat(feature.geometry.coordinates)
-                      .setHTML(popupContent)
-                      .addTo(map);
-
-                    // Clean up global function when popup is closed (desktop only - shadow clears normally on desktop)
-                    clickPopupRef.current.on('close', () => {
-                      if ((window as any).selectAddress) {
-                        delete (window as any).selectAddress;
-                      }
-                      clickPopupRef.current = null;
-                    });
-
-                    // Call onAddressSelect when an address is clicked (only for single address with mutations)
-                    if (sortedAddresses.length === 1) {
-                      const address = sortedAddresses[0];
-                      const hasMutations = address.mutations && Array.isArray(address.mutations) && address.mutations.length > 0;
-
-                      if (hasMutations) {
-                        onAddressSelect?.({
-                          address: address.adresse_complete,
-                          city: address.commune,
-                          mutations: address.mutations,
-                        });
-                      }
-                    }
-                  }
-                } catch (err) {
-                  debugLog('Error parsing addresses JSON in click handler:', err);
-                }
-              }
-            }
-          };
-
-          // Click handler for mutations (separate from hover)
-          map.on('click', 'mutation-point', handleMutationPointInteraction);
-
           // Touch handler for iOS devices - prevents double-tap requirement
           // Listen to touch events on the map canvas and query features
           let touchStartTime = 0;
           let touchStartX = 0;
           let touchStartY = 0;
-          let lastTouchInteraction: number = 0;
+          const lastTouchInteractionRef = { current: 0 };
 
           const canvas = map.getCanvasContainer();
 
@@ -2137,7 +2416,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
             }
 
             // Prevent rapid successive triggers (debounce)
-            if (touchEndTime - lastTouchInteraction < 300) {
+            if (touchEndTime - lastTouchInteractionRef.current < 300) {
               touchStartX = 0;
               touchStartY = 0;
               touchStartTime = 0;
@@ -2160,21 +2439,18 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 if (features && features.length > 0) {
                   // Prevent default to avoid double-tap zoom
                   e.preventDefault();
-                  lastTouchInteraction = touchEndTime;
+                  lastTouchInteractionRef.current = touchEndTime;
 
                   // Clear hover popup immediately on touch
                   clearHoverPopup();
 
-                  // Create a mock event object with the feature for the handler
-                  const mockEvent = {
+                  // Trigger the same handler as click for mobile
+                  handleMutationPointInteraction({
                     features,
                     lngLat: map.unproject([touchX, touchY]),
                     point: new mapboxgl.Point(touchX, touchY),
                     originalEvent: e,
-                  };
-
-                  // Trigger the same handler as click
-                  handleMutationPointInteraction(mockEvent);
+                  });
                 }
               }
             }

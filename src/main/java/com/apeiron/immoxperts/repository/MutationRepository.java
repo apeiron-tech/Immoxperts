@@ -29,12 +29,14 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
 
     @Query(
         value = """
-        SELECT * FROM mutation_search_mv
-        WHERE (:novoie IS NULL OR novoie = :novoie)
-          AND (:btq IS NULL OR UPPER(btq) = UPPER(:btq))
-          AND (:typvoie IS NULL OR UPPER(typvoie) = UPPER(:typvoie))
-          AND (:voieRestante IS NULL OR UPPER(voie) LIKE UPPER(CONCAT(:voieRestante, '%')))
-        ORDER BY datemut DESC
+        SELECT DISTINCT m.*
+        FROM dvf.mutation m
+        JOIN dvf.parcelle_adresse_mutation_mv pam ON m.idmutation = pam.idmutation
+        WHERE (:novoie IS NULL OR pam.adresse_json->>'novoie' = CAST(:novoie AS text))
+          AND (:btq IS NULL OR UPPER(pam.adresse_json->>'btq') = UPPER(:btq))
+          AND (:typvoie IS NULL OR UPPER(pam.adresse_json->>'typvoie') = UPPER(:typvoie))
+          AND (:voieRestante IS NULL OR UPPER(pam.adresse_json->>'voie') LIKE UPPER(CONCAT(:voieRestante, '%')))
+        ORDER BY pam.mutation_date DESC
         """,
         nativeQuery = true
     )
@@ -81,9 +83,11 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
 
     @Query(
         value = """
-        SELECT * FROM mutation_search_mv
-        WHERE UPPER(commune) LIKE UPPER(CONCAT('%', :commune, '%'))
-        ORDER BY datemut DESC
+        SELECT DISTINCT m.*
+        FROM dvf.mutation m
+        JOIN dvf.parcelle_adresse_mutation_mv pam ON m.idmutation = pam.idmutation
+        WHERE UPPER(pam.adresse_json->>'commune') LIKE UPPER(CONCAT('%', :commune, '%'))
+        ORDER BY pam.mutation_date DESC
         """,
         nativeQuery = true
     )
@@ -91,9 +95,11 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
 
     @Query(
         value = """
-        SELECT * FROM mutation_search_mv
-        WHERE UPPER(commune) LIKE UPPER(CONCAT('%', :commune, '%'))
-        ORDER BY datemut DESC
+        SELECT DISTINCT m.*
+        FROM dvf.mutation m
+        JOIN dvf.parcelle_adresse_mutation_mv pam ON m.idmutation = pam.idmutation
+        WHERE UPPER(pam.adresse_json->>'commune') LIKE UPPER(CONCAT('%', :commune, '%'))
+        ORDER BY pam.mutation_date DESC
         """,
         nativeQuery = true
     )
@@ -101,10 +107,12 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
 
     @Query(
         value = """
-        SELECT DISTINCT * FROM mutation_search_mv
-        WHERE UPPER(commune) = UPPER(:commune)
-          AND (:street IS NULL OR UPPER(voie) LIKE UPPER(CONCAT(:street, '%')))
-        ORDER BY datemut DESC
+        SELECT DISTINCT m.*
+        FROM dvf.mutation m
+        JOIN dvf.parcelle_adresse_mutation_mv pam ON m.idmutation = pam.idmutation
+        WHERE UPPER(pam.adresse_json->>'commune') = UPPER(:commune)
+          AND (:street IS NULL OR UPPER(pam.adresse_json->>'voie') LIKE UPPER(CONCAT(:street, '%')))
+        ORDER BY pam.mutation_date DESC
         LIMIT :limit
         """,
         nativeQuery = true
@@ -117,9 +125,11 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
 
     @Query(
         value = """
-        SELECT COUNT(*) FROM mutation_search_mv
-        WHERE UPPER(commune) = UPPER(:commune)
-          AND (:street IS NULL OR UPPER(voie) LIKE UPPER(CONCAT(:street, '%')))
+        SELECT COUNT(DISTINCT m.idmutation)
+        FROM dvf.mutation m
+        JOIN dvf.parcelle_adresse_mutation_mv pam ON m.idmutation = pam.idmutation
+        WHERE UPPER(pam.adresse_json->>'commune') = UPPER(:commune)
+          AND (:street IS NULL OR UPPER(pam.adresse_json->>'voie') LIKE UPPER(CONCAT(:street, '%')))
         """,
         nativeQuery = true
     )
@@ -127,29 +137,102 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
 
     @Query(
         value = """
-        SELECT feature_json::text
-        FROM dvf.parcelles_mutations_aggregated_mv
-        WHERE point_geom && ST_MakeEnvelope(:west, :south, :east, :north, 4326)
-        AND (COALESCE(:propertyTypes, NULL) IS NULL OR type_groupe = ANY(CAST(:propertyTypes AS text[])))
-        AND (
-            COALESCE(:roomCounts, NULL) IS NULL
-            OR
-            CASE
-                WHEN type_groupe IN ('Terrain', 'Local Commercial', 'Bien Multiple') THEN true
-                ELSE nombre_pieces_principales = ANY(CAST(:roomCounts AS integer[]))
-            END
+        WITH filtered_mutations AS (
+            SELECT
+                pg.idparcelle,
+                pg.feature,
+                pa.idpar,
+                pa.idadresse,
+                pa.adresse,
+                pam.mutation,
+                pam.mutation_date,
+                pam.type_bien,
+                pam.nombre_piece,
+                pam.surface_batiment,
+                pam.surface_terrain,
+                (pam.mutation->>'valeur')::numeric AS valeur,
+                (pam.mutation->>'prix_m2')::numeric AS prix_m2
+            FROM dvf.parcelles_geojson_mv pg
+            JOIN dvf.parcelle_adresse_mv pa ON pg.idparcelle = pa.idpar
+            JOIN dvf.parcelle_adresse_mutation_mv pam ON pa.idpar = pam.idpar
+                AND pa.idadresse = pam.idadresse
+            WHERE pg.point_geom && ST_MakeEnvelope(:west, :south, :east, :north, 4326)
+              -- Step 1: Filter by property type (REQUIRED - always applied)
+              AND (COALESCE(:propertyTypes, NULL) IS NULL OR pam.type_bien = ANY(CAST(:propertyTypes AS text[])))
+              -- Step 2: Filter by price (total transaction price)
+              AND (COALESCE(:minPrice, NULL) IS NULL OR (pam.mutation->>'valeur')::numeric >= CAST(:minPrice AS numeric))
+              AND (COALESCE(:maxPrice, NULL) IS NULL OR (pam.mutation->>'valeur')::numeric <= CAST(:maxPrice AS numeric))
+              -- Step 2b: Filter by price per m² (if specified)
+              AND (COALESCE(:minPriceM2, NULL) IS NULL OR (pam.mutation->>'prix_m2')::numeric >= CAST(:minPriceM2 AS numeric))
+              AND (COALESCE(:maxPriceM2, NULL) IS NULL OR (pam.mutation->>'prix_m2')::numeric <= CAST(:maxPriceM2 AS numeric))
+              -- Step 3: Filter by date
+              AND (COALESCE(:minDate, NULL) IS NULL OR pam.mutation_date >= CAST(:minDate AS date))
+              AND (COALESCE(:maxDate, NULL) IS NULL OR pam.mutation_date <= CAST(:maxDate AS date))
+              -- Step 4: Filter by room count (only for Appartement and Maison)
+              AND (
+                  COALESCE(:roomCounts, NULL) IS NULL
+                  OR pam.type_bien NOT IN ('Appartement', 'Maison')
+                  OR (pam.nombre_piece IS NOT NULL AND pam.nombre_piece = ANY(CAST(:roomCounts AS integer[])))
+              )
+              -- Step 5: Filter by built surface (only for Appartement, Maison, Local Commercial)
+              AND (
+                  COALESCE(:minSurfaceBatie, NULL) IS NULL
+                  OR pam.type_bien NOT IN ('Appartement', 'Maison', 'Local Commercial')
+                  OR (pam.surface_batiment IS NOT NULL AND pam.surface_batiment >= CAST(:minSurfaceBatie AS integer))
+              )
+              AND (
+                  COALESCE(:maxSurfaceBatie, NULL) IS NULL
+                  OR pam.type_bien NOT IN ('Appartement', 'Maison', 'Local Commercial')
+                  OR (pam.surface_batiment IS NOT NULL AND pam.surface_batiment <= CAST(:maxSurfaceBatie AS integer))
+              )
+              -- Step 6: Filter by land surface (only for Maison and Terrain)
+              AND (
+                  COALESCE(:minSurfaceTerrain, NULL) IS NULL
+                  OR pam.type_bien NOT IN ('Maison', 'Terrain')
+                  OR (pam.surface_terrain IS NOT NULL AND pam.surface_terrain >= CAST(:minSurfaceTerrain AS integer))
+              )
+              AND (
+                  COALESCE(:maxSurfaceTerrain, NULL) IS NULL
+                  OR pam.type_bien NOT IN ('Maison', 'Terrain')
+                  OR (pam.surface_terrain IS NOT NULL AND pam.surface_terrain <= CAST(:maxSurfaceTerrain AS integer))
+              )
+        ),
+        mutations_by_address AS (
+            SELECT
+                idparcelle,
+                feature,
+                idadresse,
+                adresse,
+                jsonb_agg(
+                    mutation ORDER BY mutation_date DESC
+                ) AS mutations
+            FROM filtered_mutations
+            GROUP BY idparcelle, feature, idadresse, adresse
+        ),
+        addresses_by_parcelle AS (
+            SELECT
+                idparcelle,
+                feature,
+                jsonb_agg(
+                    jsonb_build_object(
+                        'idadresse', idadresse,
+                        'adresse_complete', adresse->>'adresse_complete',
+                        'commune', adresse->>'commune',
+                        'codepostal', adresse->>'codepostal',
+                        'mutations', mutations
+                    )
+                    ORDER BY idadresse
+                ) AS adresses
+            FROM mutations_by_address
+            GROUP BY idparcelle, feature
         )
-        AND (COALESCE(:minPrice, NULL) IS NULL OR valeur_fonciere >= CAST(:minPrice AS numeric))
-        AND (COALESCE(:maxPrice, NULL) IS NULL OR valeur_fonciere <= CAST(:maxPrice AS numeric))
-        AND (COALESCE(:minSurfaceBatie, NULL) IS NULL OR surface_batie >= CAST(:minSurfaceBatie AS integer))
-        AND (COALESCE(:maxSurfaceBatie, NULL) IS NULL OR surface_batie <= CAST(:maxSurfaceBatie AS integer))
-        AND (COALESCE(:minSurfaceTerrain, NULL) IS NULL OR surface_terrain >= CAST(:minSurfaceTerrain AS integer))
-        AND (COALESCE(:maxSurfaceTerrain, NULL) IS NULL OR surface_terrain <= CAST(:maxSurfaceTerrain AS integer))
-        AND (COALESCE(:minPriceM2, NULL) IS NULL OR prix_m2 >= CAST(:minPriceM2 AS numeric))
-        AND (COALESCE(:maxPriceM2, NULL) IS NULL OR prix_m2 <= CAST(:maxPriceM2 AS numeric))
-        AND (COALESCE(:minDate, NULL) IS NULL OR date_mutation >= CAST(:minDate AS date))
-        AND (COALESCE(:maxDate, NULL) IS NULL OR date_mutation <= CAST(:maxDate AS date))
-        ORDER BY valeur_fonciere DESC
+        SELECT jsonb_build_object(
+            'type', 'Feature',
+            'geometry', feature->'geometry',
+            'properties', feature->'properties' || jsonb_build_object('adresses', adresses)
+        )::text AS feature_json
+        FROM addresses_by_parcelle
+        ORDER BY (adresses->0->'mutations'->0->>'valeur')::numeric DESC NULLS LAST
         LIMIT CAST(:limit AS integer)
         """,
         nativeQuery = true
@@ -173,4 +256,31 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
         @Param("maxDate") LocalDate maxDate,
         @Param("limit") Integer limit
     );
+
+    @Query(
+        value = """
+        SELECT jsonb_build_object(
+            'idparcelle', pa.idpar,
+            'adresses', jsonb_agg(
+                jsonb_build_object(
+                    'idadresse', pa.idadresse,
+                    'adresse_complete', pa.adresse->>'adresse_complete',
+                    'commune', pa.adresse->>'commune',
+                    'codepostal', pa.adresse->>'codepostal',
+                    'mutations', (
+                        SELECT jsonb_agg(pam.mutation ORDER BY pam.mutation_date DESC)
+                        FROM dvf.parcelle_adresse_mutation_mv pam
+                        WHERE pam.idpar = pa.idpar AND pam.idadresse = pa.idadresse
+                    )
+                )
+                ORDER BY pa.idadresse
+            )
+        )::text AS parcel_data
+        FROM dvf.parcelle_adresse_mv pa
+        WHERE pa.idpar = :parcelId
+        GROUP BY pa.idpar
+        """,
+        nativeQuery = true
+    )
+    String findParcelAddresses(@Param("parcelId") String parcelId);
 }
