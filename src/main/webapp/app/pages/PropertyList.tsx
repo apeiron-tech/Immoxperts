@@ -44,6 +44,35 @@ interface PropertyListProps {
 type SortOption = '' | 'date-desc' | 'date-asc' | 'price-desc' | 'price-asc' | 'sqm-desc' | 'sqm-asc';
 
 // ===================================================================
+// HELPER FUNCTIONS
+// ===================================================================
+
+// Calculate price per m² based on property type
+// For "Terrain" type, use surface_terrain; for others, use surface_batiment
+const calculatePricePerSqm = (price: number, builtSurface: number, landSurface: number, propertyType: string): string => {
+  if (!price || price <= 0) {
+    return '';
+  }
+
+  const isTerrain = propertyType?.toLowerCase().includes('terrain') ?? false;
+
+  if (isTerrain) {
+    if (!landSurface || landSurface <= 0) {
+      return '';
+    }
+    const pricePerSqm = Math.round(price / landSurface);
+    return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+  }
+
+  if (!builtSurface || builtSurface <= 0) {
+    return '';
+  }
+
+  const pricePerSqm = Math.round(price / builtSurface);
+  return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+};
+
+// ===================================================================
 // REACT COMPONENT
 // ===================================================================
 
@@ -292,7 +321,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                 surface: builtSurface > 0 ? `${builtSurface.toLocaleString('fr-FR')} m²` : '',
                 type: propertyType,
                 soldDate: mutation.date || '',
-                pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
+                pricePerSqm: calculatePricePerSqm(mutation.valeur || 0, builtSurface, landSurface, propertyType),
                 rooms: mutation.nbpprinc || '',
                 terrain: landSurface > 0 ? `${landSurface.toLocaleString('fr-FR')} m²` : '',
                 coordinates,
@@ -372,7 +401,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
             surface: builtSurface > 0 ? `${builtSurface.toLocaleString('fr-FR')} m²` : '',
             type: propertyType,
             soldDate: mutation.date || '',
-            pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
+            pricePerSqm: calculatePricePerSqm(mutation.valeur || 0, builtSurface, landSurface, propertyType),
             rooms: mutation.nbpprinc || '',
             terrain: landSurface > 0 ? `${landSurface.toLocaleString('fr-FR')} m²` : '',
             coordinates: [0, 0], // Not needed for display

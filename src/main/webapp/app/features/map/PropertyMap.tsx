@@ -180,17 +180,7 @@ const getMutationId = (mutation?: MutationDetails): string | number => {
   return `${datePart}-${valuePart}-${typePart}`;
 };
 
-const formatPricePerSqm = (
-  price?: number | null,
-  surface?: number | null,
-  terrain?: number | null,
-  propertyType?: string,
-  providedPricePerSqm?: number | null,
-): string => {
-  if (typeof providedPricePerSqm === 'number' && !Number.isNaN(providedPricePerSqm) && providedPricePerSqm > 0) {
-    return `${Math.round(providedPricePerSqm).toLocaleString('fr-FR')} €/m²`;
-  }
-
+const formatPricePerSqm = (price?: number | null, surface?: number | null, terrain?: number | null, propertyType?: string): string => {
   if (typeof price !== 'number' || Number.isNaN(price) || price <= 0) {
     return 'N/A';
   }
@@ -715,15 +705,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
       // Update property data
       const mutation = mobileSheetMutations[newIndex];
+      const mutationTypeLabel = getMutationTypeLabel(mutation);
+      const builtSurface = getBuiltSurfaceValue(mutation);
+      const landSurface = getLandSurfaceValue(mutation);
+      const priceValue = typeof mutation.valeur === 'number' ? mutation.valeur : 0;
+      const calculatedPricePerSqm = formatPricePerSqm(priceValue, builtSurface, landSurface, mutationTypeLabel);
       setMobileSheetProperty({
         address: mobileSheetProperty.address,
         city: mobileSheetProperty.city,
-        price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
-        pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
-        type: getMutationTypeLabel(mutation),
+        price: `${priceValue.toLocaleString('fr-FR')} €`,
+        pricePerSqm: calculatedPricePerSqm === 'N/A' ? '' : calculatedPricePerSqm,
+        type: mutationTypeLabel,
         rooms: mutation.nbpprinc || '',
-        surface: formatSurfaceValue(getBuiltSurfaceValue(mutation)),
-        terrain: formatSurfaceValue(getLandSurfaceValue(mutation)),
+        surface: formatSurfaceValue(builtSurface),
+        terrain: formatSurfaceValue(landSurface),
         soldDate: mutation.date ? new Date(mutation.date).toLocaleDateString('fr-FR') : '',
       });
     }
@@ -736,15 +731,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
       // Update property data
       const mutation = mobileSheetMutations[newIndex];
+      const mutationTypeLabel = getMutationTypeLabel(mutation);
+      const builtSurface = getBuiltSurfaceValue(mutation);
+      const landSurface = getLandSurfaceValue(mutation);
+      const priceValue = typeof mutation.valeur === 'number' ? mutation.valeur : 0;
+      const calculatedPricePerSqm = formatPricePerSqm(priceValue, builtSurface, landSurface, mutationTypeLabel);
       setMobileSheetProperty({
         address: mobileSheetProperty.address,
         city: mobileSheetProperty.city,
-        price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
-        pricePerSqm: mutation.prix_m2 ? `${Math.round(mutation.prix_m2).toLocaleString('fr-FR')} €/m²` : '',
-        type: getMutationTypeLabel(mutation),
+        price: `${priceValue.toLocaleString('fr-FR')} €`,
+        pricePerSqm: calculatedPricePerSqm === 'N/A' ? '' : calculatedPricePerSqm,
+        type: mutationTypeLabel,
         rooms: mutation.nbpprinc || '',
-        surface: formatSurfaceValue(getBuiltSurfaceValue(mutation)),
-        terrain: formatSurfaceValue(getLandSurfaceValue(mutation)),
+        surface: formatSurfaceValue(builtSurface),
+        terrain: formatSurfaceValue(landSurface),
         soldDate: mutation.date ? new Date(mutation.date).toLocaleDateString('fr-FR') : '',
       });
     }
@@ -1670,7 +1670,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           const price = mutation.valeur ?? 0;
                           const soldDate = mutation.date || '';
                           const priceFormatted = formatPrice(price);
-                          const pricePerSqm = formatPricePerSqm(price, surface, terrain, propertyTypeLabel, mutation.prix_m2 ?? null);
+                          const pricePerSqm = formatPricePerSqm(price, surface, terrain, propertyTypeLabel);
 
                           // Build the details string, only showing non-zero values
                           const details = [];
@@ -1818,7 +1818,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
                             currentBuiltSurface,
                             currentLandSurface,
                             currentMutationTypeLabel,
-                            currentMutation.prix_m2 ?? null,
                           );
                           setMobileSheetProperty({
                             address: parentAddress?.adresse_complete || 'Adresse non disponible',
@@ -2176,6 +2175,39 @@ const PropertyMap: React.FC<MapPageProps> = ({
             const { showMutations = true } = options;
             const sortedAddresses = sortAddressesForDisplay(addresses);
 
+            // Parcel popup style (when showMutations is false) - always use same style for 1 or multiple addresses
+            if (!showMutations) {
+              return `
+                <div style="padding: 8px 12px; font-family: 'Maven Pro', Arial, sans-serif;">
+                  <div style="font-weight: bold; font-size: 14px; color: #333; margin-bottom: 8px;">
+                    Choisissez une adresse
+                  </div>
+                  ${sortedAddresses
+                    .map((address, index) => {
+                      return `
+                    <div
+                      style="
+                        padding: 6px 0;
+                        cursor: pointer;
+                        transition: opacity 0.2s;
+                        ${index > 0 ? 'border-top: 1px solid #e5e7eb;' : ''}
+                      "
+                      onmouseover="this.style.opacity='0.7'"
+                      onmouseout="this.style.opacity='1'"
+                      onclick="window.selectAddress && window.selectAddress(${index})"
+                    >
+                      <div style="font-size: 14px; color: #3b82f6; text-transform: uppercase; font-weight: 500;">
+                        ${address.adresse_complete}
+                      </div>
+                    </div>
+                  `;
+                    })
+                    .join('')}
+                </div>
+              `;
+            }
+
+            // Mutation popup style (when showMutations is true)
             if (sortedAddresses.length === 1) {
               const address = sortedAddresses[0];
               return `
@@ -2263,13 +2295,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 const builtSurface = getBuiltSurfaceValue(firstMutation);
                 const landSurface = getLandSurfaceValue(firstMutation);
                 const priceValue = typeof firstMutation.valeur === 'number' ? firstMutation.valeur : 0;
-                const formattedPricePerSqm = formatPricePerSqm(
-                  priceValue,
-                  builtSurface,
-                  landSurface,
-                  propertyTypeLabel,
-                  firstMutation.prix_m2 ?? null,
-                );
+                const formattedPricePerSqm = formatPricePerSqm(priceValue, builtSurface, landSurface, propertyTypeLabel);
                 setMobileSheetProperty({
                   address: address.adresse_complete, // Use the address object, not mutation
                   city: address.commune, // Use the address object, not mutation
@@ -2309,13 +2335,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 const builtSurface = getBuiltSurfaceValue(firstMutation);
                 const landSurface = getLandSurfaceValue(firstMutation);
                 const priceValue = typeof firstMutation.valeur === 'number' ? firstMutation.valeur : 0;
-                const formattedPricePerSqm = formatPricePerSqm(
-                  priceValue,
-                  builtSurface,
-                  landSurface,
-                  propertyTypeLabel,
-                  firstMutation.prix_m2 ?? null,
-                );
+                const formattedPricePerSqm = formatPricePerSqm(priceValue, builtSurface, landSurface, propertyTypeLabel);
                 setMobileSheetProperty({
                   address: addressWithMutations.adresse_complete, // Use the address object, not mutation
                   city: addressWithMutations.commune, // Use the address object, not mutation
