@@ -170,9 +170,15 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
               AND (COALESCE(:maxDate, NULL) IS NULL OR pam.mutation_date <= CAST(:maxDate AS date))
               -- Step 4: Filter by room count (only for Appartement and Maison)
               AND (
-                  COALESCE(:roomCounts, NULL) IS NULL
-                  OR pam.type_bien NOT IN ('Appartement', 'Maison')
-                  OR (pam.nombre_piece IS NOT NULL AND pam.nombre_piece = ANY(CAST(:roomCounts AS integer[])))
+                  pam.type_bien NOT IN ('Appartement', 'Maison')
+                  OR (
+                      pam.type_bien IN ('Appartement', 'Maison')
+                      AND (
+                          CAST(:roomCounts AS integer[]) IS NULL
+                          OR (-1 = ANY(CAST(:roomCounts AS integer[])) AND (pam.nombre_piece IS NULL OR pam.nombre_piece = 0))
+                          OR (-1 <> ALL(CAST(:roomCounts AS integer[])) AND pam.nombre_piece = ANY(CAST(:roomCounts AS integer[])))
+                      )
+                  )
               )
               -- Step 5: Filter by built surface (only for Appartement, Maison, Local Commercial)
               AND (
@@ -232,7 +238,7 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
             'properties', feature->'properties' || jsonb_build_object('adresses', adresses)
         )::text AS feature_json
         FROM addresses_by_parcelle
-        ORDER BY (adresses->0->'mutations'->0->>'valeur')::numeric DESC NULLS LAST
+        ORDER BY RANDOM()
         LIMIT CAST(:limit AS integer)
         """,
         nativeQuery = true

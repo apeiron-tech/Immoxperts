@@ -182,21 +182,21 @@ const getMutationId = (mutation?: MutationDetails): string | number => {
 
 const formatPricePerSqm = (price?: number | null, surface?: number | null, terrain?: number | null, propertyType?: string): string => {
   if (typeof price !== 'number' || Number.isNaN(price) || price <= 0) {
-    return 'N/A';
+    return '';
   }
 
   const isTerrain = propertyType?.toLowerCase().includes('terrain') ?? false;
 
   if (isTerrain) {
     if (typeof terrain !== 'number' || Number.isNaN(terrain) || terrain <= 0) {
-      return 'N/A';
+      return '';
     }
     const pricePerSqm = Math.round(price / terrain);
     return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
   }
 
   if (typeof surface !== 'number' || Number.isNaN(surface) || surface <= 0) {
-    return 'N/A';
+    return '';
   }
 
   const pricePerSqm = Math.round(price / surface);
@@ -713,8 +713,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
       setMobileSheetProperty({
         address: mobileSheetProperty.address,
         city: mobileSheetProperty.city,
-        price: `${priceValue.toLocaleString('fr-FR')} €`,
-        pricePerSqm: calculatedPricePerSqm === 'N/A' ? '' : calculatedPricePerSqm,
+        price: `${Math.round(priceValue).toLocaleString('fr-FR')} €`,
+        pricePerSqm: calculatedPricePerSqm,
         type: mutationTypeLabel,
         rooms: mutation.nbpprinc || '',
         surface: formatSurfaceValue(builtSurface),
@@ -739,8 +739,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
       setMobileSheetProperty({
         address: mobileSheetProperty.address,
         city: mobileSheetProperty.city,
-        price: `${priceValue.toLocaleString('fr-FR')} €`,
-        pricePerSqm: calculatedPricePerSqm === 'N/A' ? '' : calculatedPricePerSqm,
+        price: `${Math.round(priceValue).toLocaleString('fr-FR')} €`,
+        pricePerSqm: calculatedPricePerSqm,
         type: mutationTypeLabel,
         rooms: mutation.nbpprinc || '',
         surface: formatSurfaceValue(builtSurface),
@@ -943,7 +943,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
     return {
       propertyType: propertyTypeParam,
-      roomCount: selectedRoomCounts || '1,2,3,4,5,6,7,8,9,10',
+      roomCount: selectedRoomCounts || '0',
       minSellPrice: currentFilterState.priceRange[0].toString(),
       maxSellPrice: currentFilterState.priceRange[1].toString(),
       minSurface: surfaceMin.toString(),
@@ -972,6 +972,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
       const params = new URLSearchParams({
         bounds: bounds.join(','),
         propertyType: '0,1,2,4,5', // All property types
+        roomCount: '1,2,3,4,5,6,7,8,9,10', // All room counts at startup
         minSellPrice: '0',
         maxSellPrice: '20000000',
         minSquareMeterPrice: '0',
@@ -1549,7 +1550,6 @@ const PropertyMap: React.FC<MapPageProps> = ({
             }
 
             // Set a small delay to avoid too many queries
-            // eslint-disable-next-line complexity
             hoverTimeout = setTimeout(() => {
               const features = map.queryRenderedFeatures(e.point, { layers: ['mutation-point'] });
 
@@ -1623,12 +1623,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                       };
 
                       const formatPrice = price => {
-                        return new Intl.NumberFormat('fr-FR', {
-                          style: 'currency',
-                          currency: 'EUR',
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        }).format(price);
+                        return `${Math.round(price).toLocaleString('fr-FR')} €`;
                       };
 
                       // Get the first mutation for display
@@ -1822,8 +1817,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           setMobileSheetProperty({
                             address: parentAddress?.adresse_complete || 'Adresse non disponible',
                             city: parentAddress?.commune || 'Ville non disponible',
-                            price: `${currentPriceValue.toLocaleString('fr-FR')} €`,
-                            pricePerSqm: currentPricePerSqm === 'N/A' ? '' : currentPricePerSqm,
+                            price: `${Math.round(currentPriceValue).toLocaleString('fr-FR')} €`,
+                            pricePerSqm: currentPricePerSqm,
                             type: currentMutationTypeLabel,
                             rooms: currentMutation.nbpprinc ?? '',
                             surface: formatSurfaceValue(currentBuiltSurface),
@@ -2299,8 +2294,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 setMobileSheetProperty({
                   address: address.adresse_complete, // Use the address object, not mutation
                   city: address.commune, // Use the address object, not mutation
-                  price: `${priceValue.toLocaleString('fr-FR')} €`,
-                  pricePerSqm: formattedPricePerSqm === 'N/A' ? '' : formattedPricePerSqm,
+                  price: `${Math.round(priceValue).toLocaleString('fr-FR')} €`,
+                  pricePerSqm: formattedPricePerSqm,
                   type: propertyTypeLabel,
                   rooms: firstMutation.nbpprinc ?? '',
                   surface: formatSurfaceValue(builtSurface),
@@ -2339,8 +2334,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 setMobileSheetProperty({
                   address: addressWithMutations.adresse_complete, // Use the address object, not mutation
                   city: addressWithMutations.commune, // Use the address object, not mutation
-                  price: `${priceValue.toLocaleString('fr-FR')} €`,
-                  pricePerSqm: formattedPricePerSqm === 'N/A' ? '' : formattedPricePerSqm,
+                  price: `${Math.round(priceValue).toLocaleString('fr-FR')} €`,
+                  pricePerSqm: formattedPricePerSqm,
                   type: propertyTypeLabel,
                   rooms: firstMutation.nbpprinc ?? '',
                   surface: formatSurfaceValue(builtSurface),
