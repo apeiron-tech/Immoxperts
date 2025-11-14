@@ -809,32 +809,6 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                       <div className="flex items-center">
                         <input
                           type="checkbox"
-                          id="2pieces-mobile"
-                          className="w-4 h-4 rounded"
-                          style={{ accentColor: '#7069F9' }}
-                          checked={filters.roomCounts.deuxPieces}
-                          onChange={() => handleRoomCountChange('deuxPieces')}
-                        />
-                        <label htmlFor="2pieces-mobile" className="ml-1 text-sm">
-                          2 pièces
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="3pieces-mobile"
-                          className="w-4 h-4 rounded"
-                          style={{ accentColor: '#7069F9' }}
-                          checked={filters.roomCounts.troisPieces}
-                          onChange={() => handleRoomCountChange('troisPieces')}
-                        />
-                        <label htmlFor="3pieces-mobile" className="ml-1 text-sm">
-                          3 pièces
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
                           id="4pieces-mobile"
                           className="w-4 h-4 rounded"
                           style={{ accentColor: '#7069F9' }}
@@ -848,6 +822,19 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                       <div className="flex items-center">
                         <input
                           type="checkbox"
+                          id="2pieces-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.deuxPieces}
+                          onChange={() => handleRoomCountChange('deuxPieces')}
+                        />
+                        <label htmlFor="2pieces-mobile" className="ml-1 text-sm">
+                          2 pièces
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
                           id="5pieces-mobile"
                           className="w-4 h-4 rounded"
                           style={{ accentColor: '#7069F9' }}
@@ -856,6 +843,19 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                         />
                         <label htmlFor="5pieces-mobile" className="ml-1 text-sm">
                           5 pièces et +
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="3pieces-mobile"
+                          className="w-4 h-4 rounded"
+                          style={{ accentColor: '#7069F9' }}
+                          checked={filters.roomCounts.troisPieces}
+                          onChange={() => handleRoomCountChange('troisPieces')}
+                        />
+                        <label htmlFor="3pieces-mobile" className="ml-1 text-sm">
+                          3 pièces
                         </label>
                       </div>
                     </div>
@@ -882,16 +882,30 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <div className="flex items-center">
                       <input
                         type="checkbox"
-                        id="3pieces-desktop"
+                        id="4pieces-desktop"
                         className="w-4 h-4 rounded"
                         style={{ accentColor: '#7069F9' }}
-                        checked={filters.roomCounts.troisPieces}
-                        onChange={() => handleRoomCountChange('troisPieces')}
+                        checked={filters.roomCounts.quatrePieces}
+                        onChange={() => handleRoomCountChange('quatrePieces')}
                       />
-                      <label htmlFor="3pieces-desktop" className="ml-1 text-sm">
-                        3 pièces
+                      <label htmlFor="4pieces-desktop" className="ml-1 text-sm">
+                        4 pièces
                       </label>
                     </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="2pieces-desktop"
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#7069F9' }}
+                        checked={filters.roomCounts.deuxPieces}
+                        onChange={() => handleRoomCountChange('deuxPieces')}
+                      />
+                      <label htmlFor="2pieces-desktop" className="ml-1 text-sm">
+                        2 pièces
+                      </label>
+                    </div>
+
                     <div className="flex items-center">
                       <input
                         type="checkbox"
@@ -908,27 +922,14 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                     <div className="flex items-center">
                       <input
                         type="checkbox"
-                        id="2pieces-desktop"
+                        id="3pieces-desktop"
                         className="w-4 h-4 rounded"
                         style={{ accentColor: '#7069F9' }}
-                        checked={filters.roomCounts.deuxPieces}
-                        onChange={() => handleRoomCountChange('deuxPieces')}
+                        checked={filters.roomCounts.troisPieces}
+                        onChange={() => handleRoomCountChange('troisPieces')}
                       />
-                      <label htmlFor="2pieces-desktop" className="ml-1 text-sm">
-                        2 pièces
-                      </label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="4pieces-desktop"
-                        className="w-4 h-4 rounded"
-                        style={{ accentColor: '#7069F9' }}
-                        checked={filters.roomCounts.quatrePieces}
-                        onChange={() => handleRoomCountChange('quatrePieces')}
-                      />
-                      <label htmlFor="4pieces-desktop" className="ml-1 text-sm">
-                        4 pièces
+                      <label htmlFor="3pieces-desktop" className="ml-1 text-sm">
+                        3 pièces
                       </label>
                     </div>
                   </div>
