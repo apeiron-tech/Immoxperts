@@ -108,6 +108,12 @@ public class MutationResource {
             // Parse property types
             String[] propertyTypes = parseStringArray(propertyType, this::mapPropertyTypeToGroup);
             Integer[] roomCounts = parseIntegerArray(roomCount);
+
+            // Special case: if roomCount is "0", convert to array with -1 to signal "show only 0 or NULL"
+            if (roomCounts != null && roomCounts.length == 1 && roomCounts[0] == 0) {
+                roomCounts = new Integer[] { -1 };
+            }
+
             Set<String> allowedTypes = propertyTypes != null ? Set.of(propertyTypes) : null;
 
             // Debug logging
@@ -138,7 +144,9 @@ public class MutationResource {
             LOG.info("=== SEARCH REQUEST ===");
             LOG.info("Bounds: west={}, south={}, east={}, north={}", west, south, east, north);
             LOG.info("Property types: {}", propertyTypes != null ? String.join(",", propertyTypes) : "ALL");
-            LOG.info("Room counts: {}", roomCounts != null ? Arrays.toString(roomCounts) : "ALL");
+            LOG.info("Room counts RAW: {}", roomCount);
+            LOG.info("Room counts PARSED: {}", roomCounts != null ? Arrays.toString(roomCounts) : "NULL");
+            LOG.info("Room counts after conversion: {}", roomCounts != null ? Arrays.toString(roomCounts) : "NULL");
             LOG.info(
                 "Price filters - Original: min={}, max={} -> Effective: min={}, max={}",
                 minSellPrice,

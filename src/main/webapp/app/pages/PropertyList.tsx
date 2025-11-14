@@ -82,7 +82,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [hoveredPropertyId, setHoveredPropertyId] = useState<number | null>(null);
   const [mapHoveredPropertyId, setMapHoveredPropertyId] = useState<number | null>(null);
-  const [sortOption, setSortOption] = useState<SortOption>('price-asc');
+  const [sortOption, setSortOption] = useState<SortOption>('');
 
   // **KEY ADDITION**: Store the currently active filters in this component
   const [currentActiveFilters, setCurrentActiveFilters] = useState<FilterState | null>(null);
@@ -317,7 +317,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                 city: address.commune || '',
                 numericPrice: mutation.valeur || 0,
                 numericSurface: builtSurface,
-                price: `${(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
+                price: `${Math.round(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
                 surface: builtSurface > 0 ? `${builtSurface.toLocaleString('fr-FR')} m²` : '',
                 type: propertyType,
                 soldDate: mutation.date || '',
@@ -344,11 +344,8 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
       // Convert map values to array
       const allProperties: Property[] = Array.from(addressMap.values());
 
-      // Sort by price ascending (lowest price first) before limiting
-      const sortedByPrice = allProperties.sort((a, b) => a.numericPrice - b.numericPrice);
-
-      // Limit to max 100 properties
-      const limitedProperties = sortedByPrice.slice(0, 100);
+      // Limit to max 100 properties (keep natural order from API)
+      const limitedProperties = allProperties.slice(0, 100);
 
       // Set new properties and update version
       setProperties(limitedProperties);
