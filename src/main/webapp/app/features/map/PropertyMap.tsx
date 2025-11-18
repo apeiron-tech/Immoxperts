@@ -239,7 +239,7 @@ const getStatsShortTypeName = (type: string) => {
 
 // **NEW**: Function to calculate statistics from map data
 const calculateZoneStats = (mapFeatures: any[]) => {
-  const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
+  const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local Commercial', 'Bien Multiple'];
   const stats = [];
 
   propertyTypeNames.forEach(typeName => {
@@ -247,7 +247,7 @@ const calculateZoneStats = (mapFeatures: any[]) => {
 
     // ✅ Mapping des noms pour correspondre aux données des mutations
     const mutationTypeMap = {
-      Local: 'Local Commercial',
+      'Local Commercial': 'Local Commercial',
       Appartement: 'Appartement',
       Maison: 'Maison',
       Terrain: 'Terrain',
@@ -289,23 +289,43 @@ const calculateZoneStats = (mapFeatures: any[]) => {
 
     // Calculate statistics for this property type
     if (mutations.length > 0) {
-      const prices = mutations.map(m => m.valeur || 0).filter(p => p > 0);
-      const pricesPerM2 = mutations.map(m => m.prix_m2 || 0).filter(p => p > 0);
+      // Calculate average price
+      const validPrices = mutations.map(m => m.valeur || 0).filter(p => p > 0);
+      const averagePrice = validPrices.length > 0 ? validPrices.reduce((sum, p) => sum + p, 0) / validPrices.length : 0;
 
-      // Calculate medians
-      const medianPrice = prices.length > 0 ? calculateMedian(prices) : 0;
-      const medianPricePerM2 = pricesPerM2.length > 0 ? calculateMedian(pricesPerM2) : 0;
+      // Calculate average price per m² - recalculate based on surface type
+      const isTerrain = mutationTypeName.toLowerCase().includes('terrain');
+      const validPricesPerM2: number[] = [];
+
+      mutations.forEach(m => {
+        const price = m.valeur || 0;
+        if (price <= 0) return;
+
+        if (isTerrain) {
+          const landSurface = m.surface_terrain || m.sterr || 0;
+          if (landSurface > 0) {
+            validPricesPerM2.push(price / landSurface);
+          }
+        } else {
+          const builtSurface = m.surface_batiment || m.sbati || 0;
+          if (builtSurface > 0) {
+            validPricesPerM2.push(price / builtSurface);
+          }
+        }
+      });
+
+      const averagePricePerM2 = validPricesPerM2.length > 0 ? validPricesPerM2.reduce((sum, p) => sum + p, 0) / validPricesPerM2.length : 0;
 
       stats.push({
-        typeGroupe: typeName,
+        typeGroupe: mutationTypeName,
         nombre: mutations.length, // This now represents unique mutations
-        prixMoyen: Math.round(medianPrice),
-        prixM2Moyen: Math.round(medianPricePerM2),
+        prixMoyen: Math.round(averagePrice),
+        prixM2Moyen: Math.round(averagePricePerM2),
       });
     } else {
       // No data for this type
       stats.push({
-        typeGroupe: typeName,
+        typeGroupe: mutationTypeName,
         nombre: 0,
         prixMoyen: 0,
         prixM2Moyen: 0,
@@ -314,20 +334,6 @@ const calculateZoneStats = (mapFeatures: any[]) => {
   });
 
   return stats;
-};
-
-// Helper function to calculate median
-const calculateMedian = (values: number[]) => {
-  if (values.length === 0) return 0;
-
-  const sorted = values.slice().sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-
-  if (sorted.length % 2 === 0) {
-    return (sorted[middle - 1] + sorted[middle]) / 2;
-  } else {
-    return sorted[middle];
-  }
 };
 
 // Helper function to detect and format city name with arrondissement
