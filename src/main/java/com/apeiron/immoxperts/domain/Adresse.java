@@ -13,7 +13,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
  * A Adresse.
  */
 @Entity
-@Table(name = "adresse")
+@Table(name = "dvf_plus_adresse", schema = "dvf_plus_2025_2")
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Adresse implements Serializable {

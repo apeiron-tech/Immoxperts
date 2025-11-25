@@ -11,7 +11,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
  * A Local.
  */
 @Entity
-@Table(name = "local")
+@Table(name = "dvf_plus_local", schema = "dvf_plus_2025_2")
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Local implements Serializable {

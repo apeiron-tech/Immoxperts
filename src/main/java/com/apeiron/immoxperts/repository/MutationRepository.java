@@ -30,8 +30,8 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
     @Query(
         value = """
         SELECT DISTINCT m.*
-        FROM dvf.mutation m
-        JOIN dvf.parcelle_adresse_mutation_mv pam ON m.idmutation = pam.idmutation
+        FROM dvf_plus_2025_2.dvf_plus_mutation m
+        JOIN dvf_plus_2025_2.parcelle_adresse_mutation_mv_2025 pam ON m.idmutation = pam.idmutation
         WHERE (:novoie IS NULL OR pam.adresse_json->>'novoie' = CAST(:novoie AS text))
           AND (:btq IS NULL OR UPPER(pam.adresse_json->>'btq') = UPPER(:btq))
           AND (:typvoie IS NULL OR UPPER(pam.adresse_json->>'typvoie') = UPPER(:typvoie))
@@ -73,7 +73,7 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
             nombre_mutations,
             prix_moyen_dec2024,
             prix_m2_moyen_dec2024
-        FROM dvf.mutation_stats_by_city
+        FROM dvf_plus_2025_2.mutation_stats_by_city
         WHERE code_insee = :codeInsee
         ORDER BY nombre_mutations DESC
         """,
@@ -84,8 +84,8 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
     @Query(
         value = """
         SELECT DISTINCT m.*
-        FROM dvf.mutation m
-        JOIN dvf.parcelle_adresse_mutation_mv pam ON m.idmutation = pam.idmutation
+        FROM dvf_plus_2025_2.dvf_plus_mutation m
+        JOIN dvf_plus_2025_2.parcelle_adresse_mutation_mv_2025 pam ON m.idmutation = pam.idmutation
         WHERE UPPER(pam.adresse_json->>'commune') LIKE UPPER(CONCAT('%', :commune, '%'))
         ORDER BY pam.mutation_date DESC
         """,
@@ -96,8 +96,8 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
     @Query(
         value = """
         SELECT DISTINCT m.*
-        FROM dvf.mutation m
-        JOIN dvf.parcelle_adresse_mutation_mv pam ON m.idmutation = pam.idmutation
+        FROM dvf_plus_2025_2.dvf_plus_mutation m
+        JOIN dvf_plus_2025_2.parcelle_adresse_mutation_mv_2025 pam ON m.idmutation = pam.idmutation
         WHERE UPPER(pam.adresse_json->>'commune') LIKE UPPER(CONCAT('%', :commune, '%'))
         ORDER BY pam.mutation_date DESC
         """,
@@ -108,8 +108,8 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
     @Query(
         value = """
         SELECT DISTINCT m.*
-        FROM dvf.mutation m
-        JOIN dvf.parcelle_adresse_mutation_mv pam ON m.idmutation = pam.idmutation
+        FROM dvf_plus_2025_2.dvf_plus_mutation m
+        JOIN dvf_plus_2025_2.parcelle_adresse_mutation_mv_2025 pam ON m.idmutation = pam.idmutation
         WHERE UPPER(pam.adresse_json->>'commune') = UPPER(:commune)
           AND (:street IS NULL OR UPPER(pam.adresse_json->>'voie') LIKE UPPER(CONCAT(:street, '%')))
         ORDER BY pam.mutation_date DESC
@@ -126,8 +126,8 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
     @Query(
         value = """
         SELECT COUNT(DISTINCT m.idmutation)
-        FROM dvf.mutation m
-        JOIN dvf.parcelle_adresse_mutation_mv pam ON m.idmutation = pam.idmutation
+        FROM dvf_plus_2025_2.dvf_plus_mutation m
+        JOIN dvf_plus_2025_2.parcelle_adresse_mutation_mv_2025 pam ON m.idmutation = pam.idmutation
         WHERE UPPER(pam.adresse_json->>'commune') = UPPER(:commune)
           AND (:street IS NULL OR UPPER(pam.adresse_json->>'voie') LIKE UPPER(CONCAT(:street, '%')))
         """,
@@ -142,8 +142,8 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
                 pg.idparcelle,
                 pg.feature,
                 pa.idpar,
-                pa.idadresse,
-                pa.adresse,
+                pa.canonical_id AS idadresse,
+                pa.adresse_info AS adresse,
                 pam.mutation,
                 pam.mutation_date,
                 pam.type_bien,
@@ -152,10 +152,10 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
                 pam.surface_terrain,
                 (pam.mutation->>'valeur')::numeric AS valeur,
                 (pam.mutation->>'prix_m2')::numeric AS prix_m2
-            FROM dvf.parcelles_geojson_mv pg
-            JOIN dvf.parcelle_adresse_mv pa ON pg.idparcelle = pa.idpar
-            JOIN dvf.parcelle_adresse_mutation_mv pam ON pa.idpar = pam.idpar
-                AND pa.idadresse = pam.idadresse
+            FROM dvf_plus_2025_2.parcelles_geojson_mv pg
+            JOIN dvf_plus_2025_2.parcelle_adresse_mv pa ON pg.idparcelle = pa.idpar
+            JOIN dvf_plus_2025_2.parcelle_adresse_mutation_mv_2025 pam ON pa.idpar = pam.idpar
+                AND pa.canonical_id = pam.idadresse
             WHERE pg.point_geom && ST_MakeEnvelope(:west, :south, :east, :north, 4326)
               -- Step 1: Filter by property type (REQUIRED - always applied)
               AND (COALESCE(:propertyTypes, NULL) IS NULL OR pam.type_bien = ANY(CAST(:propertyTypes AS text[])))
@@ -269,20 +269,20 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
             'idparcelle', pa.idpar,
             'adresses', jsonb_agg(
                 jsonb_build_object(
-                    'idadresse', pa.idadresse,
-                    'adresse_complete', pa.adresse->>'adresse_complete',
-                    'commune', pa.adresse->>'commune',
-                    'codepostal', pa.adresse->>'codepostal',
+                    'idadresse', pa.canonical_id,
+                    'adresse_complete', pa.adresse_info->>'adresse_complete',
+                    'commune', pa.adresse_info->>'commune',
+                    'codepostal', pa.adresse_info->>'codepostal',
                     'mutations', (
                         SELECT jsonb_agg(pam.mutation ORDER BY pam.mutation_date DESC)
-                        FROM dvf.parcelle_adresse_mutation_mv pam
-                        WHERE pam.idpar = pa.idpar AND pam.idadresse = pa.idadresse
+                        FROM dvf_plus_2025_2.parcelle_adresse_mutation_mv_2025 pam
+                        WHERE pam.idpar = pa.idpar AND pam.idadresse = pa.canonical_id
                     )
                 )
-                ORDER BY pa.idadresse
+                ORDER BY pa.canonical_id
             )
         )::text AS parcel_data
-        FROM dvf.parcelle_adresse_mv pa
+        FROM dvf_plus_2025_2.parcelle_adresse_mv pa
         WHERE pa.idpar = :parcelId
         GROUP BY pa.idpar
         """,

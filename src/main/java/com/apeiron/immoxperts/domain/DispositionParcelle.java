@@ -11,7 +11,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
  * A DispositionParcelle.
  */
 @Entity
-@Table(name = "disposition_parcelle")
+@Table(name = "dvf_plus_disposition_parcelle", schema = "dvf_plus_2025_2")
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class DispositionParcelle implements Serializable {
