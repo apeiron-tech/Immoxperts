@@ -204,7 +204,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
   // Date-specific values (months since 2014)
   const dateMinValue = 0; // January 2014
-  const dateMaxValue = 140; // September 2025 (11 years * 12 months + 8 months)
+  const dateMaxValue = 137; // June 2025 (11 years * 12 months + 5 months)
   const dateStep = 1; // 1 month steps
 
   // Calculate positions as percentages
@@ -363,7 +363,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
   const formatDate = (months: number) => {
     const startDate = new Date(2014, 0, 1); // January 2014
-    const targetDate = new Date(startDate.getTime() + months * 30 * 24 * 60 * 60 * 1000);
+    const targetDate = new Date(startDate.getFullYear(), startDate.getMonth() + months, 1);
 
     const monthsNames = [
       'janvier',
@@ -457,7 +457,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     surfaceRange: [0, 400], // 0 to 400m²
     terrainRange: [0, 50000], // 0 to 50,000m²
     pricePerSqmRange: [0, 40000], // 0 to 40k €/m²
-    dateRange: [0, 140], // January 2014 to September 2025 (months)
+    dateRange: [0, 137], // January 2014 to June 2025 (months)
   };
 
   const [filters, setFilters] = useState<FilterState>(currentFilters || defaultFilters);
@@ -511,7 +511,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
 
   const formatDate = (months: number) => {
     const startDate = new Date(2014, 0, 1); // January 2014
-    const targetDate = new Date(startDate.getTime() + months * 30 * 24 * 60 * 60 * 1000);
+    const targetDate = new Date(startDate.getFullYear(), startDate.getMonth() + months, 1);
 
     const monthsNames = [
       'janvier',
@@ -655,7 +655,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     const minDate = Math.round(filters.dateRange[0]);
     const maxDate = Math.round(filters.dateRange[1]);
     const dateMinValue = 0;
-    const dateMaxValue = 140;
+    const dateMaxValue = 137;
 
     if (minDate === dateMinValue && maxDate === dateMaxValue) {
       return 'Toutes les valeurs';

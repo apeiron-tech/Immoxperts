@@ -16,7 +16,7 @@ public interface DvfLouerRepository extends JpaRepository<DvfLouer, Long> {
                 commune as value,
                 CONCAT(commune, ' (', search_postal_code, ')') as adresse,
                 'commune' as suggestion_type
-            FROM dvf_louer
+            FROM dvf_plus_2025_2.dvf_louer
             WHERE commune IS NOT NULL
             AND search_postal_code IS NOT NULL
             AND LOWER(commune) LIKE LOWER(CONCAT('%', :query, '%'))
@@ -28,7 +28,7 @@ public interface DvfLouerRepository extends JpaRepository<DvfLouer, Long> {
                 department as value,
                 department as adresse,
                 'department' as suggestion_type
-            FROM dvf_louer
+            FROM dvf_plus_2025_2.dvf_louer
             WHERE department IS NOT NULL
             AND LOWER(department) LIKE LOWER(CONCAT('%', :query, '%'))
 
@@ -39,7 +39,7 @@ public interface DvfLouerRepository extends JpaRepository<DvfLouer, Long> {
                 search_postal_code as value,
                 CONCAT(commune, ' (', search_postal_code, ')') as adresse,
                 'postal_code' as suggestion_type
-            FROM dvf_louer
+            FROM dvf_plus_2025_2.dvf_louer
             WHERE search_postal_code IS NOT NULL
             AND commune IS NOT NULL
             AND LOWER(search_postal_code) LIKE LOWER(CONCAT('%', :query, '%'))
@@ -51,7 +51,7 @@ public interface DvfLouerRepository extends JpaRepository<DvfLouer, Long> {
                 search_postal_code as value,
                 search_postal_code as adresse,
                 'postal_code' as suggestion_type
-            FROM dvf_louer
+            FROM dvf_plus_2025_2.dvf_louer
             WHERE search_postal_code IS NOT NULL
             AND commune IS NULL
             AND LOWER(search_postal_code) LIKE LOWER(CONCAT('%', :query, '%'))
@@ -68,7 +68,7 @@ public interface DvfLouerRepository extends JpaRepository<DvfLouer, Long> {
 
     @Query(
         value = """
-        SELECT * FROM dvf_louer
+        SELECT * FROM dvf_plus_2025_2.dvf_louer
         WHERE
             (:type = 'commune' AND LOWER(commune) = LOWER(:value)) OR
             (:type = 'postal_code' AND LOWER(search_postal_code) = LOWER(:value)) OR
@@ -81,7 +81,7 @@ public interface DvfLouerRepository extends JpaRepository<DvfLouer, Long> {
 
     @Query(
         value = """
-        SELECT * FROM dvf_louer
+        SELECT * FROM dvf_plus_2025_2.dvf_louer
         WHERE
             ((:type = 'commune' AND LOWER(commune) = LOWER(:value)) OR
              (:type = 'postal_code' AND LOWER(search_postal_code) = LOWER(:value)) OR

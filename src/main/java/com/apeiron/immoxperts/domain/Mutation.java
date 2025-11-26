@@ -16,7 +16,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
  * A Mutation.
  */
 @Entity
-@Table(name = "mutation")
+@Table(name = "dvf_plus_mutation", schema = "dvf_plus_2025_2")
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Mutation implements Serializable {
