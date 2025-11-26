@@ -552,15 +552,19 @@ const getQuartierFromCoords = async (lng: number, lat: number) => {
 };
 
 // Function to get user's current location
-const getUserLocation = (): Promise<[number, number]> => {
+const getUserLocation = (setStatus?: (status: string) => void): Promise<[number, number]> => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
+      setStatus?.('❌ Géolocalisation non supportée');
       reject(new Error('Geolocation is not supported by this browser'));
       return;
     }
 
+    setStatus?.("🌍 Demande d'autorisation...");
+
     navigator.geolocation.getCurrentPosition(
       position => {
+        setStatus?.('✅ Position obtenue');
         const { longitude, latitude } = position.coords;
         resolve([longitude, latitude]);
       },
@@ -568,23 +572,27 @@ const getUserLocation = (): Promise<[number, number]> => {
         // Handle different types of geolocation errors
         switch (error.code) {
           case error.PERMISSION_DENIED:
+            setStatus?.('🚫 Permission refusée');
             reject(new Error('User denied the request for Geolocation'));
             break;
           case error.POSITION_UNAVAILABLE:
+            setStatus?.('📍 Position indisponible');
             reject(new Error('Location information is unavailable'));
             break;
           case error.TIMEOUT:
+            setStatus?.('⏰ Délai dépassé');
             reject(new Error('The request to get user location timed out'));
             break;
           default:
+            setStatus?.('❓ Erreur inconnue');
             reject(new Error('An unknown error occurred'));
             break;
         }
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000, // 10 seconds timeout
-        maximumAge: 300000, // 5 minutes cache
+        enableHighAccuracy: false, // Changed to false for better compatibility
+        timeout: 15000, // Increased timeout to 15 seconds
+        maximumAge: 600000, // 10 minutes cache
       },
     );
   });
@@ -735,6 +743,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locationPermissionDenied, setLocationPermissionDenied] = useState<boolean>(false);
   const [showLocationNotification, setShowLocationNotification] = useState<boolean>(false);
+  const [geolocationStatus, setGeolocationStatus] = useState<string>('');
   const hoveredSelectedId = useRef<string | number | null>(null);
   const [currentActiveFilters, setCurrentActiveFilters] = useState<FilterState | null>(null);
 
@@ -750,28 +759,41 @@ const PropertyMap: React.FC<MapPageProps> = ({
   // Get user location on component mount
   useEffect(() => {
     const getLocation = async () => {
+      // Check if geolocation is supported
+      if (!navigator.geolocation) {
+        setGeolocationStatus('❌ Géolocalisation non supportée');
+        setLocationPermissionDenied(true);
+        setShowLocationNotification(true);
+        setUserLocation([2.3522, 48.8566]); // Paris coordinates
+        setTimeout(() => {
+          setShowLocationNotification(false);
+          setGeolocationStatus('');
+        }, 5000);
+        return;
+      }
+
       try {
-        debugLog('Attempting to get user location...');
-        const location = await getUserLocation();
+        setGeolocationStatus('🌍 Demande de géolocalisation...');
+        const location = await getUserLocation(setGeolocationStatus);
         setUserLocation(location);
         setShowLocationNotification(true);
-        debugLog('User location obtained:', location);
 
         // Hide notification after 3 seconds
         setTimeout(() => {
           setShowLocationNotification(false);
+          setGeolocationStatus('');
         }, 3000);
       } catch (locationError) {
-        debugLog('Failed to get user location:', locationError.message);
         setLocationPermissionDenied(true);
         setShowLocationNotification(true);
         // Set Paris as default location if geolocation fails
         setUserLocation([2.3522, 48.8566]); // Paris coordinates
 
-        // Hide notification after 4 seconds for error message
+        // Hide notification after 5 seconds for error message
         setTimeout(() => {
           setShowLocationNotification(false);
-        }, 4000);
+          setGeolocationStatus('');
+        }, 5000);
       }
     };
 
@@ -3385,7 +3407,33 @@ const PropertyMap: React.FC<MapPageProps> = ({
       <div ref={mapContainer} className="h-full w-full" />
 
       {/* Geolocation Status Notification */}
-      {showLocationNotification && locationPermissionDenied && (
+      {geolocationStatus && (
+        <div
+          className={`absolute top-4 right-4 px-3 py-2 rounded-lg shadow-lg text-sm z-40 max-w-xs animate-fade-in ${
+            geolocationStatus.includes('❌') ||
+            geolocationStatus.includes('🚫') ||
+            geolocationStatus.includes('⏰') ||
+            geolocationStatus.includes('📍')
+              ? 'bg-red-500 text-white'
+              : geolocationStatus.includes('✅')
+                ? 'bg-green-500 text-white'
+                : 'bg-blue-500 text-white'
+          }`}
+        >
+          <div className="flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {geolocationStatus}
+          </div>
+        </div>
+      )}
+
+      {showLocationNotification && locationPermissionDenied && !geolocationStatus && (
         <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg text-sm z-40 max-w-xs animate-fade-in">
           <div className="flex items-center">
             <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -3400,7 +3448,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         </div>
       )}
 
-      {showLocationNotification && userLocation && !locationPermissionDenied && (
+      {showLocationNotification && userLocation && !locationPermissionDenied && !geolocationStatus && (
         <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-2 rounded-lg shadow-lg text-sm z-40 max-w-xs animate-fade-in">
           <div className="flex items-center">
             <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -3638,6 +3686,56 @@ const PropertyMap: React.FC<MapPageProps> = ({
             src={currentMapStyle === 'original' ? mapSatelliteIcon : mapStreetsIcon}
             alt={currentMapStyle === 'original' ? 'Satellite view' : 'Streets view'}
           />
+        </button>
+
+        {/* Manual Geolocation Test Button */}
+        <button
+          onClick={async () => {
+            try {
+              setGeolocationStatus('🔄 Test géolocalisation manuelle...');
+              const location = await getUserLocation(setGeolocationStatus);
+              setUserLocation(location);
+              setLocationPermissionDenied(false);
+              setShowLocationNotification(true);
+
+              // Center map on user location
+              if (mapRef.current) {
+                mapRef.current.flyTo({
+                  center: location,
+                  zoom: 14,
+                  duration: 2000,
+                });
+              }
+
+              setTimeout(() => {
+                setShowLocationNotification(false);
+                setGeolocationStatus('');
+              }, 3000);
+            } catch (err) {
+              setGeolocationStatus('❌ Échec du test manuel');
+              setTimeout(() => {
+                setGeolocationStatus('');
+              }, 3000);
+            }
+          }}
+          className="bg-blue-500 text-white rounded-lg flex items-center justify-center hover:bg-blue-600 shadow-md border border-blue-600 map-control-btn"
+          style={{
+            width: '32px',
+            height: '32px',
+            minWidth: '32px',
+            minHeight: '32px',
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
+          }}
+          title="Test géolocalisation"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+              clipRule="evenodd"
+            />
+          </svg>
         </button>
       </div>
 
