@@ -736,6 +736,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [debugging, setDebugging] = useState<boolean>(true); // Enable debugging
+
+  // Request cancellation for search API
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locationPermissionDenied, setLocationPermissionDenied] = useState<boolean>(false);
   const [showLocationNotification, setShowLocationNotification] = useState<boolean>(false);
@@ -1161,6 +1164,16 @@ const PropertyMap: React.FC<MapPageProps> = ({
       return;
     }
 
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      debugLog('Cancelling previous search API request');
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     try {
       const b = mapRef.current.getBounds();
       const bounds = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
@@ -1206,9 +1219,15 @@ const PropertyMap: React.FC<MapPageProps> = ({
       const apiUrl = `${API_ENDPOINTS.mutations.search}?${params.toString()}`;
       debugLog('Calling API:', apiUrl);
 
-      const { data } = await axios.get(apiUrl);
+      const { data } = await axios.get(apiUrl, { signal });
       debugLog('API response data:', data);
       debugLog('Number of features in response:', data.features?.length || 0);
+
+      // Check if request was cancelled
+      if (signal.aborted) {
+        debugLog('Search request was cancelled');
+        return;
+      }
 
       // Transform the data to GeoJSON format for Mapbox
       const geojsonData = {
@@ -1256,8 +1275,15 @@ const PropertyMap: React.FC<MapPageProps> = ({
         }
       }
     } catch (e) {
+      if (axios.isCancel(e) || (e instanceof Error && e.name === 'AbortError')) {
+        debugLog('Search request was cancelled:', e);
+        return;
+      }
       debugLog('Failed to load mutations:', e);
       // Failed to load mutations
+    } finally {
+      // Clear the abort controller reference
+      abortControllerRef.current = null;
     }
   };
 
