@@ -238,11 +238,33 @@ const getStatsShortTypeName = (type: string) => {
 };
 
 // **NEW**: Function to calculate statistics from map data
-const calculateZoneStats = (mapFeatures: any[]) => {
+const calculateZoneStats = (mapFeatures: any[], filterState?: FilterState) => {
   const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local Commercial', 'Bien Multiple'];
+
+  // Filter property types based on filterState
+  const getSelectedPropertyTypes = () => {
+    if (!filterState?.propertyTypes) {
+      return propertyTypeNames; // Show all if no filter
+    }
+
+    const propertyTypeMap = {
+      appartement: 'Appartement',
+      maison: 'Maison',
+      terrain: 'Terrain',
+      localCommercial: 'Local Commercial',
+      biensMultiples: 'Bien Multiple',
+    };
+
+    return Object.entries(filterState.propertyTypes)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([type, _]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+      .filter(Boolean);
+  };
+
+  const selectedPropertyTypes = getSelectedPropertyTypes();
   const stats = [];
 
-  propertyTypeNames.forEach(typeName => {
+  selectedPropertyTypes.forEach(typeName => {
     const uniqueMutations = new Map(); // Use Map to track unique mutations by ID
 
     // ✅ Mapping des noms pour correspondre aux données des mutations
@@ -529,6 +551,45 @@ const getQuartierFromCoords = async (lng: number, lat: number) => {
   }
 };
 
+// Function to get user's current location
+const getUserLocation = (): Promise<[number, number]> => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation is not supported by this browser'));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const { longitude, latitude } = position.coords;
+        resolve([longitude, latitude]);
+      },
+      error => {
+        // Handle different types of geolocation errors
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            reject(new Error('User denied the request for Geolocation'));
+            break;
+          case error.POSITION_UNAVAILABLE:
+            reject(new Error('Location information is unavailable'));
+            break;
+          case error.TIMEOUT:
+            reject(new Error('The request to get user location timed out'));
+            break;
+          default:
+            reject(new Error('An unknown error occurred'));
+            break;
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000, // 10 seconds timeout
+        maximumAge: 300000, // 5 minutes cache
+      },
+    );
+  });
+};
+
 const PropertyMap: React.FC<MapPageProps> = ({
   selectedFeature,
   properties,
@@ -671,6 +732,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [debugging, setDebugging] = useState<boolean>(true); // Enable debugging
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState<boolean>(false);
+  const [showLocationNotification, setShowLocationNotification] = useState<boolean>(false);
   const hoveredSelectedId = useRef<string | number | null>(null);
   const [currentActiveFilters, setCurrentActiveFilters] = useState<FilterState | null>(null);
 
@@ -682,6 +746,37 @@ const PropertyMap: React.FC<MapPageProps> = ({
   useEffect(() => {
     showMobileBottomSheetRef.current = showMobileBottomSheet;
   }, [showMobileBottomSheet]);
+
+  // Get user location on component mount
+  useEffect(() => {
+    const getLocation = async () => {
+      try {
+        debugLog('Attempting to get user location...');
+        const location = await getUserLocation();
+        setUserLocation(location);
+        setShowLocationNotification(true);
+        debugLog('User location obtained:', location);
+
+        // Hide notification after 3 seconds
+        setTimeout(() => {
+          setShowLocationNotification(false);
+        }, 3000);
+      } catch (locationError) {
+        debugLog('Failed to get user location:', locationError.message);
+        setLocationPermissionDenied(true);
+        setShowLocationNotification(true);
+        // Set Paris as default location if geolocation fails
+        setUserLocation([2.3522, 48.8566]); // Paris coordinates
+
+        // Hide notification after 4 seconds for error message
+        setTimeout(() => {
+          setShowLocationNotification(false);
+        }, 4000);
+      }
+    };
+
+    getLocation();
+  }, []);
 
   // Close all popups when filter popup opens
   useEffect(() => {
@@ -940,8 +1035,11 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
     // Convert date range from months to actual dates
     const startDate = new Date(2014, 0, 1); // January 2014
-    const minDate = new Date(startDate.getTime() + currentFilterState.dateRange[0] * 30 * 24 * 60 * 60 * 1000);
-    const maxDate = new Date(startDate.getTime() + currentFilterState.dateRange[1] * 30 * 24 * 60 * 60 * 1000);
+    const minDate = new Date(startDate.getFullYear(), startDate.getMonth() + currentFilterState.dateRange[0], 1);
+    const maxDate = new Date(startDate.getFullYear(), startDate.getMonth() + currentFilterState.dateRange[1], 1);
+
+    // For maxDate, we want the last day of the month, not the first day of the next month
+    const actualMaxDate = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 0); // Last day of the month
 
     const [surfaceMin, surfaceMax] = currentFilterState.surfaceRange;
     const isSurfaceFilterActive = surfaceMin > SURFACE_DEFAULT_MIN || surfaceMax < SURFACE_DEFAULT_MAX;
@@ -963,7 +1061,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
       minSquareMeterPrice: currentFilterState.pricePerSqmRange[0].toString(),
       maxSquareMeterPrice: currentFilterState.pricePerSqmRange[1].toString(),
       minDate: minDate.toISOString().split('T')[0],
-      maxDate: maxDate.toISOString().split('T')[0],
+      maxDate: actualMaxDate.toISOString().split('T')[0],
     };
   };
 
@@ -1158,6 +1256,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
       return;
     }
 
+    // Wait for location data unless we have search params
+    if (!userLocation && !searchParams?.coordinates) {
+      debugLog('Waiting for location data...');
+      return;
+    }
+
     // Check WebGL support before initializing
     if (!checkWebGLSupport()) {
       return;
@@ -1166,11 +1270,30 @@ const PropertyMap: React.FC<MapPageProps> = ({
     debugLog('Initializing Mapbox map...');
 
     try {
+      // Determine initial center: user location, search params, or Paris default
+      let initialCenter: [number, number];
+      let initialZoom = 14;
+
+      if (searchParams?.coordinates) {
+        // Use search coordinates if provided
+        initialCenter = searchParams.coordinates;
+        initialZoom = searchParams.isCity ? 12 : 16;
+        debugLog('Using search coordinates:', initialCenter);
+      } else if (userLocation) {
+        // Use user's geolocation
+        initialCenter = userLocation;
+        debugLog('Using user location:', initialCenter);
+      } else {
+        // Default to Paris
+        initialCenter = [2.3522, 48.8566];
+        debugLog('Using default location (Paris):', initialCenter);
+      }
+
       mapRef.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/immoxpert/cmck83rh6001501r1dlt1fy8k',
-        center: [8.73692, 41.9281], // Corsica center
-        zoom: 14,
+        center: initialCenter,
+        zoom: initialZoom,
         minZoom: 12, // Limit zoom out to maximum 1km
         maxZoom: 18,
         antialias: true, // Enable antialiasing for better performance
@@ -2805,7 +2928,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         mapRef.current = null;
       }
     };
-  }, []);
+  }, [userLocation, searchParams]);
 
   // Event handlers are now set up in the map load event
 
@@ -2875,12 +2998,34 @@ const PropertyMap: React.FC<MapPageProps> = ({
         // Use queryRenderedFeatures to get only visible mutations in the current viewport
         const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
         debugLog('Visible mutations in zone:', features.length);
-        const calculatedStats = calculateZoneStats(features);
+        const calculatedStats = calculateZoneStats(features, filterState);
 
         setZoneStats(calculatedStats);
       }, 500); // 500ms delay to ensure data is loaded
     }
-  }, [statsScope, mapLoaded]); // Recalculate when scope changes or map loads
+  }, [statsScope, mapLoaded, filterState]); // Recalculate when scope changes, map loads, or filters change
+
+  // **NEW**: Recalculate zone stats when map moves (if zone scope is selected)
+  useEffect(() => {
+    if (statsScope === 'zone' && mapRef.current && mapRef.current.getLayer('mutation-point')) {
+      const handleMapMove = () => {
+        // Debounce the recalculation to avoid too many updates
+        setTimeout(() => {
+          const features = mapRef.current.queryRenderedFeatures(null, { layers: ['mutation-point'] });
+          const calculatedStats = calculateZoneStats(features, filterState);
+          setZoneStats(calculatedStats);
+        }, 300);
+      };
+
+      mapRef.current.on('moveend', handleMapMove);
+
+      return () => {
+        if (mapRef.current) {
+          mapRef.current.off('moveend', handleMapMove);
+        }
+      };
+    }
+  }, [statsScope, mapLoaded, filterState]);
 
   // **NEW**: Recalculate zone stats when map moves (if zone scope is selected)
   const recalculateZoneStatsIfNeeded = useCallback(() => {
@@ -3239,6 +3384,37 @@ const PropertyMap: React.FC<MapPageProps> = ({
       )}
       <div ref={mapContainer} className="h-full w-full" />
 
+      {/* Geolocation Status Notification */}
+      {showLocationNotification && locationPermissionDenied && (
+        <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-2 rounded-lg shadow-lg text-sm z-40 max-w-xs animate-fade-in">
+          <div className="flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Localisation non disponible. Affichage de Paris par défaut.
+          </div>
+        </div>
+      )}
+
+      {showLocationNotification && userLocation && !locationPermissionDenied && (
+        <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-2 rounded-lg shadow-lg text-sm z-40 max-w-xs animate-fade-in">
+          <div className="flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Carte centrée sur votre position
+          </div>
+        </div>
+      )}
+
       {/* Map Attribution - Fixed at bottom right */}
       <div className="fixed bottom-2 right-2 z-40 bg-white bg-opacity-70 rounded px-0.5 py-0.5 text-[8px] shadow-sm sm:z-[9999]">
         <div className="mapboxgl-ctrl-attrib-inner" role="list">
@@ -3531,7 +3707,29 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 {/* Property Type Buttons */}
                 <div className="flex space-x-1 rounded-lg bg-gray-100 p-1 gap-2">
                   {(() => {
-                    const propertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
+                    const allPropertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
+
+                    // Filter property types based on current filters and available data
+                    const getVisiblePropertyTypes = () => {
+                      if (!filterState?.propertyTypes) {
+                        return allPropertyTypeNames; // Show all if no filter
+                      }
+
+                      const propertyTypeMap = {
+                        maison: 'Maison',
+                        appartement: 'Appartement',
+                        localCommercial: 'Local Commercial',
+                        terrain: 'Terrain',
+                        biensMultiples: 'Biens Multiples',
+                      };
+
+                      return Object.entries(filterState.propertyTypes)
+                        .filter(([_, isSelected]) => isSelected)
+                        .map(([type, _]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+                        .filter(Boolean);
+                    };
+
+                    const propertyTypeNames = getVisiblePropertyTypes();
 
                     // Use the same background colors as desktop version
                     const getPropertyTypeButtonColor = typeName => {
@@ -3622,7 +3820,29 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 {/* Statistics Display - Cards like Desktop */}
                 <div className="grid grid-cols-3 gap-1.5">
                   {(() => {
-                    const propertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
+                    const allPropertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
+
+                    // Use the same filtering logic as the buttons above
+                    const getVisiblePropertyTypes = () => {
+                      if (!filterState?.propertyTypes) {
+                        return allPropertyTypeNames; // Show all if no filter
+                      }
+
+                      const propertyTypeMap = {
+                        maison: 'Maison',
+                        appartement: 'Appartement',
+                        localCommercial: 'Local Commercial',
+                        terrain: 'Terrain',
+                        biensMultiples: 'Biens Multiples',
+                      };
+
+                      return Object.entries(filterState.propertyTypes)
+                        .filter(([_, isSelected]) => isSelected)
+                        .map(([type, _]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+                        .filter(Boolean);
+                    };
+
+                    const propertyTypeNames = getVisiblePropertyTypes();
                     const apiTypeMap = {
                       'Local Commercial': 'Local Commercial',
                       Appartement: 'Appartement',
@@ -3740,7 +3960,29 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
             {(() => {
               // ✅ Adaptation pour les nouvelles données de l'API
-              const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
+              const allPropertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
+
+              // Filter property types based on current filters
+              const getVisiblePropertyTypes = () => {
+                if (!filterState?.propertyTypes) {
+                  return allPropertyTypeNames; // Show all if no filter
+                }
+
+                const propertyTypeMap = {
+                  appartement: 'Appartement',
+                  maison: 'Maison',
+                  terrain: 'Terrain',
+                  localCommercial: 'Local',
+                  biensMultiples: 'Bien Multiple',
+                };
+
+                return Object.entries(filterState.propertyTypes)
+                  .filter(([_, isSelected]) => isSelected)
+                  .map(([type, _]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+                  .filter(Boolean);
+              };
+
+              const propertyTypeNames = getVisiblePropertyTypes();
               // ✅ Nouvelles couleurs spécifiées
               const getPropertyTypeButtonColor = typeName => {
                 const colorMap = {
