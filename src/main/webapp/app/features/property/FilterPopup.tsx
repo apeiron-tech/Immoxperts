@@ -204,7 +204,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
   // Date-specific values (months since 2014)
   const dateMinValue = 0; // January 2014
-  const dateMaxValue = 138; // July 2025 (11 years * 12 months + 6 months)
+  const dateMaxValue = 139; // August 2025 (11 years * 12 months + 7 months)
   const dateStep = 1; // 1 month steps
 
   // Calculate positions as percentages
@@ -457,7 +457,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     surfaceRange: [0, 400], // 0 to 400m²
     terrainRange: [0, 50000], // 0 to 50,000m²
     pricePerSqmRange: [0, 40000], // 0 to 40k €/m²
-    dateRange: [0, 138], // January 2014 to July 2025 (months)
+    dateRange: [0, 139], // January 2014 to August 2025 (months)
   };
 
   const [filters, setFilters] = useState<FilterState>(currentFilters || defaultFilters);
@@ -655,7 +655,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     const minDate = Math.round(filters.dateRange[0]);
     const maxDate = Math.round(filters.dateRange[1]);
     const dateMinValue = 0;
-    const dateMaxValue = 138;
+    const dateMaxValue = 139;
 
     if (minDate === dateMinValue && maxDate === dateMaxValue) {
       return 'Toutes les valeurs';
