@@ -238,6 +238,7 @@ public interface MutationRepository extends JpaRepository<Mutation, Integer> {
             'properties', feature->'properties' || jsonb_build_object('adresses', adresses)
         )::text AS feature_json
         FROM addresses_by_parcelle
+        ORDER BY RANDOM()
         LIMIT CAST(:limit AS integer)
         """,
         nativeQuery = true
