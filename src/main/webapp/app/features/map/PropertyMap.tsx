@@ -453,97 +453,9 @@ const isCityArrondissement = (cityName: string): boolean => {
   return arrondissementPatterns.some(pattern => pattern.test(cityName.trim()));
 };
 
-// Function to get INSEE code from coordinates
-const getINSEECodeFromCoords = async (lng: number, lat: number) => {
-  try {
-    // Use backend proxy to avoid CORS issues
-    const response = await axios.get(API_ENDPOINTS.adresses.frenchAddressReverse, {
-      params: {
-        lon: lng,
-        lat,
-      },
-    });
+const buildCoordinateCacheKey = (lng: number, lat: number) => `${lng.toFixed(5)},${lat.toFixed(5)}`;
 
-    if (response.data && response.data.features && response.data.features.length > 0) {
-      const feature = response.data.features[0];
-      const properties = feature.properties;
-
-      const city = properties.city || properties.name;
-      const postcode = properties.postcode || null;
-
-      // Try to get OSM data for additional context (arrondissement detection)
-      let osmContext: string | null = null;
-      try {
-        const osmResponse = await axios.get(API_ENDPOINTS.adresses.osmReverse, {
-          params: {
-            lat,
-            lon: lng,
-          },
-        });
-
-        if (osmResponse.data && osmResponse.data.address) {
-          const address = osmResponse.data.address;
-          // Check for arrondissement in various OSM fields
-          osmContext =
-            address.suburb ||
-            address.neighbourhood ||
-            address.quarter ||
-            address.district ||
-            address.city_district ||
-            osmResponse.data.display_name ||
-            null;
-        }
-      } catch (osmErr) {
-        // OSM data is optional, continue without it
-      }
-
-      const formattedCity = formatCityWithArrondissement(city, postcode, osmContext || undefined);
-
-      return {
-        city: formattedCity,
-        insee: properties.citycode,
-        postcode,
-      };
-    }
-    return null;
-  } catch (err) {
-    // Error getting INSEE code
-    return null;
-  }
-};
-
-const getQuartierFromCoords = async (lng: number, lat: number) => {
-  try {
-    // Use backend proxy to avoid CORS issues
-    const response = await axios.get(API_ENDPOINTS.adresses.osmReverse, {
-      params: {
-        lat,
-        lon: lng,
-      },
-    });
-
-    if (response.data && response.data.address) {
-      const address = response.data.address;
-      // Try to extract quartier/suburb from different possible fields (excluding city-level fields)
-      const quartier = address.suburb || address.neighbourhood || address.quarter || address.district || address.city_district;
-
-      const commune = address.city || address.town || address.village || address.municipality || address.county;
-
-      // Only return quartier if we found a real quartier (not just city/town/village)
-      if (quartier && quartier !== commune) {
-        return {
-          quartier,
-          commune: commune || quartier,
-          adresse_complete: response.data.display_name,
-        };
-      }
-    }
-    return null;
-  } catch (err) {
-    // Error getting quartier data from OpenStreetMap
-    return null;
-  }
-};
+const isAbortError = (error: unknown) => axios.isCancel(error) || (error instanceof DOMException && error.name === 'AbortError');
 
 // Function to get user's current location
 const getUserLocation = (setStatus?: (status: string) => void): Promise<[number, number]> => {
@@ -820,6 +732,17 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const [savedFilterParams, setSavedFilterParams] = useState<any>(null);
   // Use a ref to store current active filters to prevent state reset issues
   const currentActiveFiltersRef = useRef<FilterState | null>(null);
+  const frenchReverseAbortRef = useRef<AbortController | null>(null);
+  const osmReverseAbortRef = useRef<AbortController | null>(null);
+  const frenchReverseCacheRef = useRef<Map<string, any>>(new Map());
+  const osmReverseCacheRef = useRef<Map<string, any>>(new Map());
+
+  useEffect(() => {
+    return () => {
+      frenchReverseAbortRef.current?.abort();
+      osmReverseAbortRef.current?.abort();
+    };
+  }, []);
 
   // Mobile bottom sheet navigation functions
   const handleMobileSheetPrevious = () => {
@@ -908,6 +831,136 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const debugLog = (message: string, data?: any) => {
     // Debug logging disabled
   };
+
+  const fetchFrenchReverseData = useCallback(async (lng: number, lat: number) => {
+    const cacheKey = buildCoordinateCacheKey(lng, lat);
+    if (frenchReverseCacheRef.current.has(cacheKey)) {
+      return frenchReverseCacheRef.current.get(cacheKey);
+    }
+
+    if (frenchReverseAbortRef.current) {
+      frenchReverseAbortRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    frenchReverseAbortRef.current = controller;
+
+    try {
+      const response = await axios.get(API_ENDPOINTS.adresses.frenchAddressReverse, {
+        params: { lon: lng, lat },
+        signal: controller.signal,
+      });
+
+      frenchReverseCacheRef.current.set(cacheKey, response.data);
+      return response.data;
+    } catch (err) {
+      if (isAbortError(err)) {
+        return null;
+      }
+      throw err;
+    }
+  }, []);
+
+  const fetchOsmReverseData = useCallback(async (lng: number, lat: number) => {
+    const cacheKey = buildCoordinateCacheKey(lng, lat);
+    if (osmReverseCacheRef.current.has(cacheKey)) {
+      return osmReverseCacheRef.current.get(cacheKey);
+    }
+
+    if (osmReverseAbortRef.current) {
+      osmReverseAbortRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    osmReverseAbortRef.current = controller;
+
+    try {
+      const response = await axios.get(API_ENDPOINTS.adresses.osmReverse, {
+        params: { lat, lon: lng },
+        signal: controller.signal,
+      });
+
+      osmReverseCacheRef.current.set(cacheKey, response.data);
+      return response.data;
+    } catch (err) {
+      if (isAbortError(err)) {
+        return null;
+      }
+      throw err;
+    }
+  }, []);
+
+  const getINSEECodeFromCoords = useCallback(
+    async (lng: number, lat: number) => {
+      try {
+        const frenchResponse = await fetchFrenchReverseData(lng, lat);
+        if (!frenchResponse || !frenchResponse.features || frenchResponse.features.length === 0) {
+          return null;
+        }
+
+        const feature = frenchResponse.features[0];
+        const featureProperties = feature.properties || {};
+        const city = featureProperties.city || featureProperties.name;
+        const postcode = featureProperties.postcode || null;
+
+        let osmContext: string | null = null;
+        const osmResponse = await fetchOsmReverseData(lng, lat);
+        if (osmResponse && osmResponse.address) {
+          const address = osmResponse.address;
+          osmContext =
+            address.suburb ||
+            address.neighbourhood ||
+            address.quarter ||
+            address.district ||
+            address.city_district ||
+            osmResponse.display_name ||
+            null;
+        }
+
+        const formattedCity = formatCityWithArrondissement(city, postcode, osmContext || undefined);
+
+        return {
+          city: formattedCity,
+          insee: featureProperties.citycode,
+          postcode,
+        };
+      } catch (err) {
+        if (isAbortError(err)) {
+          return null;
+        }
+        return null;
+      }
+    },
+    [fetchFrenchReverseData, fetchOsmReverseData],
+  );
+
+  const getQuartierFromCoords = useCallback(
+    async (lng: number, lat: number) => {
+      try {
+        const osmResponse = await fetchOsmReverseData(lng, lat);
+        if (osmResponse && osmResponse.address) {
+          const address = osmResponse.address;
+          const quartier = address.suburb || address.neighbourhood || address.quarter || address.district || address.city_district;
+          const commune = address.city || address.town || address.village || address.municipality || address.county;
+
+          if (quartier && quartier !== commune) {
+            return {
+              quartier,
+              commune: commune || quartier,
+              adresse_complete: osmResponse.display_name,
+            };
+          }
+        }
+        return null;
+      } catch (err) {
+        if (isAbortError(err)) {
+          return null;
+        }
+        return null;
+      }
+    },
+    [fetchOsmReverseData],
+  );
 
   // Function to clear hover popups
   const clearHoverPopup = () => {
