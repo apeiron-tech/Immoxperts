@@ -240,28 +240,26 @@ const getStatsShortTypeName = (type: string) => {
 // **NEW**: Function to calculate statistics from map data
 const calculateZoneStats = (mapFeatures: any[], filterState?: FilterState) => {
   const propertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local Commercial', 'Bien Multiple'];
-
-  // Filter property types based on filterState
-  const getSelectedPropertyTypes = () => {
-    if (!filterState?.propertyTypes) {
-      return propertyTypeNames; // Show all if no filter
-    }
-
-    const propertyTypeMap = {
-      appartement: 'Appartement',
-      maison: 'Maison',
-      terrain: 'Terrain',
-      localCommercial: 'Local Commercial',
-      biensMultiples: 'Bien Multiple',
-    };
-
-    return Object.entries(filterState.propertyTypes)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([type, _]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
-      .filter(Boolean);
+  const filterKeyByTypeName: Record<string, keyof FilterState['propertyTypes']> = {
+    Appartement: 'appartement',
+    Maison: 'maison',
+    Terrain: 'terrain',
+    'Local Commercial': 'localCommercial',
+    'Bien Multiple': 'biensMultiples',
   };
 
-  const selectedPropertyTypes = getSelectedPropertyTypes();
+  const selectedPropertyTypes = propertyTypeNames.filter(typeName => {
+    if (!filterState?.propertyTypes) {
+      return true;
+    }
+
+    const filterKey = filterKeyByTypeName[typeName];
+    if (!filterKey) {
+      return true;
+    }
+
+    return Boolean(filterState.propertyTypes?.[filterKey]);
+  });
   const stats = [];
 
   selectedPropertyTypes.forEach(typeName => {
@@ -3843,10 +3841,18 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         biensMultiples: 'Biens Multiples',
                       };
 
-                      return Object.entries(filterState.propertyTypes)
-                        .filter(([_, isSelected]) => isSelected)
-                        .map(([type, _]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
-                        .filter(Boolean);
+                      const selectedTypeNames = new Set(
+                        Object.entries(filterState.propertyTypes)
+                          .filter(([, isSelected]) => isSelected)
+                          .map(([type]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+                          .filter(Boolean),
+                      );
+
+                      if (selectedTypeNames.size === 0) {
+                        return [];
+                      }
+
+                      return allPropertyTypeNames.filter(typeName => selectedTypeNames.has(typeName));
                     };
 
                     const propertyTypeNames = getVisiblePropertyTypes();
@@ -3956,10 +3962,18 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         biensMultiples: 'Biens Multiples',
                       };
 
-                      return Object.entries(filterState.propertyTypes)
-                        .filter(([_, isSelected]) => isSelected)
-                        .map(([type, _]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
-                        .filter(Boolean);
+                      const selectedTypeNames = new Set(
+                        Object.entries(filterState.propertyTypes)
+                          .filter(([, isSelected]) => isSelected)
+                          .map(([type]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+                          .filter(Boolean),
+                      );
+
+                      if (selectedTypeNames.size === 0) {
+                        return [];
+                      }
+
+                      return allPropertyTypeNames.filter(typeName => selectedTypeNames.has(typeName));
                     };
 
                     const propertyTypeNames = getVisiblePropertyTypes();
@@ -4096,10 +4110,18 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   biensMultiples: 'Bien Multiple',
                 };
 
-                return Object.entries(filterState.propertyTypes)
-                  .filter(([_, isSelected]) => isSelected)
-                  .map(([type, _]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
-                  .filter(Boolean);
+                const selectedTypeNames = new Set(
+                  Object.entries(filterState.propertyTypes)
+                    .filter(([, isSelected]) => isSelected)
+                    .map(([type]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+                    .filter(Boolean),
+                );
+
+                if (selectedTypeNames.size === 0) {
+                  return [];
+                }
+
+                return allPropertyTypeNames.filter(typeName => selectedTypeNames.has(typeName));
               };
 
               const propertyTypeNames = getVisiblePropertyTypes();
