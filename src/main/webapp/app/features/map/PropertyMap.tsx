@@ -890,48 +890,94 @@ const PropertyMap: React.FC<MapPageProps> = ({
     }
   }, []);
 
+  // Helper function to extract OSM context from response
+  const extractOsmContext = useCallback((osmResponse: any): string | null => {
+    if (!osmResponse?.address) return null;
+    const address = osmResponse.address;
+    return (
+      address.suburb ||
+      address.neighbourhood ||
+      address.quarter ||
+      address.district ||
+      address.city_district ||
+      osmResponse.display_name ||
+      null
+    );
+  }, []);
+
+  // Helper function to extract city from OSM address
+  const extractOsmCity = useCallback((address: any): string => {
+    return address.city || address.town || address.village || address.municipality || address.county || '';
+  }, []);
+
+  // Helper function to process OSM response
+  const processOsmResponse = useCallback(
+    async (lng: number, lat: number) => {
+      const osmResponse = await fetchOsmReverseData(lng, lat);
+      if (!osmResponse?.address) return null;
+
+      const address = osmResponse.address;
+      const city = extractOsmCity(address);
+      const postcode = address.postcode || null;
+      const osmContext = extractOsmContext(osmResponse);
+
+      const formattedCity = formatCityWithArrondissement(city, postcode, osmContext || undefined);
+
+      return {
+        city: formattedCity,
+        insee: null,
+        postcode,
+      };
+    },
+    [fetchOsmReverseData, extractOsmCity, extractOsmContext],
+  );
+
+  // Helper function to process French Address API response
+  const processFrenchAddressResponse = useCallback(
+    async (lng: number, lat: number, feature: any) => {
+      const featureProperties = feature.properties || {};
+      const city = featureProperties.city || featureProperties.name;
+      const postcode = featureProperties.postcode || null;
+
+      const osmResponse = await fetchOsmReverseData(lng, lat);
+      const osmContext = extractOsmContext(osmResponse);
+
+      const formattedCity = formatCityWithArrondissement(city, postcode, osmContext || undefined);
+
+      return {
+        city: formattedCity,
+        insee: featureProperties.citycode,
+        postcode,
+      };
+    },
+    [fetchOsmReverseData, extractOsmContext],
+  );
+
   const getINSEECodeFromCoords = useCallback(
     async (lng: number, lat: number) => {
       try {
+        // Try French Address API first
         const frenchResponse = await fetchFrenchReverseData(lng, lat);
-        if (!frenchResponse || !frenchResponse.features || frenchResponse.features.length === 0) {
-          return null;
+        if (frenchResponse?.features?.length > 0) {
+          return await processFrenchAddressResponse(lng, lat, frenchResponse.features[0]);
         }
 
-        const feature = frenchResponse.features[0];
-        const featureProperties = feature.properties || {};
-        const city = featureProperties.city || featureProperties.name;
-        const postcode = featureProperties.postcode || null;
-
-        let osmContext: string | null = null;
-        const osmResponse = await fetchOsmReverseData(lng, lat);
-        if (osmResponse && osmResponse.address) {
-          const address = osmResponse.address;
-          osmContext =
-            address.suburb ||
-            address.neighbourhood ||
-            address.quarter ||
-            address.district ||
-            address.city_district ||
-            osmResponse.display_name ||
-            null;
-        }
-
-        const formattedCity = formatCityWithArrondissement(city, postcode, osmContext || undefined);
-
-        return {
-          city: formattedCity,
-          insee: featureProperties.citycode,
-          postcode,
-        };
+        // Fallback to OSM if French Address API fails
+        return await processOsmResponse(lng, lat);
       } catch (err) {
         if (isAbortError(err)) {
           return null;
         }
-        return null;
+        // Try OSM as fallback on error
+        try {
+          return await processOsmResponse(lng, lat);
+        } catch (osmErr) {
+          // Ignore OSM errors
+          return null;
+        }
       }
     },
-    [fetchFrenchReverseData, fetchOsmReverseData],
+    [fetchFrenchReverseData, processFrenchAddressResponse, processOsmResponse],
   );
 
   const getQuartierFromCoords = useCallback(
@@ -1919,6 +1965,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                font-family: 'Maven Pro', sans-serif;
                max-width: 450px;
                width: 100%;
+               min-height: 150px;
                position: relative;
                border-radius: 16px;
              ">
@@ -1933,15 +1980,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
                </div>
 
                <!-- Characteristics: pieces, terrain, surface -->
-               ${
-                 detailsText
-                   ? `
-               <div style="font-size: 16px; color: #333; margin-bottom: 8px;">
-                 ${detailsText}
+               <div style="font-size: 16px; color: #333; margin-bottom: 8px; min-height: 24px;">
+                 ${detailsText || '<span style="visibility: hidden;">&nbsp;</span>'}
                </div>
-               `
-                   : ''
-               }
 
                <!-- Price Box -->
                <div style="
@@ -1961,7 +2002,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                <!-- Sold Date -->
                <div style="
-                 margin-top: 16px;
+                 margin-top: 8px;
                  display: inline-block;
                  border: 1px solid #e5e7eb;
                  padding: 10px 8px;
@@ -1978,38 +2019,37 @@ const PropertyMap: React.FC<MapPageProps> = ({
                    ? `
                <!-- Navigation -->
                <div style="
-                 margin-top: 8px;
+                 margin-top: 4px;
                  display: flex;
                  align-items: center;
                  justify-content: center;
                  gap: 4px;
-                 padding: 4px;
-
+                 padding: 2px;
                ">
                  <button class="prev-btn" style="
-                   padding: 4px 8px;
+                   padding: 2px 6px;
                    border: 1px solid #e5e7eb;
                    border-radius: 6px;
                    background: white;
                    color: #666;
                    cursor: pointer;
-                   font-size: 12px;
+                   font-size: 11px;
                    hover:background: #f9fafb;
                  ">&lt;</button>
                  <span style="
-                   font-size: 12px;
+                   font-size: 11px;
                    color: #3b82f6;
                    font-weight: 500;
-                   padding: 0 12px;
+                   padding: 0 8px;
                  ">${index + 1} / ${allMutations.length}</span>
                  <button class="next-btn" style="
-                   padding: 4px 8px;
+                   padding: 2px 6px;
                    border: 1px solid #e5e7eb;
                    border-radius: 6px;
                    background: white;
                    color: #666;
                    cursor: pointer;
-                   font-size: 12px;
+                   font-size: 11px;
                    hover:background: #f9fafb;
                  ">&gt;</button>
                </div>
@@ -3407,43 +3447,99 @@ const PropertyMap: React.FC<MapPageProps> = ({
     if (!mapLoaded || !mapRef.current) return;
 
     const map = mapRef.current;
-    const source = map.getSource('selected-address-marker');
+    let retryCount = 0;
+    const maxRetries = 50; // Maximum 5 seconds (50 * 100ms)
 
-    if (source && source.type === 'geojson') {
-      if (selectedAddress) {
-        const feature: GeoJSON.Feature<GeoJSON.Point> = {
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: selectedAddress,
-          },
-          properties: {
-            id: 'selected-address',
-          },
-        };
+    // Helper function to update the marker
+    const updateMarker = () => {
+      // Ensure the source exists, create it if it doesn't
+      if (!map.getSource('selected-address-marker')) {
+        if (!map.isStyleLoaded()) {
+          // Retry after a short delay if style is not loaded
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(updateMarker, 100);
+            return;
+          }
+          // Max retries reached, give up
+          console.warn('Style not loaded after max retries, cannot add selected-address-marker');
+          return;
+        }
 
-        source.setData({
-          type: 'FeatureCollection',
-          features: [feature],
-        });
+        try {
+          map.addSource('selected-address-marker', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] },
+          });
 
-        // Fly to the selected address
-        map.flyTo({
-          center: selectedAddress,
-          zoom: 16,
-          duration: 2000,
-        });
-
-        debugLog('Red marker added at:', selectedAddress);
-      } else {
-        // Clear the marker
-        source.setData({
-          type: 'FeatureCollection',
-          features: [],
-        });
-        debugLog('Red marker cleared');
+          // Ensure the layer exists, create it if it doesn't
+          if (!map.getLayer('selected-address-marker')) {
+            map.addLayer({
+              id: 'selected-address-marker',
+              type: 'circle',
+              source: 'selected-address-marker',
+              paint: {
+                'circle-color': '#ff0000', // Red color
+                'circle-radius': 4,
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#fff',
+                'circle-stroke-opacity': 0.9,
+              },
+            });
+          }
+        } catch (err) {
+          // If source already exists or style not loaded, retry
+          if (!map.isStyleLoaded() && retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(updateMarker, 100);
+            return;
+          }
+          console.warn('Could not add selected-address-marker source:', err);
+          return;
+        }
       }
-    }
+
+      const source = map.getSource('selected-address-marker');
+
+      if (source && source.type === 'geojson') {
+        if (selectedAddress) {
+          const feature: GeoJSON.Feature<GeoJSON.Point> = {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: selectedAddress,
+            },
+            properties: {
+              id: 'selected-address',
+            },
+          };
+
+          source.setData({
+            type: 'FeatureCollection',
+            features: [feature],
+          });
+
+          // Fly to the selected address
+          map.flyTo({
+            center: selectedAddress,
+            zoom: 16,
+            duration: 2000,
+          });
+
+          debugLog('Red marker added at:', selectedAddress);
+        } else {
+          // Clear the marker
+          source.setData({
+            type: 'FeatureCollection',
+            features: [],
+          });
+          debugLog('Red marker cleared');
+        }
+      }
+    };
+
+    // Start updating the marker
+    updateMarker();
   }, [selectedAddress, mapLoaded]);
 
   // Stats panel toggle function

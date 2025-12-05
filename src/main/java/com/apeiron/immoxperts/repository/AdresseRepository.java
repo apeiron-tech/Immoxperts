@@ -65,7 +65,15 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
         FROM dvf_plus_2025_2.adresse_complete_geom_mv
         WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
-        ORDER BY commune, nom_voie, numero
+        ORDER BY
+            (CASE
+                WHEN numero ILIKE CONCAT(UPPER(:token1), '%') THEN 0
+                WHEN nom_voie ILIKE CONCAT(UPPER(:token1), '%') THEN 1
+                WHEN commune ILIKE CONCAT(UPPER(:token1), '%') THEN 2
+                ELSE 3
+            END),
+            LENGTH(adresse_complete),
+            commune, nom_voie, numero
         LIMIT 50
         """,
         nativeQuery = true
@@ -88,7 +96,19 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
         WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token2), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
-        ORDER BY commune, nom_voie, numero
+        ORDER BY
+            (CASE
+                WHEN numero ILIKE CONCAT(UPPER(:token1), '%') THEN 0
+                WHEN adresse_complete ILIKE CONCAT(UPPER(:token1), ' %') THEN 1
+                ELSE 2
+            END),
+            (CASE
+                WHEN nom_voie ILIKE CONCAT(UPPER(:token2), '%') THEN 0
+                WHEN nom_voie ILIKE CONCAT('%', UPPER(:token2), '%') THEN 1
+                ELSE 2
+            END),
+            LENGTH(adresse_complete),
+            commune, nom_voie, numero
         LIMIT 50
         """,
         nativeQuery = true
@@ -112,7 +132,19 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token2), '%')
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token3), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
-        ORDER BY commune, nom_voie, numero
+        ORDER BY
+            (CASE
+                WHEN numero ILIKE CONCAT(UPPER(:token1), '%') THEN 0
+                WHEN adresse_complete ILIKE CONCAT(UPPER(:token1), ' %') THEN 1
+                ELSE 2
+            END),
+            (CASE
+                WHEN nom_voie ILIKE CONCAT(UPPER(:token2), '%') THEN 0
+                WHEN nom_voie ILIKE CONCAT('%', UPPER(:token2), '%') THEN 1
+                ELSE 2
+            END),
+            LENGTH(adresse_complete),
+            commune, nom_voie, numero
         LIMIT 50
         """,
         nativeQuery = true
@@ -141,7 +173,19 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token3), '%')
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token4), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
-        ORDER BY commune, nom_voie, numero
+        ORDER BY
+            (CASE
+                WHEN numero ILIKE CONCAT(UPPER(:token1), '%') THEN 0
+                WHEN adresse_complete ILIKE CONCAT(UPPER(:token1), ' %') THEN 1
+                ELSE 2
+            END),
+            (CASE
+                WHEN nom_voie ILIKE CONCAT(UPPER(:token2), '%') THEN 0
+                WHEN nom_voie ILIKE CONCAT('%', UPPER(:token2), '%') THEN 1
+                ELSE 2
+            END),
+            LENGTH(adresse_complete),
+            commune, nom_voie, numero
         LIMIT 50
         """,
         nativeQuery = true
@@ -172,7 +216,19 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token4), '%')
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token5), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
-        ORDER BY commune, nom_voie, numero
+        ORDER BY
+            (CASE
+                WHEN numero ILIKE CONCAT(UPPER(:token1), '%') THEN 0
+                WHEN adresse_complete ILIKE CONCAT(UPPER(:token1), ' %') THEN 1
+                ELSE 2
+            END),
+            (CASE
+                WHEN nom_voie ILIKE CONCAT(UPPER(:token2), '%') THEN 0
+                WHEN nom_voie ILIKE CONCAT('%', UPPER(:token2), '%') THEN 1
+                ELSE 2
+            END),
+            LENGTH(adresse_complete),
+            commune, nom_voie, numero
         LIMIT 50
         """,
         nativeQuery = true

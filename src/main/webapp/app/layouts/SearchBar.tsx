@@ -447,11 +447,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
               const queryTokens = queryNormalized.split(/\s+/).filter(t => t.length > 0);
               const displayTokens = displayNormalized.split(/\s+/);
 
-              // Check if ALL query tokens are present in display
-              const allTokensPresent = queryTokens.every(qToken => displayTokens.some(dToken => dToken.includes(qToken)));
+              // Check if at least one token matches (more lenient for address search)
+              const matchingTokens = queryTokens.filter(qToken => displayTokens.some(dToken => dToken.includes(qToken)));
 
-              if (!allTokensPresent) {
-                return { suggestion, score: -1 }; // Filter out if not all tokens match
+              // Require at least 50% of tokens to match, or at least 1 token for short queries
+              const minRequiredMatches = queryTokens.length <= 2 ? 1 : Math.ceil(queryTokens.length * 0.5);
+              if (matchingTokens.length < minRequiredMatches) {
+                return { suggestion, score: -1 }; // Filter out if not enough tokens match
               }
 
               // Count exact token matches (higher is better)
@@ -461,6 +463,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
               // Count start-matches (query token starts display token)
               const startMatches = queryTokens.filter(qToken => displayTokens.some(dToken => dToken.startsWith(qToken))).length;
               score += startMatches * 200;
+
+              // Bonus for matching more tokens
+              score += matchingTokens.length * 100;
 
               // Bonus scoring based on match quality
               if (displayNormalized.startsWith(queryNormalized)) {
