@@ -2002,7 +2002,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                <!-- Sold Date -->
                <div style="
-                 margin-top: 8px;
+                 margin-top: 4px;
                  display: inline-block;
                  border: 1px solid #e5e7eb;
                  padding: 10px 8px;
