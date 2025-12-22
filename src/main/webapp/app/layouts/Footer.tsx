@@ -1,117 +1,133 @@
 import React from 'react';
-import { FiTwitter, FiInstagram, FiYoutube, FiLinkedin } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
+import { FiLinkedin, FiTwitter } from 'react-icons/fi';
+import { FaFacebook } from 'react-icons/fa';
+import { Home } from 'lucide-react';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-black text-white pt-8 md:pt-12 pb-6">
+    <footer style={{ backgroundColor: '#211e3b' }} className="text-white pt-12 pb-8">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 md:gap-8">
-          <div className="text-center sm:text-left">
-            <h3 className="text-xl font-bold mb-4">ImmoXpert</h3>
-            <p className="text-gray-400 text-sm max-w-xs mx-auto sm:mx-0">
-              est votre plateforme de référence pour la location et l&apos;achat de maisons et d&apos;appartements en France
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 px-16">
+          {/* Logo & Description */}
+          <div className="lg:col-span-1">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'hsl(245 58% 62%)' }}>
+                <Home className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xl font-bold">Propsight</span>
+            </div>
+            <p className="text-gray-300 text-smll mb-6 leading-relaxed">
+              Toute l'immobilier, en un seul endroit. Explorez le marché, estimez votre bien et simulez vos investissements.
             </p>
+            <div className="flex gap-3">
+              <a
+                href="#"
+                className="w-10 h-10 rounded-lg flex items-center justify-center transition hover:opacity-80"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+                aria-label="LinkedIn"
+              >
+                <FiLinkedin className="w-5 h-5" />
+              </a>
+              <a
+                href="#"
+                className="w-10 h-10 rounded-lg flex items-center justify-center transition hover:opacity-80"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+                aria-label="Twitter"
+              >
+                <FiTwitter className="w-5 h-5" />
+              </a>
+              <a
+                href="#"
+                className="w-10 h-10 rounded-lg flex items-center justify-center transition hover:opacity-80"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+                aria-label="Facebook"
+              >
+                <FaFacebook className="w-5 h-5" />
+              </a>
+            </div>
           </div>
 
-          <div className="text-center sm:text-left">
-            <h4 className="font-bold mb-4">L&apos;entreprise</h4>
+          {/* Navigation */}
+          <div>
+            <h4 className="font-bold mb-4 text-base">Navigation</h4>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition">
-                  Qui sommes-nous ?
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition">
-                  Nous contacter
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition">
-                  Notre espace presse
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition">
-                  Nouveauté
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div className="text-center sm:text-left">
-            <h4 className="font-bold mb-4">À Découvrir</h4>
-            <ul className="space-y-2">
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition">
+                <Link to="/acheter" className="text-gray-300 hover:text-white transition text-sml">
                   Acheter
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition">
+                <Link to="/louer" className="text-gray-300 hover:text-white transition text-sml">
                   Louer
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition">
-                  Estimer
-                </a>
+                <Link to="/estimation" className="text-gray-300 hover:text-white transition text-sml">
+                  Estimation
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition">
-                  Tendances
-                </a>
+                <Link to="/investisseurs" className="text-gray-300 hover:text-white transition text-sml">
+                  Investisseurs
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition">
-                  Termes et conditions
-                </a>
+                <Link to="/PrixImmobliers" className="text-gray-300 hover:text-white transition text-sml">
+                  Prix immobiliers
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Entreprise */}
+          <div>
+            <h4 className="font-bold mb-4 text-base">Entreprise</h4>
+            <ul className="space-y-2">
+              <li>
+                <Link to="/TrouverAgent" className="text-gray-300 hover:text-white transition text-sml">
+                  À propos
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition">
-                  Confidentialité
+                <Link to="/pack-pro" className="text-gray-300 hover:text-white transition text-sml">
+                  Pack Pro
+                </Link>
+              </li>
+              <li>
+                <a href="#" className="text-gray-300 hover:text-white transition text-sml">
+                  Contact
                 </a>
               </li>
             </ul>
           </div>
 
-          <div className="text-center sm:text-left">
-            <div className="mb-6">
-              <h4 className="font-bold mb-2">Adresse</h4>
-              <p className="text-gray-400">
-                7 rue des Fleurs
-                <br />
-                37000 Tours
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-bold mb-2">Renseignements</h4>
-              <p className="text-gray-400">+33 6 11 22 33 44</p>
-            </div>
-          </div>
-
-          <div className="text-center sm:text-left">
-            <h4 className="font-bold mb-2">Retrouvez-nous sur ...</h4>
-            <div className="flex justify-center sm:justify-start space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white transition">
-                <FiTwitter size={20} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition">
-                <FiInstagram size={20} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition">
-                <FiYoutube size={20} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition">
-                <FiLinkedin size={20} />
-              </a>
-            </div>
+          {/* Légal */}
+          <div>
+            <h4 className="font-bold mb-4 text-base">Légal</h4>
+            <ul className="space-y-2">
+              <li>
+                <a href="#" className="text-gray-300 hover:text-white transition text-sml">
+                  Mentions légales
+                </a>
+              </li>
+              <li>
+                <a href="#" className="text-gray-300 hover:text-white transition text-sml">
+                  CGU
+                </a>
+              </li>
+              <li>
+                <a href="#" className="text-gray-300 hover:text-white transition text-sml">
+                  Politique de confidentialité
+                </a>
+              </li>
+            </ul>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 md:mt-12 pt-6 text-sm text-gray-500 text-center">
-          <p>Copyright © 2025 Hestia Immo | Powered by Apeiron Technologies</p>
+        {/* Bottom border */}
+        <div className="border-t border-gray-700 mt-12 pt-6">
+          <p className="text-gray-400 text-sml text-center">Copyright © 2025 Propsight | Powered by Apeiron Technologies</p>
         </div>
       </div>
     </footer>

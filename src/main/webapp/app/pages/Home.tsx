@@ -1,198 +1,793 @@
-import React from 'react';
-import { Home, Search, BarChart2, Users } from 'lucide-react';
-
-// Temporary placeholder images - these should be replaced with actual images
-const logo = '../../content/home/image1.svg';
-const logo2 = '../../content/home/image2.svg';
-const logo3 = '../../content/home/image3.svg';
-const logo4 = '../../content/home/image4.svg';
+import React, { useState } from 'react';
+import {
+  Home,
+  Search,
+  BarChart2,
+  Users,
+  Map,
+  FileCheck,
+  TrendingUp,
+  MapPin,
+  ArrowRight,
+  Bell,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Mail,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
+  const navigate = useNavigate();
+  const [openFAQ, setOpenFAQ] = useState<number | null>(0); // First FAQ is open by default
+  const [email, setEmail] = useState<string>('');
+
+  const faqData = [
+    {
+      question: 'Comment fonctionne la carte des prix immobiliers?',
+      answer:
+        'Notre carte interactive utilise les données officielles DVF (Demande de Valeurs Foncières) qui recensent toutes les transactions immobilières en France. Vous pouvez visualiser les prix réels au m², filtrer par type de bien et analyser les tendances de votre quartier.',
+    },
+    {
+      question: "L'estimation de mon bien est-elle vraiment gratuite ?",
+      answer:
+        'Oui, notre estimation est 100% gratuite et sans engagement. Notre algorithme croise les données DVF avec les annonces en temps réel pour vous fournir une fourchette de prix précise en quelques minutes.',
+    },
+    {
+      question: "D'où proviennent les annonces immobilières ?",
+      answer:
+        "Notre agrégateur centralise les annonces des principaux portails immobiliers français : LeBonCoin, SeLoger, PAP, Logic-Immo, Figaro Immo et bien d'autres. Vous n'avez plus besoin de naviguer entre plusieurs sites.",
+    },
+    {
+      question: 'Comment fonctionne le simulateur de rentabilité ?',
+      answer:
+        'Le simulateur calcule votre rentabilité brute et nette, le cashflow mensuel, et analyse les données locales (loyers moyens, tension locative, PLU). Vous pouvez importer directement une annonce via son URL.',
+    },
+    {
+      question: 'Les données sont-elles fiables et à jour ?',
+      answer:
+        'Nous utilisons exclusivement des sources officielles (DVF, INSEE, ADEME) mises à jour régulièrement. Les annonces sont synchronisées en temps réel depuis les portails partenaires.',
+    },
+  ];
+
+  const handleFAQToggle = (index: number) => {
+    setOpenFAQ(openFAQ === index ? null : index);
+  };
+
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // TODO: Implement email subscription logic
+    // Email submitted: email
+    setEmail('');
+  };
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="bg-blue-100 rounded-2xl py-8 px-4 mt-6 mx-4 sm:mx-8 md:mx-16 lg:mx-40 sm:py-10">
-        <div className="max-w-6xl mx-auto text-center">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4">Où les rêves immobiliers prennent vie</h1>
-          <p className="text-gray-600 max-w-3xl mx-auto text-sm md:text-base">
-            IMMOXPERT, l'outil essentiel pour simplifier tous vos projets immobiliers, que vous soyez particulier ou professionnel.
+      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-white">
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Notification Bubble */}
+          <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700">
+            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+            <span>Nouveau : Carte des prix immobiliers disponible</span>
+          </div>
+
+          {/* Main Headline */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+            La <span style={{ color: 'hsl(245 58% 62%)' }}>data</span> au service de vos décisions immobilières.
+          </h1>
+
+          {/* Descriptive Paragraph */}
+          <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8 leading-relaxed">
+            Une plateforme immobilière tout-en-un pour rechercher un bien, estimer sa valeur, tester sa rentabilité et décrypter le marché.
           </p>
+
+          {/* Call-to-Action Button */}
+          <button
+            onClick={() => navigate('/PrixImmobliers')}
+            className="inline-flex items-center gap-2 px-8 py-4 text-white text-base font-medium rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl"
+            style={{ backgroundColor: 'hsl(245 58% 62%)' }}
+          >
+            <Map size={20} className="text-white" />
+            <span>Explorer la carte des ventes</span>
+          </button>
         </div>
       </section>
 
-      {/* Explorer Section */}
-      <section className="rounded-2xl py-8 sm:py-12 md:py-16 px-4 sm:px-6 md:px-10 mx-4 sm:mx-8 md:mx-16 lg:mx-40">
+      {/* 4 Outils Gratuits Section */}
+      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-gray-50">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 items-center">
-            <div className="space-y-4 order-1 md:order-2">
-              <div className="flex items-center gap-3">
-                <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="30" cy="30" r="30" fill="#7069F9" />
-                  <path
-                    opacity="0.4"
-                    d="M28.8457 39.3567C34.6511 39.3567 39.3573 34.6504 39.3573 28.845C39.3573 23.0396 34.6511 18.3333 28.8457 18.3333C23.0402 18.3333 18.334 23.0396 18.334 28.845C18.334 34.6504 23.0402 39.3567 28.8457 39.3567Z"
-                    fill="white"
-                  />
-                  <path
-                    d="M41.6554 38.1083C41.2704 37.3967 40.4537 37 39.3571 37C38.5287 37 37.8171 37.3383 37.3971 37.9217C36.9771 38.505 36.8837 39.2867 37.1404 40.0683C37.6421 41.585 38.5171 41.9233 38.9954 41.9817C39.0654 41.9933 39.1354 41.9933 39.2171 41.9933C39.7304 41.9933 40.5237 41.7717 41.2937 40.6167C41.9121 39.7183 42.0287 38.82 41.6554 38.1083Z"
-                    fill="white"
-                  />
-                </svg>
+          {/* Title and Subtitle */}
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">4 outils gratuits pour réussir votre projet</h2>
+            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+              Tout ce dont vous avez besoin pour acheter, vendre ou investir dans l'immobilier.
+            </p>
+          </div>
 
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold">Explorer</h2>
-                  <h2 className="text-xl sm:text-2xl font-bold">
-                    les <span style={{ color: '#7069F9' }}>biens disponibles</span>
-                  </h2>
-                </div>
+          {/* Tools Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            {/* Card 1: Recherche multi-sites */}
+            <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
+                style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
+              >
+                <Search size={24} style={{ color: 'hsl(245 58% 62%)' }} />
               </div>
-
-              <p className="text-gray-600">
-                Effectuez une recherche approfondie pour découvrir le bien immobilier qui répond parfaitement à vos attentes et besoins.
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Recherche multi-sites</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Explorez toutes les annonces de vente et location en une seule recherche.
               </p>
             </div>
 
-            <div className="relative order-1 md:order-2">
-              <img src={logo} alt="Keeey Logo" className="object-contain cursor-pointer" />
+            {/* Card 2: Estimation gratuite */}
+            <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+                <FileCheck size={24} className="text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Estimation gratuite</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">Découvrez le prix de votre bien en 2 minutes chrono.</p>
+            </div>
+
+            {/* Card 3: Simulateur investisseur */}
+            <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mb-4">
+                <TrendingUp size={24} className="text-yellow-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Simulateur investisseur</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">Calculez votre rentabilité locative en quelques clics.</p>
+            </div>
+
+            {/* Card 4: Explorer les ventes */}
+            <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
+              <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mb-4">
+                <MapPin size={24} className="text-pink-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Explorer les ventes</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">Consultez les prix de vente réels dans votre quartier.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Past Sales Section */}
-      <section className="bg-purple-100 rounded-2xl py-8 sm:py-10 md:py-10 px-4 sm:px-6 md:px-10 mx-4 sm:mx-8 md:mx-16 lg:mx-40">
-        <div className="max-w-6xl mx-auto text-center mb-6 md:mb-12">
-          <h2 className="text-xl sm:text-2xl font-bold mb-4">On vous guide à chaque étape de votre projet immobilier !</h2>
-          <p className="text-gray-600 text-sm md:text-base">
-            Nous vous offrons toutes les infos nécessaires pour mieux comprendre le marché immobilier et faire un choix éclairé.
-          </p>
-        </div>
+      {/* Visualisez les prix réels Section */}
+      <section className="py-20 md:py-28 px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-16 lg:gap-20 items-center">
+            {/* Left Section - Text and Statistics */}
+            <div className="space-y-8">
+              {/* Badge */}
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-4"
+                style={{ backgroundColor: 'hsl(142 76% 36% / 0.1)', color: 'hsl(142 76% 36%)' }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4"
+                >
+                  <path d="M21.801 10A10 10 0 1 1 17 3.335" />
+                  <path d="m9 11 3 3L22 4" />
+                </svg>
+                <span>Déjà disponible</span>
+              </div>
+              {/* Main Heading */}
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">Visualisez les prix réels de votre quartier</h2>
 
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 items-center">
-          <div className="relative">
-            <img src={logo2} alt="Keeey Logo" className="object-contain cursor-pointer w-full" />
+              {/* Descriptive Paragraph */}
+              <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
+                Accédez gratuitement aux données officielles de ventes immobilières (DVF). Découvrez les prix au m² et les tendances de
+                votre commune.
+              </p>
+
+              {/* Statistical Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                {/* Card 1: Transactions DVF */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
+                  <div className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
+                    12M+
+                  </div>
+                  <div className="text-xs sm:text-sm text-gray-600">Transactions DVF</div>
+                </div>
+
+                {/* Card 2: Communes couvertes */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
+                  <div className="text-3xl sm:text-4xl font-bold mb-2 text-gray-900" style={{ color: 'hsl(245 58% 62%)' }}>
+                    36 000
+                  </div>
+                  <div className="text-xs sm:text-sm text-gray-600">Communes couvertes</div>
+                </div>
+
+                {/* Card 3: Accès illimité */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
+                  <div className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
+                    Gratuit
+                  </div>
+                  <div className="text-xs sm:text-sm text-gray-600">Accès illimité</div>
+                </div>
+              </div>
+
+              {/* Call-to-Action Button */}
+              <button
+                onClick={() => navigate('/PrixImmobliers')}
+                className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-all duration-200 hover:opacity-90"
+                style={{ backgroundColor: 'hsl(245 58% 62%)' }}
+              >
+                <span>Explorer la carte</span>
+                <ArrowRight size={20} />
+              </button>
+            </div>
+
+            {/* Right Section - Visual Card */}
+            <div className="relative">
+              {/* Large Gradient Card */}
+              <div
+                className="relative w-full h-96 rounded-lg flex items-center justify-center overflow-hidden"
+                style={{
+                  background: 'linear-gradient(to bottom, #ede9fe, #fef3c7)',
+                }}
+              >
+                {/* Map Icon */}
+                <Map size={120} style={{ color: 'hsl(245 58% 62% / 0.6)' }} strokeWidth={1.5} />
+
+                {/* Small Price Indicator Box */}
+                <div className="absolute bottom-4 left-4 bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                  <div className="flex items-center gap-1 text-green-600 font-semibold mb-1">
+                    <ArrowRight size={16} className="rotate-45" />
+                    <span>+12%</span>
+                  </div>
+                  <div className="text-xs text-gray-600">Prix moyen Paris 15e</div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="space-y-4">
-            <h3 className="text-xl sm:text-2xl font-bold">Ventes Passées</h3>
-            <p className="text-gray-600 text-sm md:text-base">
-              Informations détaillées pour une analyse approfondie des transactions immobilières dans votre région.
+        </div>
+      </section>
+
+      {/* Toutes les annonces immobilières Section */}
+      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
+            {/* Left Section - Property Cards Grid */}
+            <div className="relative">
+              {/* Large White Card with Grid */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md">
+                {/* Grid of 6 Property Placeholders */}
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  {[...Array(6)].map((_, index) => (
+                    <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg aspect-square"></div>
+                  ))}
+                </div>
+
+                {/* Sources Box */}
+                <div className="bg-white border border-gray-200 rounded-lg p-3 inline-flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-700 mr-2">Sources</span>
+                  {/* Source Icons */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">
+                      L
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold">S</div>
+                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">P</div>
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                      style={{ backgroundColor: 'hsl(245 58% 62%)' }}
+                    >
+                      L
+                    </div>
+                    <div className="px-2 py-1 bg-gray-200 rounded-full text-xs text-gray-600">+2</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Section - Text and Features */}
+            <div className="space-y-6">
+              {/* Coming Soon Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-600 text-sm font-medium mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4"
+                >
+                  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                  <polyline points="16 7 22 7 22 13" />
+                </svg>
+                <span>Bientôt disponible</span>
+              </div>
+              {/* Main Heading */}
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-gray-900">
+                Toutes les annonces immobilières en un seul endroit
+              </h2>
+
+              {/* Descriptive Paragraph */}
+              <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
+                Ne perdez plus de temps à naviguer entre les sites. Notre agrégateur centralise les annonces de tous les portails majeurs.
+              </p>
+
+              {/* Feature List */}
+              <div className="space-y-4">
+                {/* Feature 1 */}
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
+                  >
+                    <Search size={20} style={{ color: 'hsl(245 58% 62%)' }} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Une seule recherche, tous les portails</h3>
+                  </div>
+                </div>
+
+                {/* Feature 2 */}
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
+                  >
+                    <TrendingUp size={20} style={{ color: 'hsl(245 58% 62%)' }} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Annonces en temps réel</h3>
+                  </div>
+                </div>
+
+                {/* Feature 3 */}
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
+                  >
+                    <Bell size={20} style={{ color: 'hsl(245 58% 62%)' }} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Alertes personnalisées</h3>
+                  </div>
+                </div>
+              </div>
+
+              {/* Call-to-Action Button */}
+              <button
+                onClick={() => navigate('/louer')}
+                className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-all duration-200 hover:opacity-90"
+                style={{ backgroundColor: 'hsl(245 58% 62%)' }}
+              >
+                <span>Lancer ma recherche</span>
+                <ArrowRight size={20} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Estimez votre bien Section */}
+      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
+            {/* Left Section - Text and Features */}
+            <div className="space-y-6">
+              {/* Coming Soon Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-600 text-sm font-medium mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4"
+                >
+                  <rect width="16" height="20" x="4" y="2" rx="2" />
+                  <line x1="8" x2="16" y1="6" y2="6" />
+                  <line x1="16" x2="16" y1="14" y2="18" />
+                  <path d="M16 10h.01" />
+                  <path d="M12 10h.01" />
+                  <path d="M8 10h.01" />
+                  <path d="M12 14h.01" />
+                  <path d="M8 14h.01" />
+                  <path d="M12 18h.01" />
+                  <path d="M8 18h.01" />
+                </svg>
+                <span>Bientôt disponible</span>
+              </div>
+
+              {/* Main Title */}
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-gray-900">Estimez votre bien en 2 minutes</h2>
+
+              {/* Descriptive Paragraph */}
+              <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
+                Notre algorithme croise les données DVF et les annonces en temps réel pour vous donner une estimation précise.
+              </p>
+
+              {/* Benefits List */}
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Estimation basée sur les ventes réelles</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Fourchette de prix avec indice de confiance</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Rapport détaillé gratuit</span>
+                </div>
+              </div>
+
+              {/* Call-to-Action Button */}
+              <button
+                onClick={() => navigate('/estimation')}
+                className="inline-flex items-center gap-2 px-6 py-3 border-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90"
+                style={{
+                  borderColor: 'hsl(245 58% 62%)',
+                  backgroundColor: 'white',
+                  color: 'hsl(245 58% 62%)',
+                }}
+              >
+                <span>Estimer mon bien</span>
+                <ArrowRight size={20} />
+              </button>
+            </div>
+
+            {/* Right Section - Estimation Card */}
+            <div className="relative">
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
+                <div className="text-center mb-6">
+                  <p className="text-sm text-gray-600 mb-2">Estimation de votre bien</p>
+                  <p className="text-4xl font-bold text-gray-900">285 000€ - 315 000€</p>
+                </div>
+                <div className="w-full h-3 bg-gray-100 rounded-full mb-2">
+                  <div
+                    className="h-full w-3/4 rounded-full"
+                    style={{
+                      background: 'linear-gradient(to right, hsl(245 58% 62%), #10b981)',
+                    }}
+                  ></div>
+                </div>
+                <p className="text-sm text-gray-600 text-center">Indice de confiance : 78%</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Simulez votre investissement locatif Section */}
+      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
+            {/* Left Section - Simulation Card */}
+            <div className="relative">
+              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md">
+                {/* Three Metric Boxes */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  {/* Cash-flow Box */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-green-600 mb-1">+250€</div>
+                    <div className="text-xs text-gray-600">Cash-flow/mois</div>
+                  </div>
+
+                  {/* Rendement Box */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-gray-900 mb-1">5.2%</div>
+                    <div className="text-xs text-gray-600">Rendement net</div>
+                  </div>
+
+                  {/* Score Box */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-gray-900 mb-1">58/100</div>
+                    <div className="text-xs text-gray-600">Score</div>
+                  </div>
+                </div>
+
+                {/* Graph Placeholder */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 flex items-center justify-center">
+                  <TrendingUp size={48} className="text-gray-400" />
+                </div>
+              </div>
+            </div>
+
+            {/* Right Section - Text and Features */}
+            <div className="space-y-6">
+              {/* Coming Soon Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-600 text-sm font-medium mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4"
+                >
+                  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                  <polyline points="16 7 22 7 22 13" />
+                </svg>
+                <span>Bientôt disponible</span>
+              </div>
+
+              {/* Main Title */}
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-gray-900">
+                Simulez votre investissement locatif
+              </h2>
+
+              {/* Descriptive Paragraph */}
+              <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
+                Calculez votre rentabilité, votre cashflow et analysez la performance de votre investissement avant de vous lancer.
+              </p>
+
+              {/* Features List */}
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Import depuis URL d'annonce</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Calcul cashflow et rendement net</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Analyse fiscalité détaillée</span>
+                </div>
+              </div>
+
+              {/* Call-to-Action Button */}
+              <button
+                onClick={() => navigate('/estimation')}
+                className="inline-flex items-center gap-2 px-6 py-3 border-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90"
+                style={{
+                  borderColor: 'hsl(245 58% 62%)',
+                  backgroundColor: 'white',
+                  color: 'hsl(245 58% 62%)',
+                }}
+              >
+                <span>Simuler un investissement</span>
+                <ArrowRight size={20} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Témoignages Section */}
+      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          {/* Title and Subtitle */}
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">Ils ont trouvé leur bien avec Propsight</h2>
+            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+              Découvrez les témoignages de nos utilisateurs qui ont réussi leur projet immobilier.
             </p>
-            <button className="font-semibold hover:underline" style={{ color: '#7069F9' }}>
-              Découvrez-les dès maintenant
+          </div>
+
+          {/* Testimonials Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            {/* Testimonial 1 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              {/* Stars */}
+              <div className="flex gap-1 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
+                ))}
+              </div>
+
+              {/* Testimonial Text */}
+              <p className="text-gray-700 mb-6 leading-relaxed">
+                "Grâce à Propsight, j'ai pu comparer les prix réels du quartier avant de faire mon offre. J'ai économisé près de 15 000€ sur
+                mon achat !"
+              </p>
+
+              {/* User Info */}
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: 'hsl(245 58% 62%)' }}
+                >
+                  M
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-900">Marie L.</div>
+                  <div className="text-sm text-gray-600">Acheteuse • Lyon</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 2 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              {/* Stars */}
+              <div className="flex gap-1 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
+                ))}
+              </div>
+
+              {/* Testimonial Text */}
+              <p className="text-gray-700 mb-6 leading-relaxed">
+                "Le simulateur de rentabilité m'a permis de valider mon projet d'investissement locatif. Les données DVF sont vraiment
+                précieuses."
+              </p>
+
+              {/* User Info */}
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: 'hsl(245 58% 62%)' }}
+                >
+                  T
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-900">Thomas D.</div>
+                  <div className="text-sm text-gray-600">Investisseur particulier • Bordeaux</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 3 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              {/* Stars */}
+              <div className="flex gap-1 mb-4">
+                {[...Array(4)].map((_, i) => (
+                  <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
+                ))}
+                <Star size={20} className="text-yellow-400" />
+              </div>
+
+              {/* Testimonial Text */}
+              <p className="text-gray-700 mb-6 leading-relaxed">
+                "J'ai estimé mon appartement gratuitement et le prix était très proche de l'estimation finale de l'agent. Très fiable !"
+              </p>
+
+              {/* User Info */}
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: 'hsl(245 58% 62%)' }}
+                >
+                  S
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-900">Sophie M.</div>
+                  <div className="text-sm text-gray-600">Vendeuse • Nantes</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Questions fréquentes Section */}
+      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          {/* Title and Subtitle */}
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">Questions fréquentes</h2>
+            <p className="text-base sm:text-lg text-gray-600">Tout ce que vous devez savoir sur Propsight.</p>
+          </div>
+
+          {/* FAQ Items */}
+          <div className="space-y-4">
+            {faqData.map((faq, index) => (
+              <div key={index} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div
+                  onClick={() => handleFAQToggle(index)}
+                  className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
+                >
+                  <span className="text-gray-900 font-medium pr-4">{faq.question}</span>
+                  {openFAQ === index ? (
+                    <ChevronUp size={20} className="text-gray-500 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown size={20} className="text-gray-500 flex-shrink-0" />
+                  )}
+                </div>
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    openFAQ === index ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <div className="px-4 pb-4 pt-0">
+                    <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Vous êtes agent immobilier Section */}
+      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div
+            className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 md:p-8 rounded-lg"
+            style={{ backgroundColor: 'hsl(245 58% 62% / 0.05)' }}
+          >
+            {/* Left Section - Text */}
+            <div className="text-center md:text-left">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">Vous êtes agent immobilier?</h2>
+              <p className="text-lg sm:text-xl font-bold" style={{ color: 'hsl(245 58% 62%)' }}>
+                Rejoignez les 20,000 professionels déjà inscrits.
+              </p>
+            </div>
+
+            {/* Right Section - Button */}
+            <button
+              onClick={() => navigate('/investisseurs')}
+              className="px-6 py-3 text-white font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap"
+              style={{ background: 'linear-gradient(to right, hsl(245 58% 62%), hsl(245 58% 50%))' }}
+            >
+              Découvrir nos offres pro
             </button>
           </div>
         </div>
       </section>
 
-      {/* Estimation */}
-      <div className="py-6 sm:py-8 rounded-xl mt-6 sm:mt-10 mx-4 sm:mx-8 md:mx-16 lg:mx-40">
-        <div className="flex items-center gap-3 mb-4">
-          <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="30" cy="30" r="30" fill="#FF9763" />
-            <path
-              opacity="0.4"
-              d="M20.8654 33.8501L26.1504 39.1351C28.3204 41.3051 31.8438 41.3051 34.0254 39.1351L39.1471 34.0134C41.3171 31.8434 41.3171 28.3201 39.1471 26.1384L33.8504 20.8651C32.7421 19.7567 31.2138 19.1617 29.6504 19.2434L23.8171 19.5234C21.4838 19.6284 19.6288 21.4834 19.5121 23.8051L19.2321 29.6384C19.1621 31.2134 19.7571 32.7417 20.8654 33.8501Z"
-              fill="white"
-            />
-            <path
-              d="M27.0827 30.4434C28.9383 30.4434 30.4427 28.9391 30.4427 27.0834C30.4427 25.2277 28.9383 23.7234 27.0827 23.7234C25.227 23.7234 23.7227 25.2277 23.7227 27.0834C23.7227 28.9391 25.227 30.4434 27.0827 30.4434Z"
-              fill="white"
-            />
-          </svg>
+      {/* Propsight se construit avec vous Section */}
+      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-white">
+        <div className="max-w-3xl mx-auto text-center">
+          {/* Main Heading */}
+          <h2 className="text-2xl sm:text-4xl md:text-3xl font-bold text-gray-900 mb-4">Propsight se construit avec vous</h2>
 
-          <h3 className="text-lg sm:text-xl font-bold">Estimation</h3>
-        </div>
+          {/* Subheading */}
+          <p className="text-base sm:text-lg text-gray-600 mb-8">
+            Plusieurs outils arrivent très bientôt. Inscrivez-vous pour être prévenu en avant-première.
+          </p>
 
-        <div className="flex flex-col md:flex-row items-center">
-          {/* Left Section (Text) */}
-          <ul className="space-y-2 bg-red-100 w-full md:w-1/2 p-4 sm:p-6 md:p-10 rounded-xl text-sm md:text-base mb-4 md:mb-0">
-            <li>• Estimation rapide d'un bien immobilier.</li>
-            <li>• Rapports d'estimation immobilière précis et détaillés.</li>
-            <li>
-              • Présentez vos dossiers d'investissement à votre banque grâce à nos outils de simulation de rentabilité pour investisseurs.
-            </li>
-          </ul>
-
-          {/* Right Section (Image) */}
-          <div className="w-full md:w-1/2 flex justify-center">
-            <img src={logo3} alt="Keeey Logo" className="object-contain cursor-pointer max-w-md" />
-          </div>
-        </div>
-      </div>
-
-      {/* Market Study */}
-      <div className="py-6 sm:py-8 mt-6 sm:mt-10 mx-4 sm:mx-8 md:mx-16 lg:mx-40">
-        <div className="flex items-center gap-3 mb-6">
-          <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="30" cy="30" r="30" fill="#7DCEB5" />
-            <path
-              opacity="0.4"
-              d="M39.3806 23.9566L32.6606 19.255C30.8289 17.9716 28.0173 18.0416 26.2556 19.4066L20.4106 23.9683C19.2439 24.8783 18.3223 26.745 18.3223 28.215V36.265C18.3223 39.24 20.7373 41.6666 23.7123 41.6666H36.2889C39.2639 41.6666 41.6789 39.2516 41.6789 36.2766V28.3666C41.6789 26.7916 40.6639 24.855 39.3806 23.9566Z"
-              fill="white"
-            />
-            <path
-              d="M35.6359 29.1483C35.5543 28.9499 35.3909 28.7866 35.1926 28.7049C35.0876 28.6583 34.9826 28.6466 34.8776 28.6466H32.7076C32.2526 28.6466 31.8909 29.0083 31.8909 29.4633C31.8909 29.9183 32.2526 30.2799 32.7076 30.2799H32.9176L30.4559 32.7416L29.2659 30.9683C29.1259 30.7699 28.9159 30.6299 28.6709 30.6066C28.4143 30.5833 28.1926 30.6649 28.0176 30.8399L24.5409 34.3166C24.2259 34.6316 24.2259 35.1449 24.5409 35.4716C24.7043 35.6349 24.9026 35.7049 25.1126 35.7049C25.3226 35.7049 25.5326 35.6233 25.6843 35.4716L28.4609 32.6949L29.6509 34.4683C29.7909 34.6666 30.0009 34.8066 30.2459 34.8299C30.5026 34.8533 30.7243 34.7716 30.8993 34.5966L34.0726 31.4233V31.6333C34.0726 32.0883 34.4343 32.4499 34.8893 32.4499C35.3443 32.4499 35.7059 32.0883 35.7059 31.6333V29.4633C35.6943 29.3466 35.6826 29.2416 35.6359 29.1483Z"
-              fill="white"
-            />
-          </svg>
-
-          <h3 className="text-lg sm:text-xl font-bold">Étude du marché</h3>
-        </div>
-        <ul className="space-y-2 bg-green-100 p-4 sm:p-6 md:p-8 rounded-xl text-sm md:text-base">
-          <li>
-            • Explorez les tendances immobilières grâce à nos indicateurs clés de performance, qui vous offrent une vision claire du marché.
-          </li>
-          <li>
-            • Consultez notre carte interactive des prix au m² et suivez l'évolution des tarifs en France pour mieux orienter vos décisions.
-          </li>
-        </ul>
-      </div>
-
-      {/* Real Estate Agents Section */}
-      <section className="py-8 sm:py-10 md:py-10 px-4 sm:px-6 md:px-10 mt-6 sm:mt-2 mx-4 sm:mx-8 md:mx-16 lg:mx-40">
-        <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-6">
-          <div className="relative order-2 md:order-1">
-            <img src={logo4} alt="Keeey Logo" className="object-contain cursor-pointer" />
-          </div>
-          <div className="space-y-4 order-1 md:order-2">
-            <div className="flex items-center gap-3">
-              <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="30" cy="30" r="30" fill="#7069F9" />
-                <path
-                  opacity="0.4"
-                  d="M18.4492 41.6667V23.0351C18.4492 20.6901 19.6159 19.5117 21.9376 19.5117H29.2059C31.5276 19.5117 32.6826 20.6901 32.6826 23.0351V41.6667"
-                  fill="white"
-                />
-                <path
-                  d="M28.5426 26.5H22.7676C22.2892 26.5 21.8926 26.1033 21.8926 25.625C21.8926 25.1467 22.2892 24.75 22.7676 24.75H28.5426C29.0209 24.75 29.4176 25.1467 29.4176 25.625C29.4176 26.1033 29.0209 26.5 28.5426 26.5Z"
-                  fill="white"
-                />
-                <path
-                  d="M28.5426 30.875H22.7676C22.2892 30.875 21.8926 30.4783 21.8926 30C21.8926 29.5217 22.2892 29.125 22.7676 29.125H28.5426C29.0209 29.125 29.4176 29.5217 29.4176 30C29.4176 30.4783 29.0209 30.875 28.5426 30.875Z"
-                  fill="white"
-                />
-                <path
-                  d="M25.625 42.5417C25.1467 42.5417 24.75 42.1451 24.75 41.6667V37.2917C24.75 36.8134 25.1467 36.4167 25.625 36.4167C26.1033 36.4167 26.5 36.8134 26.5 37.2917V41.6667C26.5 42.1451 26.1033 42.5417 25.625 42.5417Z"
-                  fill="white"
-                />
-                <path
-                  d="M42.8327 40.7916H40.1843V37.2916C41.2927 36.93 42.0977 35.8916 42.0977 34.6666V32.3333C42.0977 30.805 40.8493 29.5566 39.321 29.5566C37.7927 29.5566 36.5443 30.805 36.5443 32.3333V34.6666C36.5443 35.88 37.3376 36.9066 38.4226 37.28V40.7916H17.166C16.6877 40.7916 16.291 41.1883 16.291 41.6666C16.291 42.145 16.6877 42.5416 17.166 42.5416H39.251C39.2743 42.5416 39.286 42.5533 39.3093 42.5533C39.3327 42.5533 39.3444 42.5416 39.3677 42.5416H42.8327C43.311 42.5416 43.7077 42.145 43.7077 41.6666C43.7077 41.1883 43.311 40.7916 42.8327 40.7916Z"
-                  fill="white"
-                />
-              </svg>
-
-              <div>
-                <h2 className="text-2xl font-bold">Agents</h2>
-                <h2 className="text-2xl font-bold">
-                  <span style={{ color: '#7069F9' }}>Immobiliers</span>
-                </h2>
-              </div>
+          {/* Email Subscription Form */}
+          <form onSubmit={handleEmailSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
+            <div className="relative flex-1">
+              <Mail size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Votre email"
+                required
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-transparent"
+                style={
+                  {
+                    '--tw-ring-color': 'hsl(245 58% 62%)',
+                  } as React.CSSProperties & { '--tw-ring-color'?: string }
+                }
+                onFocus={e => {
+                  e.currentTarget.style.boxShadow = '0 0 0 2px hsl(245 58% 62%)';
+                }}
+                onBlur={e => {
+                  e.currentTarget.style.boxShadow = '';
+                }}
+              />
             </div>
-
-            <p className="text-gray-600">
-              Trouvez un agent immobilier ou une agence près de chez vous pour vous accompagner dans votre projet immobilier.
-            </p>
-          </div>
+            <button
+              type="submit"
+              className="px-6 py-3 text-white font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap"
+              style={{ background: 'linear-gradient(to right, hsl(245 58% 62%), #2563eb)' }}
+            >
+              Être prévenu
+            </button>
+          </form>
         </div>
       </section>
     </div>

@@ -27,7 +27,7 @@ const MainContent = () => {
         <Header />
       </div>
 
-      <div className={`flex-grow pt-20 ${hideFooter ? 'h-screen overflow-hidden' : 'mb-10'}`}>
+      <div className={`flex-grow pt-[76px] ${hideFooter ? 'h-screen overflow-hidden' : ''}`}>
         <ErrorBoundary>
           <AppRoutes />
         </ErrorBoundary>

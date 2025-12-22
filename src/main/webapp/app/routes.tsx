@@ -15,6 +15,7 @@ import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import PageNotFound from 'app/shared/error/page-not-found';
 import { AUTHORITIES } from 'app/config/constants';
 import Home from './pages/Home';
+import PackPro from './pages/PackPro';
 import TrouveAgent from './pages/TrouveAgent';
 import VoirLagence from './pages/VoirLagence';
 
@@ -104,6 +105,7 @@ const AppRoutes = () => {
           }
         />
 
+        <Route path="/pack-pro" element={<PackPro />} />
         <Route path="/TrouverAgent" element={<TrouveAgent />} />
         <Route path="/VoirLagence" element={<VoirLagence />} />
         <Route path="/louer" element={<Louer />} />

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import logo from '../../content/assets/logo.png';
+import logo from '../../content/assets/Design sans titre.png';
 
 interface NavItem {
   name: string;
@@ -19,7 +19,7 @@ const Header: React.FC = () => {
     { name: 'Estimation', path: '/estimation' },
     { name: 'Investisseurs', path: '/investisseurs' },
     { name: 'Prix immobiliers', path: '/PrixImmobliers' },
-    { name: 'Trouver un agent', path: '/TrouverAgent' },
+    { name: 'À propos', path: '/TrouverAgent' },
   ];
 
   // Handle scroll effect
@@ -39,10 +39,8 @@ const Header: React.FC = () => {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled
-            ? 'bg-white/95 backdrop-blur-lg shadow-lg border-b border-gray-200/50'
-            : 'bg-white/90 backdrop-blur-sm shadow-sm border-b border-gray-100'
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white border-b border-gray-200 ${
+          isScrolled ? 'shadow-md' : ''
         }`}
       >
         {/* Top Header Section */}
@@ -50,7 +48,24 @@ const Header: React.FC = () => {
           <div className="flex items-center justify-between w-full">
             {/* Logo */}
             <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
-              <img src={logo} alt="ImmoXpert" className="h-8 md:h-10 w-auto transform transition-transform duration-200 hover:scale-105" />
+              <img
+                src={logo}
+                alt="Propsight"
+                className="h-8 md:h-10 lg:h-10 w-auto transform transition-transform duration-200 hover:scale-105"
+              />
+              <span
+                className={`ml-2 px-2.5 py-0.5 rounded-full text-xs font-bold transition-opacity duration-200 whitespace-nowrap inline-block ${
+                  location.pathname === '/pack-pro' ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
+                style={{
+                  backgroundColor: 'hsl(245 58% 62% / 0.15)',
+                  color: 'hsl(245 58% 62%)',
+                  width: '48px', // Fixed width to prevent layout shift
+                  textAlign: 'center',
+                }}
+              >
+                PRO
+              </span>
             </div>
 
             {/* Hamburger for mobile */}
@@ -65,51 +80,60 @@ const Header: React.FC = () => {
             </button>
 
             {/* Navigation */}
-            <nav className="hidden md:flex items-center space-x-8">
-              {navItems.map((item, index) => (
-                <div key={index} className="relative group">
+            <nav className="hidden md:flex items-center space-x-2">
+              {navItems.map((item, index) => {
+                const isActive = location.pathname === item.path && location.pathname !== '/';
+                return (
                   <Link
+                    key={index}
                     to={item.path}
-                    className={`relative px-3 py-2 text-sm font-medium whitespace-nowrap transition-all duration-300 ${
-                      location.pathname === item.path ? 'text-gray-900 font-semibold' : 'text-gray-700 hover:text-gray-900'
+                    className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200 rounded-lg ${
+                      isActive ? 'bg-gray-100 text-purple-700' : 'text-gray-500 hover:text-gray-900'
                     }`}
                   >
                     {item.name}
-                    {location.pathname === item.path && (
-                      <div className="absolute left-0 right-0 -bottom-1 w-full h-[2px] bg-gradient-to-r from-blue-500 via-purple-500 to-yellow-300" />
-                    )}
                   </Link>
-                </div>
-              ))}
+                );
+              })}
             </nav>
 
             {/* Action Buttons */}
-            <div className="hidden md:flex items-center space-x-6 flex-shrink-0">
+            <div className="hidden md:flex items-center space-x-4 flex-shrink-0">
               {/* Bouton Se connecter */}
               <button
-                className="relative px-6 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 transform hover:scale-105 hover:shadow-lg text-white  hover:from-blue-700 hover:to-purple-700 shadow-lg"
+                className="px-6 py-2.5 rounded-lg font-medium text-sm text-white transition-all duration-200 hover:opacity-90"
                 style={{ backgroundColor: '#7069F9' }}
                 onClick={() => navigate('/login')}
               >
-                <span className="relative">Se connecter</span>
+                Se connecter
               </button>
 
               {/* Bouton Pack Pro */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300" />
-                <div className="relative text-sm font-bold border-2 border-transparent bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-border p-2 px-6 rounded-2xl backdrop-blur transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-lg">
-                  <div className="absolute inset-0 bg-white rounded-2xl" />
-                  <div className="relative flex items-center space-x-2">
-                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold">Pack</span>
-                    <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent font-bold">Pro</span>
-                  </div>
-                </div>
-              </div>
+              <button
+                className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 hover:opacity-90 ${
+                  location.pathname === '/pack-pro' ? 'text-white' : 'border-2 text-[#7069F9]'
+                }`}
+                style={
+                  location.pathname === '/pack-pro'
+                    ? { backgroundColor: '#7069F9' }
+                    : {
+                        borderColor: '#7069F9',
+                        backgroundColor: 'white',
+                        color: '#7069F9',
+                      }
+                }
+                onClick={() => navigate('/pack-pro')}
+              >
+                Pack Pro
+              </button>
             </div>
           </div>
         </div>
-        <div className="w-full h-[3px] bg-gradient-to-r from-blue-500 via-purple-500 to-yellow-300" />
       </header>
+      <div
+        className="fixed top-0 left-0 right-0 z-50 w-full h-[3px] bg-gradient-to-r from-blue-500 via-purple-500 to-yellow-300"
+        style={{ marginTop: '73px' }}
+      />
 
       {/* Mobile Navigation Menu */}
       {mobileMenuOpen && (
@@ -122,20 +146,21 @@ const Header: React.FC = () => {
             <div className="pt-20 pb-6">
               <nav className="px-6 space-y-2">
                 {/* Navigation Items */}
-                {navItems.map((item, index) => (
-                  <Link
-                    key={index}
-                    to={item.path}
-                    className={`block py-4 px-4 rounded-xl text-base font-medium transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-purple-700 ${
-                      location.pathname === item.path
-                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-purple-700 font-semibold'
-                        : 'text-gray-700'
-                    }`}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+                {navItems.map((item, index) => {
+                  const isActive = location.pathname === item.path && location.pathname !== '/';
+                  return (
+                    <Link
+                      key={index}
+                      to={item.path}
+                      className={`block py-4 px-4 rounded-xl text-base font-medium transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-purple-700 ${
+                        isActive ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-purple-700 font-semibold' : 'text-gray-700'
+                      }`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {item.name}
+                    </Link>
+                  );
+                })}
 
                 {/* Mobile Connect Button */}
                 <div className="pt-6 mt-6 border-t border-gray-200">
@@ -154,9 +179,6 @@ const Header: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Spacer to prevent content from hiding behind fixed header */}
-      <div className="h-20" />
     </>
   );
 };
