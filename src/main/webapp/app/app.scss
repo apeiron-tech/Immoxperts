@@ -320,6 +320,19 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Maven+Pro:wght@300;400;500;600;700;800;900&display=swap');
 
+:root {
+  --gradient-primary: linear-gradient(135deg, hsl(245 58% 62%) 0%, hsl(245 58% 52%) 100%);
+  --gradient-hero: linear-gradient(135deg, hsl(240 33% 15%) 0%, hsl(245 40% 25%) 100%);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+  --accent: 245 58% 62%;
+  --muted: 0 0% 96.1%;
+  --border: 0 0% 89.8%;
+}
+
+.text-accent {
+  color: hsl(var(--accent));
+}
+
 body {
   font-family: 'Maven Pro', sans-serif;
 }
