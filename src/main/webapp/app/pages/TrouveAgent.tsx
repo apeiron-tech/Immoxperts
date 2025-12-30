@@ -177,7 +177,7 @@ const TrouveAgent: React.FC = () => {
                 {stats.map((stat, index) => (
                   <div key={index} className="text-center">
                     <p
-                      className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold"
+                      className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold whitespace-nowrap"
                       style={{
                         color: 'hsl(245 58% 62%)',
                       }}

@@ -65,12 +65,12 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-white">
+      <section className="pt-6 md:pt-12 pb-12 md:pb-20 px-4 sm:px-6 md:px-8 bg-white">
         <div className="max-w-4xl mx-auto text-center">
           {/* Notification Bubble */}
           <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700">
             <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            <span>Nouveau : Carte des prix immobiliers disponible</span>
+            <span>Nouveau : Carte des prix immobiliers disponible (DVF) </span>
           </div>
 
           {/* Main Headline */}
@@ -130,7 +130,9 @@ const HomePage: React.FC = () => {
                 <FileCheck size={24} className="text-green-600" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">Estimation gratuite</h3>
-              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">Découvrez le prix de votre bien en 2 minutes chrono.</p>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                Estimez le prix de votre bien immobilier en 2 minutes grâce aux données du marché et aux ventes récentes . .
+              </p>
             </div>
 
             {/* Card 3: Simulateur investisseur */}
@@ -148,7 +150,9 @@ const HomePage: React.FC = () => {
                 <MapPin size={24} className="text-pink-600" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">Explorer les ventes</h3>
-              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">Consultez les prix de vente réels dans votre quartier.</p>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                Consultez les prix de vente immobilières passées (DVF) dans votre quartier.
+              </p>
             </div>
           </div>
         </div>
@@ -196,10 +200,10 @@ const HomePage: React.FC = () => {
                 {/* Card 1: Transactions DVF */}
                 <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
                   <div className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 md:mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
-                    12M+
+                    +20M
                   </div>
                   <div className="text-[10px] sm:text-xs text-gray-600 leading-tight">
-                    Transactions
+                    Transaction DVF depuis 2014
                     <br />
                     DVF
                   </div>
@@ -207,9 +211,11 @@ const HomePage: React.FC = () => {
 
                 {/* Card 2: Communes couvertes */}
                 <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
-                  <div className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 md:mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
-                    36
-                    <br className="hidden sm:block" /> 000
+                  <div
+                    className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 md:mb-2 whitespace-nowrap"
+                    style={{ color: 'hsl(245 58% 62%)' }}
+                  >
+                    36 000+
                   </div>
                   <div className="text-[10px] sm:text-xs text-gray-600 leading-tight">
                     Communes
@@ -351,7 +357,7 @@ const HomePage: React.FC = () => {
                     <Search size={20} style={{ color: 'hsl(245 58% 62%)' }} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Une seule recherche, tous les portails</h3>
+                    <h3 className="font-semibold text-gray-900 mb-1">Une seule recherche pour accéder à plusieurs portails immobiliers</h3>
                   </div>
                 </div>
 
@@ -364,7 +370,7 @@ const HomePage: React.FC = () => {
                     <TrendingUp size={20} style={{ color: 'hsl(245 58% 62%)' }} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Annonces en temps réel</h3>
+                    <h3 className="font-semibold text-gray-900 mb-1">Annonces immobilières mises à jour en continu </h3>
                   </div>
                 </div>
 
@@ -377,7 +383,7 @@ const HomePage: React.FC = () => {
                     <Bell size={20} style={{ color: 'hsl(245 58% 62%)' }} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Alertes personnalisées</h3>
+                    <h3 className="font-semibold text-gray-900 mb-1">Alertes personnalisées selon vos critères</h3>
                   </div>
                 </div>
               </div>
@@ -431,26 +437,29 @@ const HomePage: React.FC = () => {
               </div>
 
               {/* Main Title */}
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-gray-900">Estimez votre bien en 2 minutes</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-gray-900">
+                Estimez votre bien en 2 minutes grâce a l'IA{' '}
+              </h2>
 
               {/* Descriptive Paragraph */}
               <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                Notre algorithme croise les données DVF et les annonces en temps réel pour vous donner une estimation précise.
+                Notre algorithme d’estimation immobilière analyse les données INSEE, les ventes immobilières réelles (DVF) et les annonces
+                du marché local pour fournir une estimation instantanée et fiable.
               </p>
 
               {/* Benefits List */}
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Estimation basée sur les ventes réelles</span>
+                  <span className="text-gray-600">Estimation immobilière basée sur des modèles d’intelligence artificielle récents</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Croisement des données officielles INSEE, DVF et du marché immobilier local</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <span className="text-gray-600">Fourchette de prix avec indice de confiance</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Rapport détaillé gratuit</span>
                 </div>
               </div>
 
@@ -558,27 +567,28 @@ const HomePage: React.FC = () => {
 
               {/* Main Title */}
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-gray-900">
-                Simulez votre investissement locatif
+                Analysez la rentabilité de votre investissement immobilier
               </h2>
 
               {/* Descriptive Paragraph */}
               <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                Calculez votre rentabilité, votre cashflow et analysez la performance de votre investissement avant de vous lancer.
+                Simulateur immobilier conçu pour les investisseurs : cash-flow mensuel,TRI, rendement net, fiscalité et score global du
+                projet.
               </p>
 
               {/* Features List */}
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Import depuis URL d'annonce</span>
+                  <span className="text-gray-600">Import automatique depuis une annonce</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Calcul cashflow et rendement net</span>
+                  <span className="text-gray-600">Calculs financiers et fiscaux réalistes</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Analyse fiscalité détaillée</span>
+                  <span className="text-gray-600">Aide à la décision avant acquisition</span>
                 </div>
               </div>
 
