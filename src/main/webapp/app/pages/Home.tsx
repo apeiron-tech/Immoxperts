@@ -131,7 +131,7 @@ const HomePage: React.FC = () => {
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">Estimation gratuite</h3>
               <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                Estimez le prix de votre bien immobilier en 2 minutes grâce aux données du marché et aux ventes récentes . .
+                Estimez le prix de votre bien immobilier en 2 minutes grâce aux données du marché et aux ventes récentes.
               </p>
             </div>
 
@@ -199,41 +199,29 @@ const HomePage: React.FC = () => {
               <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
                 {/* Card 1: Transactions DVF */}
                 <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
-                  <div className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 md:mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 md:mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
                     +20M
                   </div>
-                  <div className="text-[10px] sm:text-xs text-gray-600 leading-tight">
-                    Transaction DVF depuis 2014
-                    <br />
-                    DVF
-                  </div>
+                  <div className="text-xs sm:text text-gray-500 leading-tight font-bold">Transactions immobilières</div>
                 </div>
 
                 {/* Card 2: Communes couvertes */}
                 <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
                   <div
-                    className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 md:mb-2 whitespace-nowrap"
+                    className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 md:mb-2 whitespace-nowrap"
                     style={{ color: 'hsl(245 58% 62%)' }}
                   >
-                    36 000+
+                    36 000
                   </div>
-                  <div className="text-[10px] sm:text-xs text-gray-600 leading-tight">
-                    Communes
-                    <br />
-                    couvertes
-                  </div>
+                  <div className="text-xs sm:text text-gray-500 leading-tight font-bold">Communes couvertes</div>
                 </div>
 
                 {/* Card 3: Accès illimité */}
                 <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
-                  <div className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 md:mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 md:mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
                     Gratuit
                   </div>
-                  <div className="text-[10px] sm:text-xs text-gray-600 leading-tight">
-                    Accès
-                    <br />
-                    illimité
-                  </div>
+                  <div className="text-xs sm:text text-gray-500 leading-tight font-bold">Accès illimité</div>
                 </div>
               </div>
 
@@ -350,12 +338,7 @@ const HomePage: React.FC = () => {
               <div className="space-y-4">
                 {/* Feature 1 */}
                 <div className="flex items-start gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
-                  >
-                    <Search size={20} style={{ color: 'hsl(245 58% 62%)' }} />
-                  </div>
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Une seule recherche pour accéder à plusieurs portails immobiliers</h3>
                   </div>
@@ -363,12 +346,7 @@ const HomePage: React.FC = () => {
 
                 {/* Feature 2 */}
                 <div className="flex items-start gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
-                  >
-                    <TrendingUp size={20} style={{ color: 'hsl(245 58% 62%)' }} />
-                  </div>
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Annonces immobilières mises à jour en continu </h3>
                   </div>
@@ -376,12 +354,7 @@ const HomePage: React.FC = () => {
 
                 {/* Feature 3 */}
                 <div className="flex items-start gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
-                  >
-                    <Bell size={20} style={{ color: 'hsl(245 58% 62%)' }} />
-                  </div>
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Alertes personnalisées selon vos critères</h3>
                   </div>
@@ -579,15 +552,15 @@ const HomePage: React.FC = () => {
               {/* Features List */}
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Import automatique depuis une annonce</span>
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Importation des données automatique depuis une annonce</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <span className="text-gray-600">Calculs financiers et fiscaux réalistes</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <span className="text-gray-600">Aide à la décision avant acquisition</span>
                 </div>
               </div>
