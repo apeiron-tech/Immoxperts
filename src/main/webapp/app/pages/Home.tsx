@@ -65,21 +65,21 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-white">
+      <section className="pt-6 md:pt-12 pb-12 md:pb-20 px-4 sm:px-6 md:px-8 bg-white">
         <div className="max-w-4xl mx-auto text-center">
           {/* Notification Bubble */}
           <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700">
             <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            <span>Nouveau : Carte des prix immobiliers disponible</span>
+            <span>Nouveau : Carte des prix immobiliers disponible (DVF) </span>
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 md:mb-6 leading-tight">
             La <span style={{ color: 'hsl(245 58% 62%)' }}>data</span> au service de vos décisions immobilières.
           </h1>
 
           {/* Descriptive Paragraph */}
-          <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8 leading-relaxed">
+          <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-3xl mx-auto mb-6 md:mb-8 leading-relaxed">
             Une plateforme immobilière tout-en-un pour rechercher un bien, estimer sa valeur, tester sa rentabilité et décrypter le marché.
           </p>
 
@@ -96,12 +96,14 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* 4 Outils Gratuits Section */}
-      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-gray-50">
+      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           {/* Title and Subtitle */}
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">4 outils gratuits pour réussir votre projet</h2>
-            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">
+              4 outils gratuits pour réussir votre projet
+            </h2>
+            <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
               Tout ce dont vous avez besoin pour acheter, vendre ou investir dans l'immobilier.
             </p>
           </div>
@@ -116,8 +118,8 @@ const HomePage: React.FC = () => {
               >
                 <Search size={24} style={{ color: 'hsl(245 58% 62%)' }} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Recherche multi-sites</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Recherche multi-sites</h3>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
                 Explorez toutes les annonces de vente et location en une seule recherche.
               </p>
             </div>
@@ -127,8 +129,10 @@ const HomePage: React.FC = () => {
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
                 <FileCheck size={24} className="text-green-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Estimation gratuite</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">Découvrez le prix de votre bien en 2 minutes chrono.</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Estimation gratuite</h3>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                Estimez le prix de votre bien immobilier en 2 minutes grâce aux données du marché et aux ventes récentes.
+              </p>
             </div>
 
             {/* Card 3: Simulateur investisseur */}
@@ -136,8 +140,8 @@ const HomePage: React.FC = () => {
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mb-4">
                 <TrendingUp size={24} className="text-yellow-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Simulateur investisseur</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">Calculez votre rentabilité locative en quelques clics.</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Simulateur investisseur</h3>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">Calculez votre rentabilité locative en quelques clics.</p>
             </div>
 
             {/* Card 4: Explorer les ventes */}
@@ -145,15 +149,17 @@ const HomePage: React.FC = () => {
               <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mb-4">
                 <MapPin size={24} className="text-pink-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Explorer les ventes</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">Consultez les prix de vente réels dans votre quartier.</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Explorer les ventes</h3>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                Consultez les prix de vente immobilières passées (DVF) dans votre quartier.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Visualisez les prix réels Section */}
-      <section className="py-20 md:py-28 px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20 bg-white">
+      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-16 lg:gap-20 items-center">
             {/* Left Section - Text and Statistics */}
@@ -181,38 +187,41 @@ const HomePage: React.FC = () => {
                 <span>Déjà disponible</span>
               </div>
               {/* Main Heading */}
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">Visualisez les prix réels de votre quartier</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">Visualisez les prix réels de votre quartier</h2>
 
               {/* Descriptive Paragraph */}
-              <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                 Accédez gratuitement aux données officielles de ventes immobilières (DVF). Découvrez les prix au m² et les tendances de
                 votre commune.
               </p>
 
               {/* Statistical Cards */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
                 {/* Card 1: Transactions DVF */}
-                <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-                  <div className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
-                    12M+
+                <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 md:mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
+                    +20M
                   </div>
-                  <div className="text-xs sm:text-sm text-gray-600">Transactions DVF</div>
+                  <div className="text-xs sm:text text-gray-500 leading-tight font-bold">Transactions immobilières</div>
                 </div>
 
                 {/* Card 2: Communes couvertes */}
-                <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-                  <div className="text-3xl sm:text-4xl font-bold mb-2 text-gray-900" style={{ color: 'hsl(245 58% 62%)' }}>
+                <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
+                  <div
+                    className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 md:mb-2 whitespace-nowrap"
+                    style={{ color: 'hsl(245 58% 62%)' }}
+                  >
                     36 000
                   </div>
-                  <div className="text-xs sm:text-sm text-gray-600">Communes couvertes</div>
+                  <div className="text-xs sm:text text-gray-500 leading-tight font-bold">Communes couvertes</div>
                 </div>
 
                 {/* Card 3: Accès illimité */}
-                <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-                  <div className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
+                <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 md:mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
                     Gratuit
                   </div>
-                  <div className="text-xs sm:text-sm text-gray-600">Accès illimité</div>
+                  <div className="text-xs sm:text text-gray-500 leading-tight font-bold">Accès illimité</div>
                 </div>
               </div>
 
@@ -231,13 +240,17 @@ const HomePage: React.FC = () => {
             <div className="relative">
               {/* Large Gradient Card */}
               <div
-                className="relative w-full h-96 rounded-lg flex items-center justify-center overflow-hidden"
+                className="relative w-full h-64 sm:h-80 md:h-96 rounded-lg flex items-center justify-center overflow-hidden"
                 style={{
                   background: 'linear-gradient(to bottom, #ede9fe, #fef3c7)',
                 }}
               >
                 {/* Map Icon */}
-                <Map size={120} style={{ color: 'hsl(245 58% 62% / 0.6)' }} strokeWidth={1.5} />
+                <Map
+                  className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32"
+                  style={{ color: 'hsl(245 58% 62% / 0.6)' }}
+                  strokeWidth={1.5}
+                />
 
                 {/* Small Price Indicator Box */}
                 <div className="absolute bottom-4 left-4 bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
@@ -254,11 +267,11 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Toutes les annonces immobilières Section */}
-      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-gray-50">
+      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
-            {/* Left Section - Property Cards Grid */}
-            <div className="relative">
+            {/* Left Section - Property Cards Grid (appears second on mobile, left on desktop) */}
+            <div className="relative order-2 lg:order-1">
               {/* Large White Card with Grid */}
               <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md">
                 {/* Grid of 6 Property Placeholders */}
@@ -290,8 +303,8 @@ const HomePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Section - Text and Features */}
-            <div className="space-y-6">
+            {/* Right Section - Text and Features (appears first on mobile, right on desktop) */}
+            <div className="space-y-6 order-1 lg:order-2">
               {/* Coming Soon Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-600 text-sm font-medium mb-4">
                 <svg
@@ -312,12 +325,12 @@ const HomePage: React.FC = () => {
                 <span>Bientôt disponible</span>
               </div>
               {/* Main Heading */}
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-gray-900">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-gray-900">
                 Toutes les annonces immobilières en un seul endroit
               </h2>
 
               {/* Descriptive Paragraph */}
-              <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                 Ne perdez plus de temps à naviguer entre les sites. Notre agrégateur centralise les annonces de tous les portails majeurs.
               </p>
 
@@ -325,40 +338,25 @@ const HomePage: React.FC = () => {
               <div className="space-y-4">
                 {/* Feature 1 */}
                 <div className="flex items-start gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
-                  >
-                    <Search size={20} style={{ color: 'hsl(245 58% 62%)' }} />
-                  </div>
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Une seule recherche, tous les portails</h3>
+                    <h3 className="font-semibold text-gray-900 mb-1">Une seule recherche pour accéder à plusieurs portails immobiliers</h3>
                   </div>
                 </div>
 
                 {/* Feature 2 */}
                 <div className="flex items-start gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
-                  >
-                    <TrendingUp size={20} style={{ color: 'hsl(245 58% 62%)' }} />
-                  </div>
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Annonces en temps réel</h3>
+                    <h3 className="font-semibold text-gray-900 mb-1">Annonces immobilières mises à jour en continu </h3>
                   </div>
                 </div>
 
                 {/* Feature 3 */}
                 <div className="flex items-start gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
-                  >
-                    <Bell size={20} style={{ color: 'hsl(245 58% 62%)' }} />
-                  </div>
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Alertes personnalisées</h3>
+                    <h3 className="font-semibold text-gray-900 mb-1">Alertes personnalisées selon vos critères</h3>
                   </div>
                 </div>
               </div>
@@ -378,7 +376,7 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Estimez votre bien Section */}
-      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-white">
+      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
             {/* Left Section - Text and Features */}
@@ -412,26 +410,29 @@ const HomePage: React.FC = () => {
               </div>
 
               {/* Main Title */}
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-gray-900">Estimez votre bien en 2 minutes</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-gray-900">
+                Estimez votre bien en 2 minutes grâce a l'IA{' '}
+              </h2>
 
               {/* Descriptive Paragraph */}
-              <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
-                Notre algorithme croise les données DVF et les annonces en temps réel pour vous donner une estimation précise.
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
+                Notre algorithme d’estimation immobilière analyse les données INSEE, les ventes immobilières réelles (DVF) et les annonces
+                du marché local pour fournir une estimation instantanée et fiable.
               </p>
 
               {/* Benefits List */}
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Estimation basée sur les ventes réelles</span>
+                  <span className="text-gray-600">Estimation immobilière basée sur des modèles d’intelligence artificielle récents</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Croisement des données officielles INSEE, DVF et du marché immobilier local</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <span className="text-gray-600">Fourchette de prix avec indice de confiance</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Rapport détaillé gratuit</span>
                 </div>
               </div>
 
@@ -452,10 +453,10 @@ const HomePage: React.FC = () => {
 
             {/* Right Section - Estimation Card */}
             <div className="relative">
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-                <div className="text-center mb-6">
-                  <p className="text-sm text-gray-600 mb-2">Estimation de votre bien</p>
-                  <p className="text-4xl font-bold text-gray-900">285 000€ - 315 000€</p>
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 md:p-8">
+                <div className="text-center mb-4 md:mb-6">
+                  <p className="text-xs sm:text-sm text-gray-600 mb-2">Estimation de votre bien</p>
+                  <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">285 000€ - 315 000€</p>
                 </div>
                 <div className="w-full h-3 bg-gray-100 rounded-full mb-2">
                   <div
@@ -473,30 +474,38 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Simulez votre investissement locatif Section */}
-      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-gray-50">
+      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
-            {/* Left Section - Simulation Card */}
-            <div className="relative">
+            {/* Left Section - Simulation Card (appears second on mobile, left on desktop) */}
+            <div className="relative order-2 lg:order-1">
               <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md">
                 {/* Three Metric Boxes */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   {/* Cash-flow Box */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold text-green-600 mb-1">+250€</div>
-                    <div className="text-xs text-gray-600">Cash-flow/mois</div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 mb-1">+250€</div>
+                    <div className="text-[10px] sm:text-xs text-gray-600 leading-tight">
+                      Cash-flow
+                      <br />
+                      /mois
+                    </div>
                   </div>
 
                   {/* Rendement Box */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold text-gray-900 mb-1">5.2%</div>
-                    <div className="text-xs text-gray-600">Rendement net</div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-1">5.2%</div>
+                    <div className="text-[10px] sm:text-xs text-gray-600 leading-tight">
+                      Rendement
+                      <br />
+                      net
+                    </div>
                   </div>
 
                   {/* Score Box */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold text-gray-900 mb-1">58/100</div>
-                    <div className="text-xs text-gray-600">Score</div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-1">58/100</div>
+                    <div className="text-[10px] sm:text-xs text-gray-600">Score</div>
                   </div>
                 </div>
 
@@ -507,8 +516,8 @@ const HomePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Section - Text and Features */}
-            <div className="space-y-6">
+            {/* Right Section - Text and Features (appears first on mobile, right on desktop) */}
+            <div className="space-y-6 order-1 lg:order-2">
               {/* Coming Soon Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-600 text-sm font-medium mb-4">
                 <svg
@@ -530,28 +539,29 @@ const HomePage: React.FC = () => {
               </div>
 
               {/* Main Title */}
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight text-gray-900">
-                Simulez votre investissement locatif
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-gray-900">
+                Analysez la rentabilité de votre investissement immobilier
               </h2>
 
               {/* Descriptive Paragraph */}
-              <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
-                Calculez votre rentabilité, votre cashflow et analysez la performance de votre investissement avant de vous lancer.
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
+                Simulateur immobilier conçu pour les investisseurs : cash-flow mensuel,TRI, rendement net, fiscalité et score global du
+                projet.
               </p>
 
               {/* Features List */}
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Import depuis URL d'annonce</span>
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Importation des données automatique depuis une annonce</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Calcul cashflow et rendement net</span>
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Calculs financiers et fiscaux réalistes</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-gray-700 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Analyse fiscalité détaillée</span>
+                  <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-600">Aide à la décision avant acquisition</span>
                 </div>
               </div>
 
@@ -574,12 +584,14 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Témoignages Section */}
-      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-white">
+      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           {/* Title and Subtitle */}
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">Ils ont trouvé leur bien avec Propsight</h2>
-            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">
+              Ils ont trouvé leur bien avec Propsight
+            </h2>
+            <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
               Découvrez les témoignages de nos utilisateurs qui ont réussi leur projet immobilier.
             </p>
           </div>
@@ -680,12 +692,12 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Questions fréquentes Section */}
-      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-gray-50">
+      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           {/* Title and Subtitle */}
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">Questions fréquentes</h2>
-            <p className="text-base sm:text-lg text-gray-600">Tout ce que vous devez savoir sur Propsight.</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">Questions fréquentes</h2>
+            <p className="text-sm sm:text-base text-gray-600">Tout ce que vous devez savoir sur Propsight.</p>
           </div>
 
           {/* FAQ Items */}
@@ -719,7 +731,7 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Vous êtes agent immobilier Section */}
-      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-white">
+      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div
             className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 md:p-8 rounded-lg"
@@ -727,8 +739,8 @@ const HomePage: React.FC = () => {
           >
             {/* Left Section - Text */}
             <div className="text-center md:text-left">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">Vous êtes agent immobilier?</h2>
-              <p className="text-lg sm:text-xl font-bold" style={{ color: 'hsl(245 58% 62%)' }}>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Vous êtes agent immobilier?</h2>
+              <p className="text-base sm:text-lg font-bold" style={{ color: 'hsl(245 58% 62%)' }}>
                 Rejoignez les 20,000 professionels déjà inscrits.
               </p>
             </div>
@@ -746,13 +758,13 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Propsight se construit avec vous Section */}
-      <section className="py-20 md:py-28 px-4 sm:px-6 md:px-8 bg-white">
+      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-white">
         <div className="max-w-3xl mx-auto text-center">
           {/* Main Heading */}
-          <h2 className="text-2xl sm:text-4xl md:text-3xl font-bold text-gray-900 mb-4">Propsight se construit avec vous</h2>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4">Propsight se construit avec vous</h2>
 
           {/* Subheading */}
-          <p className="text-base sm:text-lg text-gray-600 mb-8">
+          <p className="text-sm sm:text-base text-gray-600 mb-6 md:mb-8">
             Plusieurs outils arrivent très bientôt. Inscrivez-vous pour être prévenu en avant-première.
           </p>
 

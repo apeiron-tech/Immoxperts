@@ -19,6 +19,11 @@ import {
   ChevronUp,
   Mail,
   Clock,
+  Database,
+  Layers,
+  Rocket,
+  Gift,
+  CheckCircle,
 } from 'lucide-react';
 
 const proTestimonials = [
@@ -234,17 +239,17 @@ const PackPro: React.FC = () => {
           background: 'var(--gradient-hero)',
         }}
       >
-        <div className="container mx-auto px-4 pt-0 md:pt-24 pb-16 md:pb-24">
+        <div className="container mx-auto px-4 pt-0 md:pt-24 pb-12 md:pb-16">
           <div className="max-w-3xl">
-            <div className="text-center lg:text-left px-16">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 bg-white/10 backdrop-blur-sm">
+            <div className="text-center lg:text-left px-4 sm:px-6 md:px-8 lg:px-16">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 md:mb-6 bg-white/10 backdrop-blur-sm">
                 <Star className="w-4 h-4 text-white" />
-                <span className="text-sm font-medium text-white">Pour les professionnels de l'immobilier</span>
+                <span className="text-xs sm:text-sm font-medium text-white">Pour les professionnels de l'immobilier</span>
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 md:mb-6 leading-tight">
                 La data au service de vos mandats.
               </h1>
-              <p className="text-lg md:text-xl text-white/90 mb-8">
+              <p className="text-sm sm:text-base md:text-lg text-white/90 mb-6 md:mb-8">
                 Avis de valeur en marque blanche, vitrine numérique locale, génération de leads, pige immo, analyse investissement et CRM.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -264,18 +269,23 @@ const PackPro: React.FC = () => {
       </section>
 
       {/* 6 Features Sections */}
-      <section className="py-16 md:py-20 bg-white px-16">
-        <div className="container mx-auto px-4">
+      <section className="py-12 md:py-20 bg-white">
+        <div className="container mx-auto px-4 sm:px-6 md:px-8 lg:px-16">
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">6 usages pour transformer votre activité</h2>
-            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">
+              6 usages pour transformer votre activité
+            </h2>
+            <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
               Des outils pensés par et pour les professionnels de l'immobilier.
             </p>
           </div>
 
-          <div className="space-y-16">
+          <div className="space-y-12 md:space-y-16">
             {proFeatures.map((feature, index) => (
-              <div key={index} className={`grid lg:grid-cols-2 gap-12 items-center ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}>
+              <div
+                key={index}
+                className={`grid lg:grid-cols-2 gap-6 md:gap-8 lg:gap-12 items-center ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
+              >
                 <div className={index % 2 === 1 ? 'lg:order-2' : ''}>
                   {!feature.available && (
                     <div
@@ -289,11 +299,11 @@ const PackPro: React.FC = () => {
                       <span>Bientôt disponible</span>
                     </div>
                   )}
-                  <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{feature.title}</h3>
-                  <p className="font-medium mb-4" style={{ color: 'hsl(245 58% 62%)' }}>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">{feature.title}</h3>
+                  <p className="text-sm sm:text-base font-medium mb-3 md:mb-4" style={{ color: 'hsl(245 58% 62%)' }}>
                     {feature.subtitle}
                   </p>
-                  <p className="text-gray-600 mb-6">{feature.description}</p>
+                  <p className="text-sm text-gray-600 mb-4 md:mb-6">{feature.description}</p>
                   <ul className="space-y-2">
                     {feature.features.map((f, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
@@ -304,7 +314,7 @@ const PackPro: React.FC = () => {
                   </ul>
                 </div>
                 <div
-                  className={`rounded-2xl p-8 flex items-center justify-center min-h-[250px] ${index % 2 === 1 ? 'lg:order-1' : ''}`}
+                  className={`rounded-2xl p-6 md:p-8 flex items-center justify-center min-h-[200px] md:min-h-[250px] ${index % 2 === 1 ? 'lg:order-1' : ''}`}
                   style={{
                     backgroundColor: 'hsl(var(--muted))',
                     borderColor: 'hsl(var(--border))',
@@ -326,32 +336,118 @@ const PackPro: React.FC = () => {
         </div>
       </section>
 
-      {/* Pro Highlights */}
-      <section className="py-12 md:py-16 bg-gray-50">
+      {/* Pourquoi ImmoXpert Section */}
+      <section className="py-12 md:py-20 bg-gray-50">
         <div className="container mx-auto px-4">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {proHighlights.map((highlight, index) => (
-              <div key={index} className="bg-white rounded-xl p-6 border border-gray-200 text-center">
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
-                  style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
-                >
-                  {highlight.icon}
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">{highlight.title}</h3>
-                <p className="text-sm text-gray-600">{highlight.description}</p>
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">Pourquoi Propsight ?</h2>
+            <p className="text-sm sm:text-base text-gray-600 max-w-3xl mx-auto">
+              Une approche unique qui combine data officielle, intelligence artificielle et expérience utilisateur moderne.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {/* Data first */}
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
+                style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
+              >
+                <Database className="w-6 h-6" style={{ color: 'hsl(245 58% 62%)' }} />
               </div>
-            ))}
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Data first</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Intégration DVF, DPE, annonces, données INSEE et IA pour des insights fiables et actualisés.
+              </p>
+            </div>
+
+            {/* Interface orientée carte */}
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
+                style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
+              >
+                <Map className="w-6 h-6" style={{ color: 'hsl(245 58% 62%)' }} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Interface orientée carte</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Vision géographique immédiatement compréhensible. Naviguez, zoomez, analysez en quelques clics.
+              </p>
+            </div>
+
+            {/* Tout-en-un */}
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
+                style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
+              >
+                <Layers className="w-6 h-6" style={{ color: 'hsl(245 58% 62%)' }} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Tout-en-un</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Pige, prospection, estimation et simulation dans une même plateforme. Fini les outils éparpillés.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Roadmap & Early Adopters Section */}
+      <section className="py-12 md:py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">Roadmap & Early Adopters</h2>
+            <p className="text-sm sm:text-base text-gray-600 max-w-3xl mx-auto">
+              Rejoignez les premiers utilisateurs et bénéficiez d'avantages exclusifs.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {/* Carte DVF */}
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
+                style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}
+              >
+                <CheckCircle className="w-6 h-6" style={{ color: '#10b981' }} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Carte DVF</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">Déjà disponible pour tous les utilisateurs.</p>
+            </div>
+
+            {/* Modules à venir */}
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
+                style={{ backgroundColor: 'hsl(25 95% 53% / 0.1)' }}
+              >
+                <Rocket className="w-6 h-6" style={{ color: 'hsl(25 95% 53%)' }} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Modules à venir</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">Pige, Prospection, Estimation, Simulation en développement actif.</p>
+            </div>
+
+            {/* Avantages early adopter */}
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
+                style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)' }}
+              >
+                <Gift className="w-6 h-6" style={{ color: 'hsl(245 58% 62%)' }} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Avantages early adopter</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">Accès prioritaire et offres préférentielles.</p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-16 md:py-20 bg-white">
+      <section id="pricing" className="py-12 md:py-20 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">Nos offres pour les pros</h2>
-            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">Choisissez le plan adapté à vos besoins.</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">Nos offres pour les pros</h2>
+            <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">Choisissez le plan adapté à vos besoins.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -375,8 +471,8 @@ const PackPro: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
                   <p className="text-sm text-gray-600">{plan.subtitle}</p>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                    <span className="text-gray-600">{plan.period}</span>
+                    <span className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">{plan.price}</span>
+                    <span className="text-sm sm:text-base text-gray-600">{plan.period}</span>
                   </div>
                   <p className="text-sm text-gray-600 mt-2">{plan.description}</p>
                 </div>
@@ -422,8 +518,8 @@ const PackPro: React.FC = () => {
       <section className="py-12 md:py-20 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">Ils font confiance à Propsight</h2>
-            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">Ils font confiance à Propsight</h2>
+            <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
               Agents, directeurs d'agence, chasseurs et CGP partagent leur expérience.
             </p>
           </div>
@@ -465,8 +561,8 @@ const PackPro: React.FC = () => {
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">Questions fréquentes - Pack Pro</h2>
-              <p className="text-base sm:text-lg text-gray-600">Tout ce que vous devez savoir sur nos offres professionnelles.</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">Questions fréquentes - Pack Pro</h2>
+              <p className="text-sm sm:text-base text-gray-600">Tout ce que vous devez savoir sur nos offres professionnelles.</p>
             </div>
 
             <div className="space-y-4">
@@ -503,8 +599,10 @@ const PackPro: React.FC = () => {
       <section className="py-12 md:py-16 " style={{ backgroundColor: '#211e3b' }}>
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">Prêt à transformer votre activité ?</h2>
-            <p className="text-gray-300 mb-8">Rejoignez les premiers professionnels à bénéficier de Propsight.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3 md:mb-4">Prêt à transformer votre activité ?</h2>
+            <p className="text-sm sm:text-base text-gray-300 mb-6 md:mb-8">
+              Rejoignez les premiers professionnels à bénéficier de Propsight.
+            </p>
             <div className="bg-white rounded-2xl p-6 inline-block">
               <form onSubmit={handleEmailSubmit} className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
