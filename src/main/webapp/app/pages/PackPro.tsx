@@ -336,7 +336,7 @@ const PackPro: React.FC = () => {
         </div>
       </section>
 
-      {/* Pourquoi ImmoXpert Section */}
+      {/* Pourquoi Propsight Section */}
       <section className="py-12 md:py-20 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">

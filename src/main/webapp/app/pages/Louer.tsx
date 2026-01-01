@@ -247,7 +247,7 @@ const Louer: React.FC = () => {
       id: 2,
       name: 'Chloé Dubois',
       avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
-      text: "Grâce à ImmoXpert, j'ai trouvé mon appartement en un temps record. Le site est intuitif et très bien conçu. Une vraie aide pour la recherche de logement.",
+      text: "Grâce à Propsight, j'ai trouvé mon appartement en un temps record. Le site est intuitif et très bien conçu. Une vraie aide pour la recherche de logement.",
     },
     {
       id: 3,
@@ -441,7 +441,7 @@ const Louer: React.FC = () => {
         {/* CTA Section */}
         <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-xl shadow-lg overflow-hidden mb-16">
           <div className="px-8 py-12 text-white">
-            <h2 className="text-2xl font-bold mb-4">ImmoXpert vous offre une plateforme moderne</h2>
+            <h2 className="text-2xl font-bold mb-4">Propsight vous offre une plateforme moderne</h2>
             <p className="text-indigo-100 mb-8 max-w-2xl">
               Grâce à nos filtres de recherche intuitifs, vous trouverez rapidement la propriété qui correspond à vos besoins.
             </p>
@@ -474,7 +474,7 @@ const Louer: React.FC = () => {
         {/* Bottom Banner */}
         <div className="text-center pt-8 border-t border-gray-200">
           <p className="text-gray-500 text-sm max-w-3xl mx-auto">
-            ImmoXpert est votre plateforme de référence pour la location et l'achat de maisons et d'appartements en France - Découvrez une
+            Propsight est votre plateforme de référence pour la location et l'achat de maisons et d'appartements en France - Découvrez une
             large sélection de biens immobiliers adaptés à vos besoins
           </p>
         </div>

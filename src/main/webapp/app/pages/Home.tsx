@@ -22,32 +22,59 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [openFAQ, setOpenFAQ] = useState<number | null>(0); // First FAQ is open by default
   const [email, setEmail] = useState<string>('');
+  const showTestimonials = false; // Section not finished yet
+  const showAgentSection = false; // Section not finished yet
 
   const faqData = [
     {
-      question: 'Comment fonctionne la carte des prix immobiliers?',
+      question: "Qu'est-ce que Propsight ?",
       answer:
-        'Notre carte interactive utilise les données officielles DVF (Demande de Valeurs Foncières) qui recensent toutes les transactions immobilières en France. Vous pouvez visualiser les prix réels au m², filtrer par type de bien et analyser les tendances de votre quartier.',
+        "Propsight est une plateforme immobilière qui regroupe les données essentielles pour décider : carte des prix DVF, annonces immobilières, estimation de biens et simulation d'investissement locatif — le tout dans une interface unique, simple et connectée.",
     },
     {
-      question: "L'estimation de mon bien est-elle vraiment gratuite ?",
+      question: 'Comment fonctionne la carte des prix immobiliers de Propsight ?',
       answer:
-        'Oui, notre estimation est 100% gratuite et sans engagement. Notre algorithme croise les données DVF avec les annonces en temps réel pour vous fournir une fourchette de prix précise en quelques minutes.',
+        "La carte Propsight permet de consulter les transactions immobilières réelles en France grâce aux données DVF (Demandes de valeurs foncières), disponibles depuis janvier 2014. Vous pouvez rechercher une adresse précise ou naviguer sur la carte, puis consulter les détails d'une vente : prix, date, surface, pièces, type de bien et prix au m².",
     },
     {
-      question: "D'où proviennent les annonces immobilières ?",
+      question: "Quelle différence entre la carte DVF de l'État et la carte Propsight ?",
       answer:
-        "Notre agrégateur centralise les annonces des principaux portails immobiliers français : LeBonCoin, SeLoger, PAP, Logic-Immo, Figaro Immo et bien d'autres. Vous n'avez plus besoin de naviguer entre plusieurs sites.",
+        "Les deux s'appuient sur DVF, mais l'expérience et les fonctionnalités ne sont pas comparables. Propsight permet de rechercher une adresse précise, de filtrer (type de bien, pièces, surface, prix, période, prix/m²) et de consulter des statistiques de marché locales (prix moyen, nombre de ventes, etc.). Le service de l'État est davantage orienté parcelle/cadastre, avec une exploration plus administrative, moins de filtres et une lecture moins pratique pour analyser rapidement un micro-marché. En résumé : DVF public = consultation brute, Propsight = analyse immobilière utilisable (filtres + statistiques + lecture locale).",
     },
     {
-      question: 'Comment fonctionne le simulateur de rentabilité ?',
+      question: 'À quelle fréquence les données DVF sont-elles mises à jour ?',
       answer:
-        'Le simulateur calcule votre rentabilité brute et nette, le cashflow mensuel, et analyse les données locales (loyers moyens, tension locative, PLU). Vous pouvez importer directement une annonce via son URL.',
+        "Les données DVF sont mises à jour deux fois par an, avec un décalage d'environ 6 mois entre une vente et sa disponibilité dans la base officielle.",
     },
     {
-      question: 'Les données sont-elles fiables et à jour ?',
+      question: "Comment rechercher les prix immobiliers dans ma ville ou mon quartier et voir l'historique depuis 2014 ?",
       answer:
-        'Nous utilisons exclusivement des sources officielles (DVF, INSEE, ADEME) mises à jour régulièrement. Les annonces sont synchronisées en temps réel depuis les portails partenaires.',
+        "Tapez une adresse, une ville ou un quartier, puis zoomez sur la carte. Propsight affiche les ventes DVF disponibles et vous pouvez filtrer (type de bien, pièces, surface, prix, période…). L'historique est consultable depuis janvier 2014 lorsqu'il existe des transactions sur le secteur.",
+    },
+    {
+      question: 'Quelle est la différence entre DVF (ventes réelles) et les annonces immobilières ?',
+      answer:
+        "DVF regroupe les prix réellement vendus (transactions conclues chez le notaire). Les annonces affichent les prix demandés aujourd'hui (souvent négociables). Comparer DVF et annonces aide à évaluer le juste prix et repérer une surcote.",
+    },
+    {
+      question: "Comment Propsight estime la valeur d'un bien immobilier ?",
+      answer:
+        "Propsight propose un module d'estimation basé sur DVF, les annonces et les données INSEE pour produire une fourchette de prix et un indice de confiance (selon les caractéristiques et les comparables disponibles).",
+    },
+    {
+      question: 'Comment simuler un investissement locatif avec Propsight ?',
+      answer:
+        "Le simulateur d'investissement permet de tester un projet : financement, charges, fiscalité, rendements et cash-flow mensuel. L'objectif est de simuler directement à partir d'un bien, sans tableur.",
+    },
+    {
+      question: "Comment fonctionne l'agrégateur d'annonces multi-sites ?",
+      answer:
+        "L'agrégateur centralise les annonces de plusieurs portails et les enrichit (par exemple : durée de publication, historique de prix, alertes). Il permet aussi de comparer un prix affiché avec les ventes DVF du secteur.",
+    },
+    {
+      question: "Propsight est-il gratuit ? Qui peut l'utiliser ?",
+      answer:
+        "La carte DVF est accessible gratuitement. Des fonctionnalités avancées peuvent être proposées via des formules payantes. Propsight s'adresse aux acheteurs, vendeurs, investisseurs, et à toute personne voulant comprendre les prix réels dans son secteur.",
     },
   ];
 
@@ -202,7 +229,7 @@ const HomePage: React.FC = () => {
                   <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 md:mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
                     +20M
                   </div>
-                  <div className="text-xs sm:text text-gray-500 leading-tight font-bold">Transactions immobilières</div>
+                  <div className="text-sm sm:text-base text-black leading-tight font-bold">Transactions immobilières</div>
                 </div>
 
                 {/* Card 2: Communes couvertes */}
@@ -213,7 +240,7 @@ const HomePage: React.FC = () => {
                   >
                     36 000
                   </div>
-                  <div className="text-xs sm:text text-gray-500 leading-tight font-bold">Communes couvertes</div>
+                  <div className="text-sm sm:text-base text-black leading-tight font-bold">Communes couvertes</div>
                 </div>
 
                 {/* Card 3: Accès illimité */}
@@ -221,7 +248,7 @@ const HomePage: React.FC = () => {
                   <div className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 md:mb-2" style={{ color: 'hsl(245 58% 62%)' }}>
                     Gratuit
                   </div>
-                  <div className="text-xs sm:text text-gray-500 leading-tight font-bold">Accès illimité</div>
+                  <div className="text-sm sm:text-base text-black leading-tight font-bold">Accès illimité</div>
                 </div>
               </div>
 
@@ -340,7 +367,7 @@ const HomePage: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Une seule recherche pour accéder à plusieurs portails immobiliers</h3>
+                    <h3 className=" text-gray-900 mb-1">Une seule recherche pour accéder à plusieurs portails immobiliers</h3>
                   </div>
                 </div>
 
@@ -348,7 +375,7 @@ const HomePage: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Annonces immobilières mises à jour en continu </h3>
+                    <h3 className=" text-gray-900 mb-1">Annonces immobilières mises à jour en continu </h3>
                   </div>
                 </div>
 
@@ -356,20 +383,20 @@ const HomePage: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Alertes personnalisées selon vos critères</h3>
+                    <h3 className=" text-gray-900 mb-1">Alertes personnalisées selon vos critères</h3>
                   </div>
                 </div>
               </div>
 
               {/* Call-to-Action Button */}
-              <button
+              {/* <button
                 onClick={() => navigate('/louer')}
                 className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-all duration-200 hover:opacity-90"
                 style={{ backgroundColor: 'hsl(245 58% 62%)' }}
               >
                 <span>Lancer ma recherche</span>
                 <ArrowRight size={20} />
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -437,7 +464,7 @@ const HomePage: React.FC = () => {
               </div>
 
               {/* Call-to-Action Button */}
-              <button
+              {/* <button
                 onClick={() => navigate('/estimation')}
                 className="inline-flex items-center gap-2 px-6 py-3 border-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90"
                 style={{
@@ -448,7 +475,7 @@ const HomePage: React.FC = () => {
               >
                 <span>Estimer mon bien</span>
                 <ArrowRight size={20} />
-              </button>
+              </button> */}
             </div>
 
             {/* Right Section - Estimation Card */}
@@ -566,7 +593,7 @@ const HomePage: React.FC = () => {
               </div>
 
               {/* Call-to-Action Button */}
-              <button
+              {/* <button
                 onClick={() => navigate('/estimation')}
                 className="inline-flex items-center gap-2 px-6 py-3 border-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90"
                 style={{
@@ -577,119 +604,119 @@ const HomePage: React.FC = () => {
               >
                 <span>Simuler un investissement</span>
                 <ArrowRight size={20} />
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
       </section>
 
       {/* Témoignages Section */}
-      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          {/* Title and Subtitle */}
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">
-              Ils ont trouvé leur bien avec Propsight
-            </h2>
-            <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
-              Découvrez les témoignages de nos utilisateurs qui ont réussi leur projet immobilier.
-            </p>
+      {showTestimonials && (
+        <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-white">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">
+                Ils ont trouvé leur bien avec Propsight
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
+                Découvrez les témoignages de nos utilisateurs qui ont réussi leur projet immobilier.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+              {/* Testimonial 1 */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                {/* Stars */}
+                <div className="flex gap-1 mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
+                  ))}
+                </div>
+
+                {/* Testimonial Text */}
+                <p className="text-gray-700 mb-6 leading-relaxed">
+                  "Grâce à Propsight, j'ai pu comparer les prix réels du quartier avant de faire mon offre. J'ai économisé près de 15 000€
+                  sur mon achat !"
+                </p>
+
+                {/* User Info */}
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                    style={{ backgroundColor: 'hsl(245 58% 62%)' }}
+                  >
+                    M
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">Marie L.</div>
+                    <div className="text-sm text-gray-600">Acheteuse • Lyon</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Testimonial 2 */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                {/* Stars */}
+                <div className="flex gap-1 mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
+                  ))}
+                </div>
+
+                {/* Testimonial Text */}
+                <p className="text-gray-700 mb-6 leading-relaxed">
+                  "Le simulateur de rentabilité m'a permis de valider mon projet d'investissement locatif. Les données DVF sont vraiment
+                  précieuses."
+                </p>
+
+                {/* User Info */}
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                    style={{ backgroundColor: 'hsl(245 58% 62%)' }}
+                  >
+                    T
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">Thomas D.</div>
+                    <div className="text-sm text-gray-600">Investisseur particulier • Bordeaux</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Testimonial 3 */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                {/* Stars */}
+                <div className="flex gap-1 mb-4">
+                  {[...Array(4)].map((_, i) => (
+                    <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
+                  ))}
+                  <Star size={20} className="text-yellow-400" />
+                </div>
+
+                {/* Testimonial Text */}
+                <p className="text-gray-700 mb-6 leading-relaxed">
+                  "J'ai estimé mon appartement gratuitement et le prix était très proche de l'estimation finale de l'agent. Très fiable !"
+                </p>
+
+                {/* User Info */}
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                    style={{ backgroundColor: 'hsl(245 58% 62%)' }}
+                  >
+                    S
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">Sophie M.</div>
+                    <div className="text-sm text-gray-600">Vendeuse • Nantes</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-
-          {/* Testimonials Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-            {/* Testimonial 1 */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              {/* Stars */}
-              <div className="flex gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
-                ))}
-              </div>
-
-              {/* Testimonial Text */}
-              <p className="text-gray-700 mb-6 leading-relaxed">
-                "Grâce à Propsight, j'ai pu comparer les prix réels du quartier avant de faire mon offre. J'ai économisé près de 15 000€ sur
-                mon achat !"
-              </p>
-
-              {/* User Info */}
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                  style={{ backgroundColor: 'hsl(245 58% 62%)' }}
-                >
-                  M
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">Marie L.</div>
-                  <div className="text-sm text-gray-600">Acheteuse • Lyon</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Testimonial 2 */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              {/* Stars */}
-              <div className="flex gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
-                ))}
-              </div>
-
-              {/* Testimonial Text */}
-              <p className="text-gray-700 mb-6 leading-relaxed">
-                "Le simulateur de rentabilité m'a permis de valider mon projet d'investissement locatif. Les données DVF sont vraiment
-                précieuses."
-              </p>
-
-              {/* User Info */}
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                  style={{ backgroundColor: 'hsl(245 58% 62%)' }}
-                >
-                  T
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">Thomas D.</div>
-                  <div className="text-sm text-gray-600">Investisseur particulier • Bordeaux</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Testimonial 3 */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              {/* Stars */}
-              <div className="flex gap-1 mb-4">
-                {[...Array(4)].map((_, i) => (
-                  <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
-                ))}
-                <Star size={20} className="text-yellow-400" />
-              </div>
-
-              {/* Testimonial Text */}
-              <p className="text-gray-700 mb-6 leading-relaxed">
-                "J'ai estimé mon appartement gratuitement et le prix était très proche de l'estimation finale de l'agent. Très fiable !"
-              </p>
-
-              {/* User Info */}
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                  style={{ backgroundColor: 'hsl(245 58% 62%)' }}
-                >
-                  S
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">Sophie M.</div>
-                  <div className="text-sm text-gray-600">Vendeuse • Nantes</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Questions fréquentes Section */}
       <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-gray-50">
@@ -731,31 +758,31 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Vous êtes agent immobilier Section */}
-      <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div
-            className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 md:p-8 rounded-lg"
-            style={{ backgroundColor: 'hsl(245 58% 62% / 0.05)' }}
-          >
-            {/* Left Section - Text */}
-            <div className="text-center md:text-left">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Vous êtes agent immobilier?</h2>
-              <p className="text-base sm:text-lg font-bold" style={{ color: 'hsl(245 58% 62%)' }}>
-                Rejoignez les 20,000 professionels déjà inscrits.
-              </p>
-            </div>
-
-            {/* Right Section - Button */}
-            <button
-              onClick={() => navigate('/investisseurs')}
-              className="px-6 py-3 text-white font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap"
-              style={{ background: 'linear-gradient(to right, hsl(245 58% 62%), hsl(245 58% 50%))' }}
+      {showAgentSection && (
+        <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-white">
+          <div className="max-w-7xl mx-auto">
+            <div
+              className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 md:p-8 rounded-lg"
+              style={{ backgroundColor: 'hsl(245 58% 62% / 0.05)' }}
             >
-              Découvrir nos offres pro
-            </button>
+              <div className="text-center md:text-left">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Vous êtes agent immobilier?</h2>
+                <p className="text-base sm:text-lg font-bold" style={{ color: 'hsl(245 58% 62%)' }}>
+                  Rejoignez les 20,000 professionels déjà inscrits.
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigate('/investisseurs')}
+                className="px-6 py-3 text-white font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap"
+                style={{ background: 'linear-gradient(to right, hsl(245 58% 62%), hsl(245 58% 50%))' }}
+              >
+                Découvrir nos offres pro
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Propsight se construit avec vous Section */}
       <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-white">

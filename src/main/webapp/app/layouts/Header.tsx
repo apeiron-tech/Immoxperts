@@ -5,6 +5,7 @@ import logo from '../../content/assets/Design sans titre.png';
 interface NavItem {
   name: string;
   path: string;
+  dropdown?: { name: string; path: string }[];
 }
 
 const Header: React.FC = () => {
@@ -12,14 +13,24 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const navItems: NavItem[] = [
-    { name: 'Acheter', path: '/acheter' },
-    { name: 'Louer', path: '/louer' },
-    { name: 'Estimation', path: '/estimation' },
-    { name: 'Investisseurs', path: '/investisseurs' },
+    // { name: 'Acheter', path: '/acheter' },
+    // { name: 'Louer', path: '/louer' },
+    // { name: 'Estimation', path: '/estimation' },
+    // { name: 'Investisseurs', path: '/investisseurs' },
     { name: 'Prix immobiliers', path: '/PrixImmobliers' },
-    { name: 'À propos', path: '/TrouverAgent' },
+    {
+      name: 'Ressources',
+      path: '#',
+      dropdown: [
+        { name: 'À propos', path: '/TrouverAgent' },
+        // { name: 'Témoignages', path: '/temoignages' },
+        { name: 'Blog & analyses', path: '/blog' },
+      ],
+    },
   ];
 
   // Handle scroll effect
@@ -35,6 +46,23 @@ const Header: React.FC = () => {
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   return (
     <>
@@ -83,6 +111,48 @@ const Header: React.FC = () => {
             <nav className="hidden md:flex items-center space-x-2">
               {navItems.map((item, index) => {
                 const isActive = location.pathname === item.path && location.pathname !== '/';
+
+                if (item.dropdown) {
+                  return (
+                    <div key={index} className="relative z-[9999]" ref={dropdownRef}>
+                      <button
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200 rounded-lg flex items-center gap-1 ${
+                          isActive ? 'bg-gray-100 text-[hsl(245_58%_62%)]' : 'text-gray-500 hover:text-gray-900'
+                        }`}
+                      >
+                        {item.name}
+                        <svg
+                          className={`w-4 h-4 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {dropdownOpen && (
+                        <div
+                          className="fixed mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[9999]"
+                          style={{ top: '70px', left: 'auto' }}
+                        >
+                          {item.dropdown.map((dropdownItem, idx) => (
+                            <Link
+                              key={idx}
+                              to={dropdownItem.path}
+                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                              onClick={() => setDropdownOpen(false)}
+                            >
+                              {dropdownItem.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <Link
                     key={index}
@@ -100,16 +170,16 @@ const Header: React.FC = () => {
             {/* Action Buttons */}
             <div className="hidden md:flex items-center space-x-4 flex-shrink-0">
               {/* Bouton Se connecter */}
-              <button
+              {/* <button
                 className="px-6 py-2.5 rounded-lg font-medium text-sm text-white transition-all duration-200 hover:opacity-90"
                 style={{ backgroundColor: '#7069F9' }}
                 onClick={() => navigate('/login')}
               >
                 Se connecter
-              </button>
+              </button> */}
 
               {/* Bouton Pack Pro */}
-              <button
+              {/* <button
                 className={`px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 hover:opacity-90 ${
                   location.pathname === '/pack-pro' ? 'text-white' : 'border-2 text-[#7069F9]'
                 }`}
@@ -125,7 +195,7 @@ const Header: React.FC = () => {
                 onClick={() => navigate('/pack-pro')}
               >
                 Pack Pro
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -148,6 +218,27 @@ const Header: React.FC = () => {
                 {/* Navigation Items */}
                 {navItems.map((item, index) => {
                   const isActive = location.pathname === item.path && location.pathname !== '/';
+
+                  if (item.dropdown) {
+                    return (
+                      <div key={index}>
+                        <div className="block py-4 px-4 rounded-xl text-base font-medium text-gray-700">{item.name}</div>
+                        <div className="pl-4 space-y-1">
+                          {item.dropdown.map((dropdownItem, idx) => (
+                            <Link
+                              key={idx}
+                              to={dropdownItem.path}
+                              className="block py-3 px-4 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-all duration-200"
+                              onClick={() => setMobileMenuOpen(false)}
+                            >
+                              {dropdownItem.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <Link
                       key={index}
