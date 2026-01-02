@@ -295,8 +295,10 @@ const Blog: React.FC = () => {
               <BarChart3 className="h-4 w-4" />
               Analyses & décryptages
             </span>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">Le marché immobilier décrypté par les données</h1>
-            <p className="text-xl text-gray-600">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 mb-4 md:mb-6">
+              Le marché immobilier décrypté par les données
+            </h1>
+            <p className="text-base sm:text-lg md:text-xl text-gray-600">
               Analyses sectorielles, tendances et conseils basés sur les transactions réelles. Pas d'opinion, que des faits.
             </p>
           </div>
@@ -304,10 +306,10 @@ const Blog: React.FC = () => {
       </section>
 
       {/* Search & Filters */}
-      <section className="py-8 border-b border-gray-200 bg-white sticky top-[76px] z-40">
+      <section className="py-6 sm:py-8 border-b border-gray-200 bg-white sticky top-[76px] z-40">
         <div className="container mx-auto px-4 sm:px-6 md:px-8">
           {/* Search */}
-          <div className="max-w-md mx-auto mb-6">
+          <div className="max-w-md mx-auto mb-4 sm:mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
@@ -315,27 +317,27 @@ const Blog: React.FC = () => {
                 placeholder="Rechercher un article, une ville..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-opacity-50"
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-opacity-50 text-sm sm:text-base"
                 style={{ '--tw-ring-color': 'hsl(245 58% 62%)' } as React.CSSProperties & { '--tw-ring-color'?: string }}
               />
             </div>
           </div>
 
           {/* Category Filters */}
-          <div className="flex flex-wrap justify-center gap-2">
+          <div className="flex flex-wrap justify-center gap-2 px-2">
             {categories.map(category => (
               <button
                 key={category.id}
                 onClick={() => setActiveCategory(category.id)}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                className={`inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${
                   activeCategory === category.id
                     ? 'text-white shadow-sm'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                 }`}
                 style={activeCategory === category.id ? { backgroundColor: 'hsl(245 58% 62%)' } : {}}
               >
-                <category.icon className="h-3.5 w-3.5" />
-                {category.label}
+                <category.icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
+                <span className="whitespace-nowrap">{category.label}</span>
               </button>
             ))}
           </div>
@@ -405,11 +407,11 @@ const Blog: React.FC = () => {
       {/* Articles Grid */}
       <section className="py-12 md:py-16 bg-gray-100">
         <div className="container mx-auto px-4 sm:px-6 md:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-gray-900">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
               {activeCategory === 'all' ? 'Tous les articles' : categories.find(c => c.id === activeCategory)?.label}
             </h2>
-            <span className="text-sm text-gray-600">
+            <span className="text-xs sm:text-sm text-gray-600">
               {filteredArticles.length} article{filteredArticles.length > 1 ? 's' : ''}
             </span>
           </div>
@@ -476,29 +478,29 @@ const Blog: React.FC = () => {
               borderColor: 'hsl(245 58% 62% / 0.2)',
             }}
           >
-            <div className="grid md:grid-cols-2 gap-8 items-center">
+            <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-center">
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Passez de la lecture à l'action</h2>
-                <p className="text-gray-600">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4">Passez de la lecture à l'action</h2>
+                <p className="text-sm sm:text-base text-gray-600">
                   Les analyses c'est bien, les appliquer c'est mieux. Explorez les prix réels de votre secteur dès maintenant.
                 </p>
               </div>
-              <div className="flex flex-row gap-3 justify-end flex-shrink-0">
+              <div className="flex flex-col sm:flex-row gap-3 justify-end flex-shrink-0">
                 <button
                   onClick={() => navigate('/PrixImmobliers')}
-                  className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-all duration-200 hover:opacity-90 group whitespace-nowrap"
+                  className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-3 text-white font-medium rounded-lg transition-all duration-200 hover:opacity-90 group whitespace-nowrap text-sm sm:text-base"
                   style={{ backgroundColor: 'hsl(245 58% 62%)' }}
                 >
                   Voir les ventes réelles
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </button>
-                <button
+                {/* <button
                   onClick={() => navigate('/estimation')}
-                  className="inline-flex items-center gap-2 px-6 py-3 font-medium rounded-lg border-2 transition-all duration-200 hover:opacity-90 whitespace-nowrap"
+                  className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-3 font-medium rounded-lg border-2 transition-all duration-200 hover:opacity-90 whitespace-nowrap text-sm sm:text-base"
                   style={{ borderColor: 'hsl(245 58% 62%)', color: 'hsl(245 58% 62%)', backgroundColor: 'white' }}
                 >
                   Estimer un bien
-                </button>
+                </button> */}
               </div>
             </div>
           </div>
