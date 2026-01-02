@@ -3910,465 +3910,477 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
       {/* Stats Panel */}
       {showStatsPanel && (
-        <div
-          className="absolute top-0 left-0 right-0 sm:top-4 sm:left-16 sm:right-auto z-50 bg-white rounded-none sm:rounded-xl shadow-xl p-2 sm:p-4 w-full sm:w-[520px] max-h-64 sm:h-auto overflow-y-auto sm:overflow-visible border sm:border border-gray-200"
-          onClick={e => e.stopPropagation()}
-        >
-          {/* Mobile Version - ImmoData Style */}
-          <div className="block sm:hidden">
-            <div className="flex flex-col w-full px-2 py-1 gap-1 lg:gap-1">
-              <div className="flex lg:flex-row flex-col justify-between items-center gap-2">
-                <div className="flex flex-row w-full items-center py-1.5">
-                  <h2 className="text-sm font-semibold text-gray-900 w-full whitespace-nowrap">Statistiques de marché</h2>
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setShowStatsPanel(false)}
-                      className="z-10 w-6 h-6 text-xs rounded-full bg-gray-50 text-gray-400 hover:bg-gray-100 border border-gray-200"
-                    >
-                      <svg className="w-3 h-3 mx-auto" fill="currentColor" viewBox="0 0 384 512">
-                        <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div className="flex flex-row items-center w-full gap-2">
-                  <div className="w-full">
-                    <div className="relative flex lg:justify-end">
-                      <select
-                        value={
-                          statsScope === 'commune'
-                            ? currentCity
-                            : statsScope === 'zone'
-                              ? 'Zone affichée'
-                              : hasQuartier
-                                ? currentQuartier
-                                : 'Quartier (non disponible)'
-                        }
-                        onChange={e => {
-                          if (e.target.value === 'Zone affichée') {
-                            setStatsScope('zone');
-                          } else if (e.target.value === currentQuartier || e.target.value === 'Quartier (non disponible)') {
-                            setStatsScope('quartier');
-                          } else {
-                            setStatsScope('commune');
-                          }
-                        }}
-                        className="bg-white font-medium relative w-full border border-gray-300 rounded-md shadow-sm pl-3 pr-10 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm py-2"
+        <div className="absolute top-0 left-0 right-0 sm:top-4 sm:left-16 sm:right-auto z-50 w-full sm:w-[520px]">
+          <div
+            className="relative bg-white rounded-none sm:rounded-xl shadow-xl p-2 sm:p-4 w-full max-h-64 sm:h-auto overflow-y-auto sm:overflow-visible border sm:border border-gray-200"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Mobile Version - ImmoData Style */}
+            <div className="block sm:hidden">
+              <div className="flex flex-col w-full px-2 py-1 gap-1 lg:gap-1">
+                <div className="flex lg:flex-row flex-col justify-between items-center gap-2">
+                  <div className="flex flex-row w-full items-center py-1.5">
+                    <h2 className="text-sm font-semibold text-gray-900 w-full whitespace-nowrap">Statistiques de marché</h2>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setShowStatsPanel(false)}
+                        className="z-10 w-6 h-6 text-xs rounded-full bg-gray-50 text-gray-400 hover:bg-gray-100 border border-gray-200"
                       >
-                        <option value={currentCity}>
-                          {isCityArrondissement(currentCity) ? `Arrondissement (${currentCity})` : currentCity}
-                        </option>
-                        <option value="Zone affichée">Zone affichée</option>
-                        {/* Quartier option temporarily hidden - not finished yet */}
-                        {/* <option value={hasQuartier ? currentQuartier : 'Quartier (non disponible)'}>
+                        <svg className="w-3 h-3 mx-auto" fill="currentColor" viewBox="0 0 384 512">
+                          <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex flex-row items-center w-full gap-2">
+                    <div className="w-full">
+                      <div className="relative flex lg:justify-end">
+                        <select
+                          value={
+                            statsScope === 'commune'
+                              ? currentCity
+                              : statsScope === 'zone'
+                                ? 'Zone affichée'
+                                : hasQuartier
+                                  ? currentQuartier
+                                  : 'Quartier (non disponible)'
+                          }
+                          onChange={e => {
+                            if (e.target.value === 'Zone affichée') {
+                              setStatsScope('zone');
+                            } else if (e.target.value === currentQuartier || e.target.value === 'Quartier (non disponible)') {
+                              setStatsScope('quartier');
+                            } else {
+                              setStatsScope('commune');
+                            }
+                          }}
+                          className="bg-white font-medium relative w-full border border-gray-300 rounded-md shadow-sm pl-3 pr-10 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm py-2"
+                        >
+                          <option value={currentCity}>
+                            {isCityArrondissement(currentCity) ? `Arrondissement (${currentCity})` : currentCity}
+                          </option>
+                          <option value="Zone affichée">Zone affichée</option>
+                          {/* Quartier option temporarily hidden - not finished yet */}
+                          {/* <option value={hasQuartier ? currentQuartier : 'Quartier (non disponible)'}>
                           {hasQuartier ? currentQuartier : 'Quartier (non disponible)'}
                         </option> */}
-                      </select>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                <div className="flex flex-col gap-2">
+                  {/* Property Type Buttons */}
+                  <div className="flex space-x-1 rounded-lg bg-gray-100 p-1 gap-2">
+                    {(() => {
+                      const allPropertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
+
+                      // Filter property types based on current filters and available data
+                      const getVisiblePropertyTypes = () => {
+                        if (!filterState?.propertyTypes) {
+                          return allPropertyTypeNames; // Show all if no filter
+                        }
+
+                        const propertyTypeMap = {
+                          maison: 'Maison',
+                          appartement: 'Appartement',
+                          localCommercial: 'Local Commercial',
+                          terrain: 'Terrain',
+                          biensMultiples: 'Biens Multiples',
+                        };
+
+                        const selectedTypeNames = new Set(
+                          Object.entries(filterState.propertyTypes)
+                            .filter(([, isSelected]) => isSelected)
+                            .map(([type]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+                            .filter(Boolean),
+                        );
+
+                        if (selectedTypeNames.size === 0) {
+                          return [];
+                        }
+
+                        return allPropertyTypeNames.filter(typeName => selectedTypeNames.has(typeName));
+                      };
+
+                      const propertyTypeNames = getVisiblePropertyTypes();
+
+                      // Use the same background colors as desktop version
+                      const getPropertyTypeButtonColor = typeName => {
+                        const colorMap = {
+                          Maison: '#7A72D5', // #7A72D5 - Violet clair
+                          Appartement: '#504CC5', // #504CC5 - Violet
+                          'Local Commercial': '#205F9D', // #205F9D - Bleu foncé
+                          Terrain: '#4F96D6', // #4F96D6 - Bleu
+                          'Biens Multiples': '#022060', // #022060 - Bleu très foncé
+                        };
+                        return colorMap[typeName] || '#6B7280';
+                      };
+
+                      const propertyIcons = [
+                        // Maison icon - same style as reference
+                        <svg key="maison-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
+                          <path d="M298.6 4c-6-5.3-15.1-5.3-21.2 0L5.4 244c-6.6 5.8-7.3 16-1.4 22.6s16 7.3 22.6 1.4L64 235V432c0 44.2 35.8 80 80 80H432c44.2 0 80-35.8 80-80V235l37.4 33c6.6 5.8 16.7 5.2 22.6-1.4s5.2-16.7-1.4-22.6L298.6 4zM96 432V206.7L288 37.3 480 206.7V432c0 26.5-21.5 48-48 48H368V320c0-17.7-14.3-32-32-32H240c-17.7 0-32 14.3-32 32V480H144c-26.5 0-48-21.5-48-48zm144 48V320h96V480H240z" />
+                        </svg>,
+                        // Appartement icon - same style
+                        <svg key="appartement-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
+                          <g className="fa-duotone-group">
+                            <path
+                              className="fa-secondary"
+                              fill="currentColor"
+                              d="M0 48C0 21.5 21.5 0 48 0H336c26.5 0 48 21.5 48 48V464c0 26.5-21.5 48-48 48H240V432c0-26.5-21.5-48-48-48s-48 21.5-48 48v80H48c-26.5 0-48-21.5-48-48V48zM80 224c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H80zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H176c-8.8 0-16 7.2-16 16zm112-16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H272zM64 112v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H80c-8.8 0-16 7.2-16 16zM176 96c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H176zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H272c-8.8 0-16 7.2-16 16z"
+                            ></path>
+                            <path
+                              className="fa-primary"
+                              fill="currentColor"
+                              d="M80 96c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H80zm0 128c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H80zm96 0c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H176zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H272c-8.8 0-16 7.2-16 16zM160 112v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H176c-8.8 0-16 7.2-16 16zM272 96c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H272z"
+                            ></path>
+                          </g>
+                        </svg>,
+                        // Local Commercial icon - same style
+                        <svg key="local-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
+                          <g className="fa-duotone-group">
+                            <path
+                              className="fa-secondary"
+                              fill="currentColor"
+                              d="M64 192H96h32H320h64H512h32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V224H384V384v80c0 26.5-21.5 48-48 48H112c-26.5 0-48-21.5-48-48V384 192zm256 32H128V384H320V224z"
+                            ></path>
+                            <path
+                              className="fa-primary"
+                              fill="currentColor"
+                              d="M603.2 192H36.8C16.5 192 0 175.5 0 155.2c0-7.3 2.2-14.4 6.2-20.4L81.8 21.4C90.7 8 105.6 0 121.7 0H518.3c16.1 0 31 8 39.9 21.4l75.6 113.3c4 6.1 6.2 13.2 6.2 20.4c0 20.3-16.5 36.8-36.8 36.8z"
+                            ></path>
+                          </g>
+                        </svg>,
+                        // Terrain icon - same style
+                        <svg key="terrain-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
+                          <path d="M235.3 4.7c-6.2-6.2-16.4-6.2-22.6 0L72 145.4c-5.1 5.1-8 12.1-8 19.3C64 179.8 76.2 192 91.3 192h17.9L38.7 274.3c-4.3 5-6.7 11.4-6.7 18C32 307.6 44.4 320 59.7 320H77.2L6.7 402.3c-4.3 5-6.7 11.4-6.7 18C0 435.6 12.4 448 27.7 448H160h48v48c0 8.8 7.2 16 16 16s16-7.2 16-16V448h48H420.3c15.3 0 27.7-12.4 27.7-27.7c0-6.6-2.4-13-6.7-18L370.8 320h17.5c15.3 0 27.7-12.4 27.7-27.7c0-6.6-2.4-13-6.7-18L338.8 192h17.9c15.1 0 27.3-12.2 27.3-27.3c0-7.2-2.9-14.2-8-19.3L235.3 4.7zM240 416V208c0-8.8-7.2-16-16-16s-16 7.2-16 16V416H160 37.1l87.1-101.6c4.1-4.7 5-11.4 2.4-17.1s-8.3-9.3-14.5-9.3H69.1l87.1-101.6c4.1-4.7 5-11.4 2.4-17.1s-8.3-9.3-14.5-9.3H102.6L224 38.6 345.4 160H304c-6.2 0-11.9 3.6-14.5 9.3s-1.7 12.4 2.4 17.1L378.9 288H336c-6.2 0-11.9 3.6-14.5 9.3s-1.7 12.4 2.4 17.1L410.9 416H288 240z" />
+                        </svg>,
+                        // Biens Multiples icon - same style
+                        <svg key="biens-multiples-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
+                          <path d="M320 32H576c17.7 0 32 14.3 32 32V448c0 17.7-14.3 32-32 32H414.4c-2.4 11.8-7.4 22.7-14.4 32H576c35.3 0 64-28.7 64-64V64c0-35.3-28.7-64-64-64H320c-35.3 0-64 28.7-64 64V95.3l32 29.3V64c0-17.7 14.3-32 32-32zM496 208c-17.7 0-32 14.3-32 32v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V240c0-17.7-14.3-32-32-32H496zm0 32h32v32H496V240zM464 368v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V368c0-17.7-14.3-32-32-32H496c-17.7 0-32 14.3-32 32zm64 0v32H496V368h32zM368 80c-17.7 0-32 14.3-32 32v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V112c0-17.7-14.3-32-32-32H368zm0 32h32v32H368V112zm96 0v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V112c0-17.7-14.3-32-32-32H496c-17.7 0-32 14.3-32 32zm64 0v32H496V112h32zM32 284.2c0-9 3.8-17.5 10.4-23.6l128-117.3c12.2-11.2 31-11.2 43.2 0l128 117.3c6.6 6.1 10.4 14.6 10.4 23.6V448c0 17.7-14.3 32-32 32H64c-17.7 0-32-14.3-32-32V284.2zM0 448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V284.2c0-17.9-7.5-35.1-20.8-47.2l-128-117.3c-24.5-22.4-62-22.4-86.5 0L20.8 237C7.5 249.1 0 266.2 0 284.2V448zM224 288v64H160V288h64zm-64-32c-17.7 0-32 14.3-32 32v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V288c0-17.7-14.3-32-32-32H160z" />
+                        </svg>,
+                      ];
+
+                      return propertyTypeNames.map((typeName, index) => (
+                        <div
+                          key={typeName}
+                          className={`flex justify-center w-full rounded-md py-2 text-xs leading-4 px-3 ring-white/60 ring-offset-0 ring-offset-blue-400 focus:outline-none focus:ring-2 hover:cursor-pointer transition-all duration-200 ${
+                            activePropertyType === index
+                              ? 'text-white shadow font-medium'
+                              : 'text-gray-500 hover:bg-white/[0.12] hover:text-gray-900'
+                          }`}
+                          style={activePropertyType === index ? { backgroundColor: getPropertyTypeButtonColor(typeName) } : {}}
+                          onClick={() => setActivePropertyType(index)}
+                        >
+                          <p className="flex items-center justify-center group">
+                            <span className={`w-4 h-4 ${activePropertyType === index ? 'text-white' : ''}`}>
+                              {React.cloneElement(propertyIcons[index], {
+                                className: activePropertyType === index ? 'text-white' : '',
+                                style: activePropertyType === index ? { color: 'white' } : { color: getPropertyTypeButtonColor(typeName) },
+                              })}
+                            </span>
+                            <span
+                              className={`overflow-hidden whitespace-nowrap pl-1.5 ${activePropertyType === index ? 'inline-block' : 'w-0 hidden'}`}
+                            >
+                              {typeName}
+                            </span>
+                          </p>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+
+                  {/* Statistics Display - Cards like Desktop */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(() => {
+                      const allPropertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
+
+                      // Use the same filtering logic as the buttons above
+                      const getVisiblePropertyTypes = () => {
+                        if (!filterState?.propertyTypes) {
+                          return allPropertyTypeNames; // Show all if no filter
+                        }
+
+                        const propertyTypeMap = {
+                          maison: 'Maison',
+                          appartement: 'Appartement',
+                          localCommercial: 'Local Commercial',
+                          terrain: 'Terrain',
+                          biensMultiples: 'Biens Multiples',
+                        };
+
+                        const selectedTypeNames = new Set(
+                          Object.entries(filterState.propertyTypes)
+                            .filter(([, isSelected]) => isSelected)
+                            .map(([type]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+                            .filter(Boolean),
+                        );
+
+                        if (selectedTypeNames.size === 0) {
+                          return [];
+                        }
+
+                        return allPropertyTypeNames.filter(typeName => selectedTypeNames.has(typeName));
+                      };
+
+                      const propertyTypeNames = getVisiblePropertyTypes();
+                      const apiTypeMap = {
+                        'Local Commercial': 'Local Commercial',
+                        Appartement: 'Appartement',
+                        Maison: 'Maison',
+                        Terrain: 'Terrain',
+                        'Biens Multiples': 'Bien Multiple',
+                      };
+
+                      const currentStatsData = statsScope === 'commune' ? propertyStats : statsScope === 'zone' ? zoneStats : propertyStats;
+                      const selectedTypeName = propertyTypeNames[activePropertyType];
+                      const apiTypeName = apiTypeMap[selectedTypeName] || selectedTypeName;
+
+                      const match = currentStatsData.find(item => item.typeGroupe === apiTypeName);
+                      const currentStat = {
+                        nombre: match?.nombreMutations || match?.nombre || 0,
+                        prixMoyen: match?.prixMoyenDec2024 || match?.prixMoyen || 0,
+                        prixM2Moyen: match?.prixM2MoyenDec2024 || match?.prixM2Moyen || 0,
+                      };
+
+                      if (isLoading || (statsScope === 'quartier' && isLoadingQuartier)) {
+                        return (
+                          <div className="flex justify-center w-full py-4">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                          </div>
+                        );
+                      }
+
+                      if (error) {
+                        return (
+                          <div className="text-center w-full py-4">
+                            <p className="text-red-500 text-sm">⚠️ {error}</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <>
+                          <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center justify-center">
+                            <p
+                              className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
+                              style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
+                            >
+                              Nombre de ventes
+                            </p>
+                            <p
+                              className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
+                              style={{ fontSize: 'clamp(11px, 2.4vw, 13px)', lineHeight: '1.2' }}
+                            >
+                              {formatNumber(currentStat.nombre)}
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center justify-center">
+                            <p
+                              className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
+                              style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
+                            >
+                              Prix moyen
+                            </p>
+                            <p
+                              className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
+                              style={{ fontSize: 'clamp(11px, 2.4vw, 13px)', lineHeight: '1.2' }}
+                            >
+                              {formatNumber(currentStat.prixMoyen)}€
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center justify-center">
+                            <p
+                              className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
+                              style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
+                            >
+                              Prix moyen au m²
+                            </p>
+                            <p
+                              className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
+                              style={{ fontSize: 'clamp(11px, 2.4vw, 13px)', lineHeight: '1.2' }}
+                            >
+                              {Math.round(currentStat.prixM2Moyen || 0).toLocaleString('fr-FR')}€
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop Version - Original Style */}
+            <div className="hidden sm:block">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-2">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-800">Statistiques Marché</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div>
+                    <select
+                      id="stats-scope"
+                      value={statsScope}
+                      onChange={e => setStatsScope(e.target.value as 'commune' | 'zone' | 'quartier')}
+                      className="border border-gray-300 rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer w-full sm:min-w-[120px]"
+                      style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+                    >
+                      <option value="commune">
+                        {isCityArrondissement(currentCity) ? `Arrondissement (${currentCity})` : `Commune (${currentCity})`}
+                      </option>
+                      <option value="zone">Zone affichée</option>
+                      {/* Quartier option temporarily hidden - not finished yet */}
+                      {/* <option value="quartier">
+                      {hasQuartier ? `Quartier (${currentQuartier || 'Chargement...'})` : 'Quartier (non disponible)'}
+                    </option> */}
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-2">
-                {/* Property Type Buttons */}
-                <div className="flex space-x-1 rounded-lg bg-gray-100 p-1 gap-2">
-                  {(() => {
-                    const allPropertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
+              <div className="h-px bg-gray-200 w-full mb-3" />
 
-                    // Filter property types based on current filters and available data
-                    const getVisiblePropertyTypes = () => {
-                      if (!filterState?.propertyTypes) {
-                        return allPropertyTypeNames; // Show all if no filter
-                      }
+              {(() => {
+                // ✅ Adaptation pour les nouvelles données de l'API
+                const allPropertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
 
-                      const propertyTypeMap = {
-                        maison: 'Maison',
-                        appartement: 'Appartement',
-                        localCommercial: 'Local Commercial',
-                        terrain: 'Terrain',
-                        biensMultiples: 'Biens Multiples',
-                      };
+                // Filter property types based on current filters
+                const getVisiblePropertyTypes = () => {
+                  if (!filterState?.propertyTypes) {
+                    return allPropertyTypeNames; // Show all if no filter
+                  }
 
-                      const selectedTypeNames = new Set(
-                        Object.entries(filterState.propertyTypes)
-                          .filter(([, isSelected]) => isSelected)
-                          .map(([type]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
-                          .filter(Boolean),
-                      );
+                  const propertyTypeMap = {
+                    appartement: 'Appartement',
+                    maison: 'Maison',
+                    terrain: 'Terrain',
+                    localCommercial: 'Local',
+                    biensMultiples: 'Bien Multiple',
+                  };
 
-                      if (selectedTypeNames.size === 0) {
-                        return [];
-                      }
+                  const selectedTypeNames = new Set(
+                    Object.entries(filterState.propertyTypes)
+                      .filter(([, isSelected]) => isSelected)
+                      .map(([type]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
+                      .filter(Boolean),
+                  );
 
-                      return allPropertyTypeNames.filter(typeName => selectedTypeNames.has(typeName));
-                    };
+                  if (selectedTypeNames.size === 0) {
+                    return [];
+                  }
 
-                    const propertyTypeNames = getVisiblePropertyTypes();
+                  return allPropertyTypeNames.filter(typeName => selectedTypeNames.has(typeName));
+                };
 
-                    // Use the same background colors as desktop version
-                    const getPropertyTypeButtonColor = typeName => {
-                      const colorMap = {
-                        Maison: '#7A72D5', // #7A72D5 - Violet clair
-                        Appartement: '#504CC5', // #504CC5 - Violet
-                        'Local Commercial': '#205F9D', // #205F9D - Bleu foncé
-                        Terrain: '#4F96D6', // #4F96D6 - Bleu
-                        'Biens Multiples': '#022060', // #022060 - Bleu très foncé
-                      };
-                      return colorMap[typeName] || '#6B7280';
-                    };
+                const propertyTypeNames = getVisiblePropertyTypes();
+                // ✅ Nouvelles couleurs spécifiées
+                const getPropertyTypeButtonColor = typeName => {
+                  const colorMap = {
+                    Appartement: 'bg-[#504CC5]', // #504CC5 - Violet
+                    Maison: 'bg-[#7A72D5]', // #7A72D5 - Violet clair
+                    Terrain: 'bg-[#4F96D6]', // #4F96D6 - Bleu
+                    Local: 'bg-[#205F9D]', // #205F9D - Bleu foncé
+                    'Bien Multiple': 'bg-[#022060]', // #022060 - Bleu très foncé
+                  };
+                  return colorMap[typeName] || 'bg-gray-500';
+                };
 
-                    const propertyIcons = [
-                      // Maison icon - same style as reference
-                      <svg key="maison-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
-                        <path d="M298.6 4c-6-5.3-15.1-5.3-21.2 0L5.4 244c-6.6 5.8-7.3 16-1.4 22.6s16 7.3 22.6 1.4L64 235V432c0 44.2 35.8 80 80 80H432c44.2 0 80-35.8 80-80V235l37.4 33c6.6 5.8 16.7 5.2 22.6-1.4s5.2-16.7-1.4-22.6L298.6 4zM96 432V206.7L288 37.3 480 206.7V432c0 26.5-21.5 48-48 48H368V320c0-17.7-14.3-32-32-32H240c-17.7 0-32 14.3-32 32V480H144c-26.5 0-48-21.5-48-48zm144 48V320h96V480H240z" />
-                      </svg>,
-                      // Appartement icon - same style
-                      <svg key="appartement-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
-                        <g className="fa-duotone-group">
-                          <path
-                            className="fa-secondary"
-                            fill="currentColor"
-                            d="M0 48C0 21.5 21.5 0 48 0H336c26.5 0 48 21.5 48 48V464c0 26.5-21.5 48-48 48H240V432c0-26.5-21.5-48-48-48s-48 21.5-48 48v80H48c-26.5 0-48-21.5-48-48V48zM80 224c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H80zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H176c-8.8 0-16 7.2-16 16zm112-16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H272zM64 112v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H80c-8.8 0-16 7.2-16 16zM176 96c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H176zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H272c-8.8 0-16 7.2-16 16z"
-                          ></path>
-                          <path
-                            className="fa-primary"
-                            fill="currentColor"
-                            d="M80 96c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H80zm0 128c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H80zm96 0c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H176zm80 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V240c0-8.8-7.2-16-16-16H272c-8.8 0-16 7.2-16 16zM160 112v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H176c-8.8 0-16 7.2-16 16zM272 96c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V112c0-8.8-7.2-16-16-16H272z"
-                          ></path>
-                        </g>
-                      </svg>,
-                      // Local Commercial icon - same style
-                      <svg key="local-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
-                        <g className="fa-duotone-group">
-                          <path
-                            className="fa-secondary"
-                            fill="currentColor"
-                            d="M64 192H96h32H320h64H512h32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V224H384V384v80c0 26.5-21.5 48-48 48H112c-26.5 0-48-21.5-48-48V384 192zm256 32H128V384H320V224z"
-                          ></path>
-                          <path
-                            className="fa-primary"
-                            fill="currentColor"
-                            d="M603.2 192H36.8C16.5 192 0 175.5 0 155.2c0-7.3 2.2-14.4 6.2-20.4L81.8 21.4C90.7 8 105.6 0 121.7 0H518.3c16.1 0 31 8 39.9 21.4l75.6 113.3c4 6.1 6.2 13.2 6.2 20.4c0 20.3-16.5 36.8-36.8 36.8z"
-                          ></path>
-                        </g>
-                      </svg>,
-                      // Terrain icon - same style
-                      <svg key="terrain-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
-                        <path d="M235.3 4.7c-6.2-6.2-16.4-6.2-22.6 0L72 145.4c-5.1 5.1-8 12.1-8 19.3C64 179.8 76.2 192 91.3 192h17.9L38.7 274.3c-4.3 5-6.7 11.4-6.7 18C32 307.6 44.4 320 59.7 320H77.2L6.7 402.3c-4.3 5-6.7 11.4-6.7 18C0 435.6 12.4 448 27.7 448H160h48v48c0 8.8 7.2 16 16 16s16-7.2 16-16V448h48H420.3c15.3 0 27.7-12.4 27.7-27.7c0-6.6-2.4-13-6.7-18L370.8 320h17.5c15.3 0 27.7-12.4 27.7-27.7c0-6.6-2.4-13-6.7-18L338.8 192h17.9c15.1 0 27.3-12.2 27.3-27.3c0-7.2-2.9-14.2-8-19.3L235.3 4.7zM240 416V208c0-8.8-7.2-16-16-16s-16 7.2-16 16V416H160 37.1l87.1-101.6c4.1-4.7 5-11.4 2.4-17.1s-8.3-9.3-14.5-9.3H69.1l87.1-101.6c4.1-4.7 5-11.4 2.4-17.1s-8.3-9.3-14.5-9.3H102.6L224 38.6 345.4 160H304c-6.2 0-11.9 3.6-14.5 9.3s-1.7 12.4 2.4 17.1L378.9 288H336c-6.2 0-11.9 3.6-14.5 9.3s-1.7 12.4 2.4 17.1L410.9 416H288 240z" />
-                      </svg>,
-                      // Biens Multiples icon - same style
-                      <svg key="biens-multiples-icon" className="text-white" fill="currentColor" viewBox="0 0 640 512">
-                        <path d="M320 32H576c17.7 0 32 14.3 32 32V448c0 17.7-14.3 32-32 32H414.4c-2.4 11.8-7.4 22.7-14.4 32H576c35.3 0 64-28.7 64-64V64c0-35.3-28.7-64-64-64H320c-35.3 0-64 28.7-64 64V95.3l32 29.3V64c0-17.7 14.3-32 32-32zM496 208c-17.7 0-32 14.3-32 32v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V240c0-17.7-14.3-32-32-32H496zm0 32h32v32H496V240zM464 368v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V368c0-17.7-14.3-32-32-32H496c-17.7 0-32 14.3-32 32zm64 0v32H496V368h32zM368 80c-17.7 0-32 14.3-32 32v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V112c0-17.7-14.3-32-32-32H368zm0 32h32v32H368V112zm96 0v32c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V112c0-17.7-14.3-32-32-32H496c-17.7 0-32 14.3-32 32zm64 0v32H496V112h32zM32 284.2c0-9 3.8-17.5 10.4-23.6l128-117.3c12.2-11.2 31-11.2 43.2 0l128 117.3c6.6 6.1 10.4 14.6 10.4 23.6V448c0 17.7-14.3 32-32 32H64c-17.7 0-32-14.3-32-32V284.2zM0 448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V284.2c0-17.9-7.5-35.1-20.8-47.2l-128-117.3c-24.5-22.4-62-22.4-86.5 0L20.8 237C7.5 249.1 0 266.2 0 284.2V448zM224 288v64H160V288h64zm-64-32c-17.7 0-32 14.3-32 32v64c0 17.7 14.3 32 32 32h64c17.7 0 32-14.3 32-32V288c0-17.7-14.3-32-32-32H160z" />
-                      </svg>,
-                    ];
+                // **NEW**: Choose data source based on selected scope
+                const currentStatsData =
+                  statsScope === 'commune'
+                    ? propertyStats
+                    : statsScope === 'zone'
+                      ? zoneStats
+                      : // For quartier, use propertyStats but they will be zeros when quartier changes
+                        propertyStats;
 
-                    return propertyTypeNames.map((typeName, index) => (
-                      <div
-                        key={typeName}
-                        className={`flex justify-center w-full rounded-md py-2 text-xs leading-4 px-3 ring-white/60 ring-offset-0 ring-offset-blue-400 focus:outline-none focus:ring-2 hover:cursor-pointer transition-all duration-200 ${
-                          activePropertyType === index
-                            ? 'text-white shadow font-medium'
-                            : 'text-gray-500 hover:bg-white/[0.12] hover:text-gray-900'
-                        }`}
-                        style={activePropertyType === index ? { backgroundColor: getPropertyTypeButtonColor(typeName) } : {}}
-                        onClick={() => setActivePropertyType(index)}
-                      >
-                        <p className="flex items-center justify-center group">
-                          <span className={`w-4 h-4 ${activePropertyType === index ? 'text-white' : ''}`}>
-                            {React.cloneElement(propertyIcons[index], {
-                              className: activePropertyType === index ? 'text-white' : '',
-                              style: activePropertyType === index ? { color: 'white' } : { color: getPropertyTypeButtonColor(typeName) },
-                            })}
-                          </span>
-                          <span
-                            className={`overflow-hidden whitespace-nowrap pl-1.5 ${activePropertyType === index ? 'inline-block' : 'w-0 hidden'}`}
-                          >
-                            {typeName}
-                          </span>
-                        </p>
+                const normalizedStats = propertyTypeNames.map((typeName, index) => {
+                  // ✅ Mapping des noms pour correspondre aux données API
+                  const apiTypeMap = {
+                    Local: 'Local Commercial',
+                    Appartement: 'Appartement',
+                    Maison: 'Maison',
+                    Terrain: 'Terrain',
+                    'Bien Multiple': 'Bien Multiple',
+                  };
+
+                  const apiTypeName = apiTypeMap[typeName] || typeName;
+
+                  // ✅ Recherche directe par typeGroupe depuis l'API ou zone data
+                  const match = currentStatsData.find(item => {
+                    return item.typeGroupe === apiTypeName;
+                  });
+
+                  return {
+                    typeBien: typeName,
+                    nombre: match?.nombreMutations || match?.nombre || 0,
+                    prixMoyen: match?.prixMoyenDec2024 || match?.prixMoyen || 0,
+                    prixM2Moyen: match?.prixM2MoyenDec2024 || match?.prixM2Moyen || 0,
+                  };
+                });
+
+                return (
+                  <>
+                    <div className="grid grid-cols-2 sm:flex sm:flex-nowrap mb-3 gap-1 sm:gap-2">
+                      {normalizedStats.map((stat, index) => (
+                        <button
+                          key={stat.typeBien}
+                          className={`flex-1 py-2 px-1 sm:px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
+                            activePropertyType === index
+                              ? `${getPropertyTypeButtonColor(stat.typeBien)} text-white`
+                              : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
+                          }`}
+                          onClick={() => setActivePropertyType(index)}
+                        >
+                          {stat.typeBien}
+                        </button>
+                      ))}
+                    </div>
+
+                    {isLoading || (statsScope === 'quartier' && isLoadingQuartier) ? (
+                      <div className="flex justify-center py-2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent" />
                       </div>
-                    ));
-                  })()}
-                </div>
-
-                {/* Statistics Display - Cards like Desktop */}
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(() => {
-                    const allPropertyTypeNames = ['Maison', 'Appartement', 'Local Commercial', 'Terrain', 'Biens Multiples'];
-
-                    // Use the same filtering logic as the buttons above
-                    const getVisiblePropertyTypes = () => {
-                      if (!filterState?.propertyTypes) {
-                        return allPropertyTypeNames; // Show all if no filter
-                      }
-
-                      const propertyTypeMap = {
-                        maison: 'Maison',
-                        appartement: 'Appartement',
-                        localCommercial: 'Local Commercial',
-                        terrain: 'Terrain',
-                        biensMultiples: 'Biens Multiples',
-                      };
-
-                      const selectedTypeNames = new Set(
-                        Object.entries(filterState.propertyTypes)
-                          .filter(([, isSelected]) => isSelected)
-                          .map(([type]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
-                          .filter(Boolean),
-                      );
-
-                      if (selectedTypeNames.size === 0) {
-                        return [];
-                      }
-
-                      return allPropertyTypeNames.filter(typeName => selectedTypeNames.has(typeName));
-                    };
-
-                    const propertyTypeNames = getVisiblePropertyTypes();
-                    const apiTypeMap = {
-                      'Local Commercial': 'Local Commercial',
-                      Appartement: 'Appartement',
-                      Maison: 'Maison',
-                      Terrain: 'Terrain',
-                      'Biens Multiples': 'Bien Multiple',
-                    };
-
-                    const currentStatsData = statsScope === 'commune' ? propertyStats : statsScope === 'zone' ? zoneStats : propertyStats;
-                    const selectedTypeName = propertyTypeNames[activePropertyType];
-                    const apiTypeName = apiTypeMap[selectedTypeName] || selectedTypeName;
-
-                    const match = currentStatsData.find(item => item.typeGroupe === apiTypeName);
-                    const currentStat = {
-                      nombre: match?.nombreMutations || match?.nombre || 0,
-                      prixMoyen: match?.prixMoyenDec2024 || match?.prixMoyen || 0,
-                      prixM2Moyen: match?.prixM2MoyenDec2024 || match?.prixM2Moyen || 0,
-                    };
-
-                    if (isLoading || (statsScope === 'quartier' && isLoadingQuartier)) {
-                      return (
-                        <div className="flex justify-center w-full py-4">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                        </div>
-                      );
-                    }
-
-                    if (error) {
-                      return (
-                        <div className="text-center w-full py-4">
-                          <p className="text-red-500 text-sm">⚠️ {error}</p>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <>
-                        <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center justify-center">
-                          <p
-                            className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
-                            style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
-                          >
-                            Nombre de ventes
-                          </p>
-                          <p
-                            className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
-                            style={{ fontSize: 'clamp(11px, 2.4vw, 13px)', lineHeight: '1.2' }}
-                          >
-                            {formatNumber(currentStat.nombre)}
+                    ) : error ? (
+                      <div className="text-red-500 text-center py-1 text-xs">⚠️ {error}</div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                        <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-600 mb-1">Nombre de ventes</p>
+                          <p className="text-sm sm:text-base font-semibold text-gray-900">
+                            {formatNumber(normalizedStats[activePropertyType]?.nombre)}
                           </p>
                         </div>
-                        <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center justify-center">
-                          <p
-                            className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
-                            style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
-                          >
-                            Prix moyen
-                          </p>
-                          <p
-                            className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
-                            style={{ fontSize: 'clamp(11px, 2.4vw, 13px)', lineHeight: '1.2' }}
-                          >
-                            {formatNumber(currentStat.prixMoyen)}€
+                        <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-600 mb-1">Prix moyen</p>
+                          <p className="text-sm sm:text-base font-semibold text-gray-900">
+                            {formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€
                           </p>
                         </div>
-                        <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex flex-col items-center justify-center">
-                          <p
-                            className="text-gray-600 text-center whitespace-nowrap mb-1 w-full"
-                            style={{ fontSize: 'clamp(9px, 1.8vw, 11px)', lineHeight: '1.2' }}
-                          >
-                            Prix moyen au m²
-                          </p>
-                          <p
-                            className="font-semibold text-gray-900 text-center whitespace-nowrap w-full"
-                            style={{ fontSize: 'clamp(11px, 2.4vw, 13px)', lineHeight: '1.2' }}
-                          >
-                            {Math.round(currentStat.prixM2Moyen || 0).toLocaleString('fr-FR')}€
+                        <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-600 mb-1">Prix moyen au m²</p>
+                          <p className="text-sm sm:text-base font-semibold text-gray-900">
+                            {Math.round(normalizedStats[activePropertyType]?.prixM2Moyen || 0).toLocaleString('fr-FR')}€
                           </p>
                         </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
 
-          {/* Desktop Version - Original Style */}
-          <div className="hidden sm:block">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-2">
-              <h3 className="text-sm sm:text-base font-semibold text-gray-800">Statistiques Marché</h3>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <div>
-                  <select
-                    id="stats-scope"
-                    value={statsScope}
-                    onChange={e => setStatsScope(e.target.value as 'commune' | 'zone' | 'quartier')}
-                    className="border border-gray-300 rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-xs font-semibold bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 transition-colors duration-150 shadow-sm cursor-pointer w-full sm:min-w-[120px]"
-                    style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
-                  >
-                    <option value="commune">
-                      {isCityArrondissement(currentCity) ? `Arrondissement (${currentCity})` : `Commune (${currentCity})`}
-                    </option>
-                    <option value="zone">Zone affichée</option>
-                    {/* Quartier option temporarily hidden - not finished yet */}
-                    {/* <option value="quartier">
-                      {hasQuartier ? `Quartier (${currentQuartier || 'Chargement...'})` : 'Quartier (non disponible)'}
-                    </option> */}
-                  </select>
-                </div>
-              </div>
+          {/* Blur overlay on top of stats panel */}
+          <div
+            className="absolute inset-0 bg-white/40 backdrop-blur-sm rounded-none sm:rounded-xl pointer-events-none flex items-center justify-center"
+            style={{ backdropFilter: 'blur(4px)' }}
+          >
+            <div className="bg-white/95 px-6 py-3 rounded-lg shadow-xl border-2 border-gray-400">
+              <p className="text-lg font-bold text-gray-900">Bientôt dispo</p>
             </div>
-
-            <div className="h-px bg-gray-200 w-full mb-3" />
-
-            {(() => {
-              // ✅ Adaptation pour les nouvelles données de l'API
-              const allPropertyTypeNames = ['Appartement', 'Maison', 'Terrain', 'Local', 'Bien Multiple'];
-
-              // Filter property types based on current filters
-              const getVisiblePropertyTypes = () => {
-                if (!filterState?.propertyTypes) {
-                  return allPropertyTypeNames; // Show all if no filter
-                }
-
-                const propertyTypeMap = {
-                  appartement: 'Appartement',
-                  maison: 'Maison',
-                  terrain: 'Terrain',
-                  localCommercial: 'Local',
-                  biensMultiples: 'Bien Multiple',
-                };
-
-                const selectedTypeNames = new Set(
-                  Object.entries(filterState.propertyTypes)
-                    .filter(([, isSelected]) => isSelected)
-                    .map(([type]) => propertyTypeMap[type as keyof typeof propertyTypeMap])
-                    .filter(Boolean),
-                );
-
-                if (selectedTypeNames.size === 0) {
-                  return [];
-                }
-
-                return allPropertyTypeNames.filter(typeName => selectedTypeNames.has(typeName));
-              };
-
-              const propertyTypeNames = getVisiblePropertyTypes();
-              // ✅ Nouvelles couleurs spécifiées
-              const getPropertyTypeButtonColor = typeName => {
-                const colorMap = {
-                  Appartement: 'bg-[#504CC5]', // #504CC5 - Violet
-                  Maison: 'bg-[#7A72D5]', // #7A72D5 - Violet clair
-                  Terrain: 'bg-[#4F96D6]', // #4F96D6 - Bleu
-                  Local: 'bg-[#205F9D]', // #205F9D - Bleu foncé
-                  'Bien Multiple': 'bg-[#022060]', // #022060 - Bleu très foncé
-                };
-                return colorMap[typeName] || 'bg-gray-500';
-              };
-
-              // **NEW**: Choose data source based on selected scope
-              const currentStatsData =
-                statsScope === 'commune'
-                  ? propertyStats
-                  : statsScope === 'zone'
-                    ? zoneStats
-                    : // For quartier, use propertyStats but they will be zeros when quartier changes
-                      propertyStats;
-
-              const normalizedStats = propertyTypeNames.map((typeName, index) => {
-                // ✅ Mapping des noms pour correspondre aux données API
-                const apiTypeMap = {
-                  Local: 'Local Commercial',
-                  Appartement: 'Appartement',
-                  Maison: 'Maison',
-                  Terrain: 'Terrain',
-                  'Bien Multiple': 'Bien Multiple',
-                };
-
-                const apiTypeName = apiTypeMap[typeName] || typeName;
-
-                // ✅ Recherche directe par typeGroupe depuis l'API ou zone data
-                const match = currentStatsData.find(item => {
-                  return item.typeGroupe === apiTypeName;
-                });
-
-                return {
-                  typeBien: typeName,
-                  nombre: match?.nombreMutations || match?.nombre || 0,
-                  prixMoyen: match?.prixMoyenDec2024 || match?.prixMoyen || 0,
-                  prixM2Moyen: match?.prixM2MoyenDec2024 || match?.prixM2Moyen || 0,
-                };
-              });
-
-              return (
-                <>
-                  <div className="grid grid-cols-2 sm:flex sm:flex-nowrap mb-3 gap-1 sm:gap-2">
-                    {normalizedStats.map((stat, index) => (
-                      <button
-                        key={stat.typeBien}
-                        className={`flex-1 py-2 px-1 sm:px-2 rounded-lg text-center text-xs font-medium whitespace-nowrap ${
-                          activePropertyType === index
-                            ? `${getPropertyTypeButtonColor(stat.typeBien)} text-white`
-                            : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
-                        }`}
-                        onClick={() => setActivePropertyType(index)}
-                      >
-                        {stat.typeBien}
-                      </button>
-                    ))}
-                  </div>
-
-                  {isLoading || (statsScope === 'quartier' && isLoadingQuartier) ? (
-                    <div className="flex justify-center py-2">
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent" />
-                    </div>
-                  ) : error ? (
-                    <div className="text-red-500 text-center py-1 text-xs">⚠️ {error}</div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1">Nombre de ventes</p>
-                        <p className="text-sm sm:text-base font-semibold text-gray-900">
-                          {formatNumber(normalizedStats[activePropertyType]?.nombre)}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1">Prix moyen</p>
-                        <p className="text-sm sm:text-base font-semibold text-gray-900">
-                          {formatNumber(normalizedStats[activePropertyType]?.prixMoyen)}€
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1">Prix moyen au m²</p>
-                        <p className="text-sm sm:text-base font-semibold text-gray-900">
-                          {Math.round(normalizedStats[activePropertyType]?.prixM2Moyen || 0).toLocaleString('fr-FR')}€
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
           </div>
         </div>
       )}

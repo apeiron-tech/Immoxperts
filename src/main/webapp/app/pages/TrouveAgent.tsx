@@ -26,9 +26,9 @@ const values = [
 ];
 
 const stats = [
-  { value: '5M+', label: 'Transactions DVF indexées' },
-  { value: '36 000', label: 'Communes couvertes', breakValue: true },
-  { value: '100%', label: 'Données officielles' },
+  { value: '20M+', label: 'Transactions DVF depuis 2014' },
+  { value: '700 000', label: 'Annonces immobilières agrégées', breakValue: true },
+  { value: 'IA', label: 'Estimation & Scoring intelligent' },
 ];
 
 const blogPosts = [
@@ -173,18 +173,18 @@ const TrouveAgent: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl border border-gray-200">
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+              <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-3 items-end">
                 {stats.map((stat, index) => (
-                  <div key={index} className="text-center">
+                  <div key={index} className="text-center flex flex-col items-center">
                     <p
-                      className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold whitespace-nowrap"
+                      className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold whitespace-pre-line leading-tight mb-2 sm:mb-3"
                       style={{
                         color: 'hsl(245 58% 62%)',
                       }}
                     >
                       {stat.value}
                     </p>
-                    <p className="text-[10px] sm:text-xs text-gray-600 mt-1 sm:mt-2 leading-tight">{stat.label}</p>
+                    <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 leading-tight whitespace-nowrap">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -320,8 +320,8 @@ const TrouveAgent: React.FC = () => {
         </div>
       </section>
 
-      {/* What we offer */}
-      <section className="py-12 md:py-20 bg-gray-50 px-4 sm:px-6 md:px-8">
+      {/* What we offer - Hidden */}
+      {/* <section className="py-12 md:py-20 bg-gray-50 px-4 sm:px-6 md:px-8">
         <div className="container mx-auto">
           <SectionTitle title="Ce que nous proposons" subtitle="Des outils pour tous vos projets immobiliers." />
 
@@ -367,7 +367,7 @@ const TrouveAgent: React.FC = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* CTA */}
       <section className="py-12 md:py-20 relative overflow-hidden px-8">
@@ -393,7 +393,7 @@ const TrouveAgent: React.FC = () => {
                   <ArrowRight className="w-5 h-5" />
                 </button>
               </Link>
-              <Link to="/pack-pro">
+              {/* <Link to="/pack-pro">
                 <button
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium border-2 transition-all duration-200 hover:opacity-90"
                   style={{
@@ -404,7 +404,7 @@ const TrouveAgent: React.FC = () => {
                 >
                   Découvrir le Pack Pro
                 </button>
-              </Link>
+              </Link> */}
             </div>
           </div>
         </div>

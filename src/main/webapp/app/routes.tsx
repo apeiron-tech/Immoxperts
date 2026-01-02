@@ -18,6 +18,9 @@ import Home from './pages/Home';
 import PackPro from './pages/PackPro';
 import TrouveAgent from './pages/TrouveAgent';
 import VoirLagence from './pages/VoirLagence';
+import Testimonials from './pages/Testimonials';
+import Blog from './pages/Blog';
+import BlogArticle from './pages/BlogArticle';
 
 import EstimationRechercher from './features/estimation/EstimationSearch';
 import Louer from 'app/pages/Louer';
@@ -108,6 +111,9 @@ const AppRoutes = () => {
         <Route path="/pack-pro" element={<PackPro />} />
         <Route path="/TrouverAgent" element={<TrouveAgent />} />
         <Route path="/VoirLagence" element={<VoirLagence />} />
+        <Route path="/temoignages" element={<Testimonials />} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:id" element={<BlogArticle />} />
         <Route path="/louer" element={<Louer />} />
         <Route path="/RecherchLouer" element={<RecherchLouer />} />
         <Route path="/estimation" element={<Estimation />} />
