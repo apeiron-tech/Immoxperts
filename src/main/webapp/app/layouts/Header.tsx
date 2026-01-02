@@ -253,8 +253,8 @@ const Header: React.FC = () => {
                   );
                 })}
 
-                {/* Mobile Connect Button */}
-                <div className="pt-6 mt-6 border-t border-gray-200">
+                {/* Mobile Connect Button - Hidden */}
+                {/* <div className="pt-6 mt-6 border-t border-gray-200">
                   <button
                     className="w-full py-4 px-6 rounded-xl font-medium text-base transition-all duration-300 transform hover:scale-105 text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
                     onClick={() => {
@@ -264,7 +264,7 @@ const Header: React.FC = () => {
                   >
                     Se connecter
                   </button>
-                </div>
+                </div> */}
               </nav>
             </div>
           </div>

@@ -17,11 +17,14 @@ import {
   Mail,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { API_ENDPOINTS } from '../config/api.config';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [openFAQ, setOpenFAQ] = useState<number | null>(0); // First FAQ is open by default
   const [email, setEmail] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitMessage, setSubmitMessage] = useState<string>('');
   const showTestimonials = false; // Section not finished yet
   const showAgentSection = false; // Section not finished yet
 
@@ -82,11 +85,34 @@ const HomePage: React.FC = () => {
     setOpenFAQ(openFAQ === index ? null : index);
   };
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement email subscription logic
-    // Email submitted: email
-    setEmail('');
+    setIsSubmitting(true);
+    setSubmitMessage('');
+
+    try {
+      const response = await fetch(API_ENDPOINTS.contact.subscribe, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (response.ok) {
+        setSubmitMessage('Merci ! Vous serez prévenu en avant-première.');
+        setEmail('');
+      } else {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        setSubmitMessage('Une erreur est survenue. Veuillez réessayer.');
+      }
+    } catch (error) {
+      console.error('Error submitting email:', error);
+      setSubmitMessage('Une erreur est survenue. Veuillez réessayer.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -264,21 +290,10 @@ const HomePage: React.FC = () => {
             </div>
 
             {/* Right Section - Visual Card */}
-            <div className="relative">
-              {/* Large Gradient Card */}
-              <div
-                className="relative w-full h-64 sm:h-80 md:h-96 rounded-lg flex items-center justify-center overflow-hidden"
-                style={{
-                  background: 'linear-gradient(to bottom, #ede9fe, #fef3c7)',
-                }}
-              >
-                {/* Map Icon */}
-                <Map
-                  className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32"
-                  style={{ color: 'hsl(245 58% 62% / 0.6)' }}
-                  strokeWidth={1.5}
-                />
-
+            <div className="relative w-full">
+              {/* Image Card */}
+              <div className="relative w-full rounded-lg overflow-hidden shadow-lg">
+                <img src="/content/assets/20260102-174248.png" alt="Carte des prix immobiliers" className="w-full h-auto object-contain" />
                 {/* Small Price Indicator Box */}
                 <div className="absolute bottom-4 left-4 bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
                   <div className="flex items-center gap-1 text-green-600 font-semibold mb-1">
@@ -298,18 +313,18 @@ const HomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
             {/* Left Section - Property Cards Grid (appears second on mobile, left on desktop) */}
-            <div className="relative order-2 lg:order-1">
-              {/* Large White Card with Grid */}
-              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md">
-                {/* Grid of 6 Property Placeholders */}
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                  {[...Array(6)].map((_, index) => (
-                    <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg aspect-square"></div>
-                  ))}
-                </div>
+            <div className="relative order-2 lg:order-1 w-full">
+              {/* Image Card */}
+              <div className="relative w-full rounded-lg overflow-hidden shadow-md">
+                {/* Image */}
+                <img
+                  src="/content/assets/20260102-174745.png"
+                  alt="Toutes les annonces immobilières en un seul endroit"
+                  className="w-full h-auto object-contain"
+                />
 
                 {/* Sources Box */}
-                <div className="bg-white border border-gray-200 rounded-lg p-3 inline-flex items-center gap-2">
+                <div className="absolute bottom-4 left-4 bg-white border border-gray-200 rounded-lg p-3 inline-flex items-center gap-2 shadow-sm">
                   <span className="text-xs font-medium text-gray-700 mr-2">Sources</span>
                   {/* Source Icons */}
                   <div className="flex items-center gap-2">
@@ -478,22 +493,14 @@ const HomePage: React.FC = () => {
               </button> */}
             </div>
 
-            {/* Right Section - Estimation Card */}
-            <div className="relative">
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6 md:p-8">
-                <div className="text-center mb-4 md:mb-6">
-                  <p className="text-xs sm:text-sm text-gray-600 mb-2">Estimation de votre bien</p>
-                  <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">285 000€ - 315 000€</p>
-                </div>
-                <div className="w-full h-3 bg-gray-100 rounded-full mb-2">
-                  <div
-                    className="h-full w-3/4 rounded-full"
-                    style={{
-                      background: 'linear-gradient(to right, hsl(245 58% 62%), #10b981)',
-                    }}
-                  ></div>
-                </div>
-                <p className="text-sm text-gray-600 text-center">Indice de confiance : 78%</p>
+            {/* Right Section - Image */}
+            <div className="relative w-full">
+              <div className="w-full rounded-lg overflow-hidden shadow-xl">
+                <img
+                  src="/content/assets/20260102-175011.png"
+                  alt="Estimez votre bien en 2 minutes grâce à l'IA"
+                  className="w-full h-auto object-contain"
+                />
               </div>
             </div>
           </div>
@@ -504,42 +511,14 @@ const HomePage: React.FC = () => {
       <section className="py-12 md:py-20 px-4 sm:px-6 md:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
-            {/* Left Section - Simulation Card (appears second on mobile, left on desktop) */}
-            <div className="relative order-2 lg:order-1">
-              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md">
-                {/* Three Metric Boxes */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  {/* Cash-flow Box */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
-                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 mb-1">+250€</div>
-                    <div className="text-[10px] sm:text-xs text-gray-600 leading-tight">
-                      Cash-flow
-                      <br />
-                      /mois
-                    </div>
-                  </div>
-
-                  {/* Rendement Box */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
-                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-1">5.2%</div>
-                    <div className="text-[10px] sm:text-xs text-gray-600 leading-tight">
-                      Rendement
-                      <br />
-                      net
-                    </div>
-                  </div>
-
-                  {/* Score Box */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 sm:p-3 md:p-4 text-center">
-                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-1">58/100</div>
-                    <div className="text-[10px] sm:text-xs text-gray-600">Score</div>
-                  </div>
-                </div>
-
-                {/* Graph Placeholder */}
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 flex items-center justify-center">
-                  <TrendingUp size={48} className="text-gray-400" />
-                </div>
+            {/* Left Section - Image (appears second on mobile, left on desktop) */}
+            <div className="relative order-2 lg:order-1 w-full">
+              <div className="w-full rounded-lg overflow-hidden shadow-md">
+                <img
+                  src="/content/assets/image.png"
+                  alt="Analysez la rentabilité de votre investissement immobilier"
+                  className="w-full h-auto object-contain"
+                />
               </div>
             </div>
 
@@ -805,7 +784,8 @@ const HomePage: React.FC = () => {
                 onChange={e => setEmail(e.target.value)}
                 placeholder="Votre email"
                 required
-                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-transparent"
+                disabled={isSubmitting}
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                 style={
                   {
                     '--tw-ring-color': 'hsl(245 58% 62%)',
@@ -821,12 +801,16 @@ const HomePage: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="px-6 py-3 text-white font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap"
+              disabled={isSubmitting}
+              className="px-6 py-3 text-white font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: 'linear-gradient(to right, hsl(245 58% 62%), #2563eb)' }}
             >
-              Être prévenu
+              {isSubmitting ? 'Envoi...' : 'Être prévenu'}
             </button>
           </form>
+          {submitMessage && (
+            <p className={`mt-4 text-sm ${submitMessage.includes('Merci') ? 'text-green-600' : 'text-red-600'}`}>{submitMessage}</p>
+          )}
         </div>
       </section>
     </div>

@@ -49,6 +49,9 @@ export const API_ENDPOINTS = {
     account: `${API_BASE_URL}/api/account`,
     activate: `${API_BASE_URL}/api/activate`,
   },
+  contact: {
+    subscribe: `${API_BASE_URL}/api/contact/subscribe`,
+  },
   authorities: `${API_BASE_URL}/api/authorities`,
   entities: {
     mutations: `${API_BASE_URL}/api/mutations`,

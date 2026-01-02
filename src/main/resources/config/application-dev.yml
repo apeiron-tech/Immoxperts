@@ -42,10 +42,32 @@ spring:
     # Remove 'faker' if you do not want the sample data to be loaded automatically
     contexts: dev, faker
   mail:
-    host: localhost
-    port: 25
-    username:
-    password:
+    # Configuration SMTP - Hotmail/Outlook
+    # IMPORTANT: Microsoft a désactivé l'authentification de base pour certains comptes
+    # Solutions possibles:
+    # 1. Activer "Authentification moins sécurisée" dans les paramètres du compte Microsoft
+    # 2. Utiliser un mot de passe d'application valide (généré depuis account.microsoft.com)
+    # 3. Vérifier que l'authentification à deux facteurs est activée
+    host: smtp-mail.outlook.com
+    port: 587
+    username: adam.gasmi@hotmail.fr
+    password: rspddedapqosqaxj
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 30000
+          timeout: 30000
+          writetimeout: 30000
+          ssl:
+            trust: smtp-mail.outlook.com
+          # Essayer différentes méthodes d'authentification
+          auth.mechanisms: LOGIN PLAIN
+          # Désactiver la vérification du certificat si nécessaire (non recommandé en production)
+          # ssl.checkserveridentity: false
   messages:
     cache-duration: PT1S # 1 second, see the ISO 8601 standard
   thymeleaf:

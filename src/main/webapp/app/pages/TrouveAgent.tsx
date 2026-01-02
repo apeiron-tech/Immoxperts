@@ -123,12 +123,12 @@ const TrouveAgent: React.FC = () => {
             background: 'var(--gradient-hero)',
           }}
         />
-        <div className="container mx-auto px-8 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 md:px-8 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-4 md:mb-6">
               Démocratiser l'accès aux données immobilières
             </h1>
-            <p className="text-base sm:text-lg md:text-xl text-white/90">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90">
               Propsight est né d'une conviction simple : tout le monde mérite d'avoir accès aux informations nécessaires pour prendre les
               bonnes décisions immobilières.
             </p>
@@ -370,27 +370,29 @@ const TrouveAgent: React.FC = () => {
       </section> */}
 
       {/* CTA */}
-      <section className="py-12 md:py-20 relative overflow-hidden px-8">
+      <section className="py-12 md:py-20 relative overflow-hidden px-4 sm:px-6 md:px-8">
         <div
           className="absolute inset-0 opacity-95"
           style={{
             background: 'var(--gradient-hero)',
           }}
         />
-        <div className="container mx-auto px-8 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 md:px-8 relative z-10">
           <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-6">Prêt à explorer le marché immobilier ?</h2>
-            <p className="text-base sm:text-lg text-white/90 mb-8">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-4 md:mb-6">
+              Prêt à explorer le marché immobilier ?
+            </h2>
+            <p className="text-sm sm:text-base md:text-lg text-white/90 mb-6 md:mb-8">
               Commencez dès maintenant avec notre carte des ventes DVF, 100% gratuite.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Link to="/PrixImmobliers">
                 <button
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-white transition-all duration-200 hover:opacity-90"
+                  className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-lg font-medium bg-white transition-all duration-200 hover:opacity-90 text-sm sm:text-base w-full sm:w-auto"
                   style={{ color: 'hsl(245 58% 62%)' }}
                 >
                   Explorer la carte DVF
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </Link>
               {/* <Link to="/pack-pro">
@@ -414,18 +416,20 @@ const TrouveAgent: React.FC = () => {
       <section className="py-12 md:py-16 bg-white px-4 sm:px-6 md:px-8">
         <div className="container mx-auto">
           <div className="max-w-xl mx-auto text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Restez informé</h2>
-            <p className="text-gray-600 mb-6">Recevez nos actualités et soyez prévenu du lancement des nouvelles fonctionnalités.</p>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-3 md:mb-4">Restez informé</h2>
+            <p className="text-sm sm:text-base text-gray-600 mb-4 md:mb-6">
+              Recevez nos actualités et soyez prévenu du lancement des nouvelles fonctionnalités.
+            </p>
             <form onSubmit={handleEmailSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
               <div className="relative flex-1">
-                <Mail size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <Mail size={20} className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="Votre email"
                   required
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none"
+                  className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none text-sm sm:text-base"
                   style={
                     {
                       '--tw-ring-color': 'hsl(245 58% 62%)',
@@ -441,7 +445,7 @@ const TrouveAgent: React.FC = () => {
               </div>
               <button
                 type="submit"
-                className="px-6 py-3 text-white font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap"
+                className="px-4 sm:px-6 py-2.5 sm:py-3 text-white font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap text-sm sm:text-base w-full sm:w-auto"
                 style={{ background: 'var(--gradient-primary)' }}
               >
                 Être prévenu

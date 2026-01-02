@@ -139,6 +139,25 @@ spring:
         implicit-strategy: org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy
   messages:
     basename: i18n/messages
+  mail:
+    host: smtp-mail.outlook.com
+    port: 587
+    username: adam.gasmi@hotmail.fr
+    password: rspddedapqosqaxj
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 30000
+          timeout: 30000
+          writetimeout: 30000
+          ssl:
+            trust: smtp-mail.outlook.com
+          # Essayer différentes méthodes d'authentification
+          auth.mechanisms: LOGIN PLAIN
   main:
     allow-bean-definition-overriding: true
   mvc:
@@ -199,7 +218,7 @@ jhipster:
     allow-credentials: true
     max-age: 1800
   mail:
-    from: immoxperts@localhost
+    from: adam.gasmi@hotmail.fr
   api-docs:
     default-include-pattern: /api/**
     management-include-pattern: /management/**
