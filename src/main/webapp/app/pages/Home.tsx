@@ -377,29 +377,25 @@ const HomePage: React.FC = () => {
               </p>
 
               {/* Feature List */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Feature 1 */}
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className=" text-gray-900 mb-1">Une seule recherche pour accéder à plusieurs portails immobiliers</h3>
-                  </div>
+                  <span className="text-sm sm:text-base text-gray-600">
+                    Une seule recherche pour accéder à plusieurs portails immobiliers
+                  </span>
                 </div>
 
                 {/* Feature 2 */}
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className=" text-gray-900 mb-1">Annonces immobilières mises à jour en continu </h3>
-                  </div>
+                  <span className="text-sm sm:text-base text-gray-600">Annonces immobilières mises à jour en continu</span>
                 </div>
 
                 {/* Feature 3 */}
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className=" text-gray-900 mb-1">Alertes personnalisées selon vos critères</h3>
-                  </div>
+                  <span className="text-sm sm:text-base text-gray-600">Alertes personnalisées selon vos critères</span>
                 </div>
               </div>
 
@@ -466,15 +462,19 @@ const HomePage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Estimation immobilière basée sur des modèles d’intelligence artificielle récents</span>
+                  <span className="text-sm sm:text-base text-gray-600">
+                    Estimation immobilière basée sur des modèles d'intelligence artificielle récents
+                  </span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Croisement des données officielles INSEE, DVF et du marché immobilier local</span>
+                  <span className="text-sm sm:text-base text-gray-600">
+                    Croisement des données officielles INSEE, DVF et du marché immobilier local
+                  </span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Fourchette de prix avec indice de confiance</span>
+                  <span className="text-sm sm:text-base text-gray-600">Fourchette de prix avec indice de confiance</span>
                 </div>
               </div>
 
@@ -559,15 +559,15 @@ const HomePage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Importation des données automatique depuis une annonce</span>
+                  <span className="text-sm sm:text-base text-gray-600">Importation des données automatique depuis une annonce</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Calculs financiers et fiscaux réalistes</span>
+                  <span className="text-sm sm:text-base text-gray-600">Calculs financiers et fiscaux réalistes</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Aide à la décision avant acquisition</span>
+                  <span className="text-sm sm:text-base text-gray-600">Aide à la décision avant acquisition</span>
                 </div>
               </div>
 
