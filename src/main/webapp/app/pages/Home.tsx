@@ -294,14 +294,6 @@ const HomePage: React.FC = () => {
               {/* Image Card */}
               <div className="relative w-full rounded-lg overflow-hidden shadow-lg">
                 <img src="/content/assets/20260102-174248.png" alt="Carte des prix immobiliers" className="w-full h-auto object-contain" />
-                {/* Small Price Indicator Box */}
-                <div className="absolute bottom-4 left-4 bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
-                  <div className="flex items-center gap-1 text-green-600 font-semibold mb-1">
-                    <ArrowRight size={16} className="rotate-45" />
-                    <span>+12%</span>
-                  </div>
-                  <div className="text-xs text-gray-600">Prix moyen Paris 15e</div>
-                </div>
               </div>
             </div>
           </div>
@@ -322,26 +314,6 @@ const HomePage: React.FC = () => {
                   alt="Toutes les annonces immobilières en un seul endroit"
                   className="w-full h-auto object-contain"
                 />
-
-                {/* Sources Box */}
-                <div className="absolute bottom-4 left-4 bg-white border border-gray-200 rounded-lg p-3 inline-flex items-center gap-2 shadow-sm">
-                  <span className="text-xs font-medium text-gray-700 mr-2">Sources</span>
-                  {/* Source Icons */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">
-                      L
-                    </div>
-                    <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold">S</div>
-                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">P</div>
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                      style={{ backgroundColor: 'hsl(245 58% 62%)' }}
-                    >
-                      L
-                    </div>
-                    <div className="px-2 py-1 bg-gray-200 rounded-full text-xs text-gray-600">+2</div>
-                  </div>
-                </div>
               </div>
             </div>
 
