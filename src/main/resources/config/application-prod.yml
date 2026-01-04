@@ -43,10 +43,12 @@ spring:
   liquibase:
     contexts: prod
   mail:
-    host: smtp-mail.outlook.com
+    # Configuration SMTP - Gmail
+    # IMPORTANT: Utiliser un mot de passe d'application Gmail (généré depuis account.google.com)
+    host: smtp.gmail.com
     port: 587
-    username: adam.gasmi@hotmail.fr
-    password: rspddedapqosqaxj
+    username: jojoposeoklm@gmail.com
+    password: iddekakhfwtbprom
     properties:
       mail:
         smtp:
@@ -58,8 +60,8 @@ spring:
           timeout: 30000
           writetimeout: 30000
           ssl:
-            trust: smtp-mail.outlook.com
-          # Essayer différentes méthodes d'authentification
+            trust: smtp.gmail.com
+          # Méthodes d'authentification pour Gmail
           auth.mechanisms: LOGIN PLAIN
   thymeleaf:
     cache: true
