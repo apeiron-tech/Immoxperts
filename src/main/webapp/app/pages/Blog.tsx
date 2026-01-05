@@ -45,108 +45,6 @@ const Blog: React.FC = () => {
       featured: true,
       date: '2026-01-02',
     },
-    {
-      id: '1',
-      title: 'Prix immobiliers à Lyon : analyse quartier par quartier (2024)',
-      excerpt: 'Décryptage des prix au m² dans les 9 arrondissements lyonnais, basé sur les dernières transactions DVF.',
-      category: 'local',
-      categoryLabel: 'Analyse locale',
-      readTime: 8,
-      tags: ['Lyon', 'Prix au m²', 'Quartiers'],
-      featured: true,
-      date: '2024-01-15',
-    },
-    {
-      id: '2',
-      title: 'Comment estimer un bien immobilier avec les données DVF',
-      excerpt: 'Guide pratique pour utiliser les transactions réelles dans votre estimation, étape par étape.',
-      category: 'data',
-      categoryLabel: 'Comprendre les données',
-      readTime: 6,
-      tags: ['Estimation', 'DVF', 'Méthodologie'],
-      date: '2024-01-12',
-    },
-    {
-      id: '3',
-      title: 'LMNP 2024 : quelles alternatives après la réforme fiscale ?',
-      excerpt: 'Analyse des nouveaux régimes fiscaux et simulation comparative pour les investisseurs locatifs.',
-      category: 'investir',
-      categoryLabel: 'Investir',
-      readTime: 10,
-      tags: ['LMNP', 'Fiscalité', 'Investissement locatif'],
-      featured: true,
-      date: '2024-01-10',
-    },
-    {
-      id: '4',
-      title: 'Baisse des prix en 2024 : quelles villes concernées ?',
-      excerpt: 'Cartographie des marchés en baisse et en hausse, basée sur les transactions des 12 derniers mois.',
-      category: 'marche',
-      categoryLabel: 'Tendances marché',
-      readTime: 7,
-      tags: ['Tendances', 'Prix 2024', 'Analyse nationale'],
-      date: '2024-01-08',
-    },
-    {
-      id: '5',
-      title: 'Négocier son achat : 5 arguments basés sur les données',
-      excerpt: "Techniques de négociation efficaces en s'appuyant sur les prix réels du marché local.",
-      category: 'achat-vente',
-      categoryLabel: 'Acheter & vendre',
-      readTime: 5,
-      tags: ['Négociation', 'Achat', 'Conseils'],
-      date: '2024-01-05',
-    },
-    {
-      id: '6',
-      title: 'Rentabilité locative : comment la calculer vraiment ?',
-      excerpt: 'Au-delà du rendement brut : calcul du rendement net, cash-flow et TRI avec des exemples concrets.',
-      category: 'investir',
-      categoryLabel: 'Investir',
-      readTime: 9,
-      tags: ['Rentabilité', 'Calcul', 'Investissement'],
-      date: '2024-01-03',
-    },
-    {
-      id: '7',
-      title: "Agent immobilier : devenir l'expert data de votre secteur",
-      excerpt: 'Comment utiliser les données DVF pour crédibiliser vos estimations et gagner des mandats.',
-      category: 'pro',
-      categoryLabel: 'Expertise pro',
-      readTime: 6,
-      tags: ['Agents', 'Mandats', 'Data'],
-      date: '2024-01-01',
-    },
-    {
-      id: '8',
-      title: 'Prix immobiliers à Bordeaux : le marché post-bulle',
-      excerpt: 'État des lieux du marché bordelais après 2 ans de correction, secteur par secteur.',
-      category: 'local',
-      categoryLabel: 'Analyse locale',
-      readTime: 8,
-      tags: ['Bordeaux', 'Correction', 'Analyse'],
-      date: '2023-12-28',
-    },
-    {
-      id: '9',
-      title: 'Vendre au bon prix : éviter la surestimation',
-      excerpt: 'Pourquoi un prix de vente trop élevé rallonge les délais et comment fixer le juste prix.',
-      category: 'achat-vente',
-      categoryLabel: 'Acheter & vendre',
-      readTime: 5,
-      tags: ['Vente', 'Prix', 'Stratégie'],
-      date: '2023-12-25',
-    },
-    {
-      id: '10',
-      title: "Qu'est-ce que le fichier DVF et comment l'utiliser ?",
-      excerpt: 'Introduction aux Demandes de Valeurs Foncières : origine, contenu et utilisation pratique.',
-      category: 'data',
-      categoryLabel: 'Comprendre les données',
-      readTime: 7,
-      tags: ['DVF', 'Open data', 'Guide'],
-      date: '2023-12-20',
-    },
   ];
 
   const filteredArticles = articles.filter(article => {
@@ -389,14 +287,16 @@ const Blog: React.FC = () => {
                     ))}
                   </div>
 
-                  <button
-                    onClick={() => navigate(`/blog/${article.id}`)}
-                    className="inline-flex items-center gap-2 text-sm font-medium transition-all duration-200 hover:opacity-80 group/btn"
-                    style={{ color: 'hsl(245 58% 62%)' }}
-                  >
-                    Lire l'analyse
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                  </button>
+                  {article.id === 'carte-prix-immobiliers-dvf-guide' && (
+                    <button
+                      onClick={() => navigate(`/blog/${article.id}`)}
+                      className="inline-flex items-center gap-2 text-sm font-medium transition-all duration-200 hover:opacity-80 group/btn"
+                      style={{ color: 'hsl(245 58% 62%)' }}
+                    >
+                      Lire l'analyse
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                    </button>
+                  )}
                 </article>
               ))}
             </div>
@@ -453,14 +353,16 @@ const Blog: React.FC = () => {
                     ))}
                   </div>
 
-                  <button
-                    onClick={() => navigate(`/blog/${article.id}`)}
-                    className="inline-flex items-center gap-1 text-sm hover:underline"
-                    style={{ color: 'hsl(245 58% 62%)' }}
-                  >
-                    Lire l'analyse
-                    <ArrowRight className="h-3 w-3" />
-                  </button>
+                  {article.id === 'carte-prix-immobiliers-dvf-guide' && (
+                    <button
+                      onClick={() => navigate(`/blog/${article.id}`)}
+                      className="inline-flex items-center gap-1 text-sm hover:underline"
+                      style={{ color: 'hsl(245 58% 62%)' }}
+                    >
+                      Lire l'analyse
+                      <ArrowRight className="h-3 w-3" />
+                    </button>
+                  )}
                 </article>
               ))}
             </div>
