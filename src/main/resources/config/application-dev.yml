@@ -42,16 +42,14 @@ spring:
     # Remove 'faker' if you do not want the sample data to be loaded automatically
     contexts: dev, faker
   mail:
-    # Configuration SMTP - Hotmail/Outlook
-    # IMPORTANT: Microsoft a désactivé l'authentification de base pour certains comptes
-    # Solutions possibles:
-    # 1. Activer "Authentification moins sécurisée" dans les paramètres du compte Microsoft
-    # 2. Utiliser un mot de passe d'application valide (généré depuis account.microsoft.com)
-    # 3. Vérifier que l'authentification à deux facteurs est activée
-    host: smtp-mail.outlook.com
+    # Configuration SMTP - Gmail
+    # IMPORTANT: Utiliser un mot de passe d'application Gmail (généré depuis account.google.com)
+    # 1. Activer l'authentification à deux facteurs sur le compte Google
+    # 2. Générer un mot de passe d'application depuis account.google.com > Sécurité > Mots de passe des applications
+    host: smtp.gmail.com
     port: 587
-    username: adam.gasmi@hotmail.fr
-    password: rspddedapqosqaxj
+    username: jojoposeoklm@gmail.com
+    password: iddekakhfwtbprom
     properties:
       mail:
         smtp:
@@ -63,8 +61,8 @@ spring:
           timeout: 30000
           writetimeout: 30000
           ssl:
-            trust: smtp-mail.outlook.com
-          # Essayer différentes méthodes d'authentification
+            trust: smtp.gmail.com
+          # Méthodes d'authentification pour Gmail
           auth.mechanisms: LOGIN PLAIN
           # Désactiver la vérification du certificat si nécessaire (non recommandé en production)
           # ssl.checkserveridentity: false

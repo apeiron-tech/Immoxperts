@@ -294,14 +294,6 @@ const HomePage: React.FC = () => {
               {/* Image Card */}
               <div className="relative w-full rounded-lg overflow-hidden shadow-lg">
                 <img src="/content/assets/20260102-174248.png" alt="Carte des prix immobiliers" className="w-full h-auto object-contain" />
-                {/* Small Price Indicator Box */}
-                <div className="absolute bottom-4 left-4 bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
-                  <div className="flex items-center gap-1 text-green-600 font-semibold mb-1">
-                    <ArrowRight size={16} className="rotate-45" />
-                    <span>+12%</span>
-                  </div>
-                  <div className="text-xs text-gray-600">Prix moyen Paris 15e</div>
-                </div>
               </div>
             </div>
           </div>
@@ -322,26 +314,6 @@ const HomePage: React.FC = () => {
                   alt="Toutes les annonces immobilières en un seul endroit"
                   className="w-full h-auto object-contain"
                 />
-
-                {/* Sources Box */}
-                <div className="absolute bottom-4 left-4 bg-white border border-gray-200 rounded-lg p-3 inline-flex items-center gap-2 shadow-sm">
-                  <span className="text-xs font-medium text-gray-700 mr-2">Sources</span>
-                  {/* Source Icons */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">
-                      L
-                    </div>
-                    <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold">S</div>
-                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">P</div>
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                      style={{ backgroundColor: 'hsl(245 58% 62%)' }}
-                    >
-                      L
-                    </div>
-                    <div className="px-2 py-1 bg-gray-200 rounded-full text-xs text-gray-600">+2</div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -377,29 +349,25 @@ const HomePage: React.FC = () => {
               </p>
 
               {/* Feature List */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Feature 1 */}
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className=" text-gray-900 mb-1">Une seule recherche pour accéder à plusieurs portails immobiliers</h3>
-                  </div>
+                  <span className="text-sm sm:text-base text-gray-600">
+                    Une seule recherche pour accéder à plusieurs portails immobiliers
+                  </span>
                 </div>
 
                 {/* Feature 2 */}
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className=" text-gray-900 mb-1">Annonces immobilières mises à jour en continu </h3>
-                  </div>
+                  <span className="text-sm sm:text-base text-gray-600">Annonces immobilières mises à jour en continu</span>
                 </div>
 
                 {/* Feature 3 */}
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className=" text-gray-900 mb-1">Alertes personnalisées selon vos critères</h3>
-                  </div>
+                  <span className="text-sm sm:text-base text-gray-600">Alertes personnalisées selon vos critères</span>
                 </div>
               </div>
 
@@ -466,15 +434,19 @@ const HomePage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Estimation immobilière basée sur des modèles d’intelligence artificielle récents</span>
+                  <span className="text-sm sm:text-base text-gray-600">
+                    Estimation immobilière basée sur des modèles d'intelligence artificielle récents
+                  </span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Croisement des données officielles INSEE, DVF et du marché immobilier local</span>
+                  <span className="text-sm sm:text-base text-gray-600">
+                    Croisement des données officielles INSEE, DVF et du marché immobilier local
+                  </span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Fourchette de prix avec indice de confiance</span>
+                  <span className="text-sm sm:text-base text-gray-600">Fourchette de prix avec indice de confiance</span>
                 </div>
               </div>
 
@@ -559,15 +531,15 @@ const HomePage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Importation des données automatique depuis une annonce</span>
+                  <span className="text-sm sm:text-base text-gray-600">Importation des données automatique depuis une annonce</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Calculs financiers et fiscaux réalistes</span>
+                  <span className="text-sm sm:text-base text-gray-600">Calculs financiers et fiscaux réalistes</span>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-600">Aide à la décision avant acquisition</span>
+                  <span className="text-sm sm:text-base text-gray-600">Aide à la décision avant acquisition</span>
                 </div>
               </div>
 

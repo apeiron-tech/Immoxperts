@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Target, Users, Lightbulb, Shield, ArrowRight, CheckCircle, Building2, TrendingUp, Map, Clock, Calendar, Mail } from 'lucide-react';
+import { API_ENDPOINTS } from '../config/api.config';
 
 const values = [
   {
@@ -106,11 +107,37 @@ const SectionTitle = ({ title, subtitle }: { title: string; subtitle: string }) 
 const TrouveAgent: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitMessage, setSubmitMessage] = useState<string>('');
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle email submission
-    setEmail('');
+    setIsSubmitting(true);
+    setSubmitMessage('');
+
+    try {
+      const response = await fetch(API_ENDPOINTS.contact.subscribe, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (response.ok) {
+        setSubmitMessage('Merci ! Vous serez prévenu en avant-première.');
+        setEmail('');
+      } else {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        setSubmitMessage('Une erreur est survenue. Veuillez réessayer.');
+      }
+    } catch (error) {
+      console.error('Error submitting email:', error);
+      setSubmitMessage('Une erreur est survenue. Veuillez réessayer.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -429,7 +456,8 @@ const TrouveAgent: React.FC = () => {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="Votre email"
                   required
-                  className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none text-sm sm:text-base"
+                  disabled={isSubmitting}
+                  className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                   style={
                     {
                       '--tw-ring-color': 'hsl(245 58% 62%)',
@@ -445,12 +473,16 @@ const TrouveAgent: React.FC = () => {
               </div>
               <button
                 type="submit"
-                className="px-4 sm:px-6 py-2.5 sm:py-3 text-white font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap text-sm sm:text-base w-full sm:w-auto"
+                disabled={isSubmitting}
+                className="px-4 sm:px-6 py-2.5 sm:py-3 text-white font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap text-sm sm:text-base w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: 'var(--gradient-primary)' }}
               >
-                Être prévenu
+                {isSubmitting ? 'Envoi...' : 'Être prévenu'}
               </button>
             </form>
+            {submitMessage && (
+              <p className={`mt-4 text-sm ${submitMessage.includes('Merci') ? 'text-green-600' : 'text-red-600'}`}>{submitMessage}</p>
+            )}
           </div>
         </div>
       </section>
