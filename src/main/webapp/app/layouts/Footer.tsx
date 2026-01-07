@@ -16,10 +16,10 @@ const Footer: React.FC = () => {
       { label: 'Blog & analyses', href: '/blog' },
     ],
     legal: [
-      { label: 'Mentions légales', href: '#' },
-      { label: 'CGU', href: '#' },
-      { label: 'Politique de confidentialité', href: '#' },
-      { label: 'Cookies', href: '#' },
+      { label: 'Mentions légales', href: '/mentions-legales' },
+      { label: 'CGU', href: '/cgu' },
+      { label: 'Politique de confidentialité', href: '/politique-de-confidentialite' },
+      { label: 'Cookies', href: '/cookies' },
     ],
   };
 

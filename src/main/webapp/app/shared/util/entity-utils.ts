@@ -1,5 +1,19 @@
-import pick from 'lodash/pick';
 import { IPaginationBaseState, ISortBaseState } from 'react-jhipster';
+
+/**
+ * Native implementation of lodash pick to avoid security vulnerability
+ * @param obj Object to pick from
+ * @param keys Keys to pick
+ */
+const pick = <T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> => {
+  const result = {} as Pick<T, K>;
+  for (const key of keys) {
+    if (key in obj) {
+      result[key] = obj[key];
+    }
+  }
+  return result;
+};
 
 /**
  * Removes fields with an 'id' field that equals ''.

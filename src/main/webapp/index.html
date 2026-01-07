@@ -13,15 +13,1848 @@
     <link rel="apple-touch-icon" href="../../main/webapp/content/assets/logo.png" />
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-DPX4BNV725"></script>
+    <!-- TarteAuCitron - Gestion des cookies RGPD/CNIL -->
+    <link rel="stylesheet" href="/content/tarteaucitron/css/tarteaucitron.css" />
+    <link rel="stylesheet" href="/content/tarteaucitron/css/tarteaucitron-custom.css" />
+    <!-- Style pour cacher toutes les popups si consentement existe -->
+    <style id="tarteaucitron-hide-if-consent">
+      /* Ce style sera supprimé si aucun consentement n'existe */
+    </style>
+    <script src="/content/tarteaucitron/tarteaucitron.js"></script>
+    <script src="/content/tarteaucitron/lang/tarteaucitron.fr.js"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
+      // Fonction pour vérifier si un consentement valide existe
+      function hasValidConsent() {
+        try {
+          var savedConsent = localStorage.getItem('ga4_consent');
+
+          // Vérifier aussi le cookie TarteAuCitron
+          function getTarteaucitronCookie() {
+            try {
+              var cookies = document.cookie.split(';');
+              for (var i = 0; i < cookies.length; i++) {
+                var cookie = cookies[i].trim();
+                if (cookie.indexOf('tarteaucitron=') === 0) {
+                  return cookie.substring('tarteaucitron='.length);
+                }
+              }
+            } catch (e) {}
+            return null;
+          }
+
+          var tarteaucitronCookie = getTarteaucitronCookie();
+
+          // Vérifier si un consentement VALIDE existe
+          if (savedConsent === 'true') {
+            return true;
+          }
+
+          if (tarteaucitronCookie !== null && tarteaucitronCookie !== '') {
+            try {
+              var cookieData = JSON.parse(decodeURIComponent(tarteaucitronCookie));
+              if (cookieData && typeof cookieData === 'object') {
+                for (var key in cookieData) {
+                  if (cookieData.hasOwnProperty(key)) {
+                    var value = cookieData[key];
+                    // Un consentement valide doit avoir des valeurs true ou false, pas 'wait'
+                    if (value === true || value === false) {
+                      return true;
+                    }
+                  }
+                }
+              }
+            } catch (e) {
+              // Si le cookie n'est pas du JSON valide, ne pas considérer comme consentement
+            }
+          }
+
+          return false;
+        } catch (e) {
+          return false;
+        }
       }
-      gtag('js', new Date());
-      gtag('config', 'G-DPX4BNV725');
+
+      // Vérifier le consentement et ajuster le style CSS
+      (function () {
+        var hideStyle = document.getElementById('tarteaucitron-hide-if-consent');
+        var consentExists = hasValidConsent();
+
+        if (consentExists) {
+          // Consentement existe, cacher les popups
+          if (hideStyle) {
+            hideStyle.textContent = `
+              #tarteaucitronAlertBig,
+              #tarteaucitronAlertSmall,
+              #tarteaucitron,
+              #tarteaucitronBack,
+              #tarteaucitronRoot.tarteaucitronBeforeVisible {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+              }
+            `;
+          }
+        } else {
+          // Aucun consentement, s'assurer que le style est vide pour permettre l'affichage
+          if (hideStyle) {
+            hideStyle.textContent = '';
+          }
+        }
+      })();
+
+      // Initialiser TarteAuCitron UNIQUEMENT si le consentement n'existe pas
+      // S'assurer que TarteAuCitron est chargé avant d'initialiser
+      if (typeof tarteaucitron !== 'undefined') {
+        // Vérifier le consentement AVANT d'initialiser
+        if (!hasValidConsent()) {
+          tarteaucitron.init({
+            privacyUrl: '/politique-de-confidentialite',
+            orientation: 'middle',
+            DenyAllCta: true,
+            AcceptAllCta: true,
+            highPrivacy: true,
+            showAlertSmall: false, // Désactiver la petite bannière
+            cookieslist: true,
+            showIcon: false, // Désactiver l'icône flottante
+            closePopup: false,
+          });
+        }
+
+        // IMPORTANT: Intercepter openAlert pour empêcher TarteAuCitron de rouvrir la popup
+        // si le consentement existe déjà
+        (function () {
+          if (tarteaucitron.userInterface && tarteaucitron.userInterface.openAlert) {
+            var originalOpenAlert = tarteaucitron.userInterface.openAlert;
+            tarteaucitron.userInterface.openAlert = function () {
+              // Vérifier si le consentement existe déjà
+              if (hasValidConsent()) {
+                return; // Bloquer l'ouverture
+              }
+              // Sinon, appeler la fonction originale
+              return originalOpenAlert.apply(this, arguments);
+            };
+          }
+        })();
+      } else {
+        // Si TarteAuCitron n'est pas encore chargé, attendre
+        window.addEventListener('load', function () {
+          if (typeof tarteaucitron !== 'undefined') {
+            // Vérifier le consentement AVANT d'initialiser
+            if (!hasValidConsent()) {
+              tarteaucitron.init({
+                privacyUrl: '/politique-de-confidentialite',
+                orientation: 'middle',
+                DenyAllCta: true,
+                AcceptAllCta: true,
+                highPrivacy: true,
+                showAlertSmall: false,
+                cookieslist: true,
+                showIcon: false,
+                closePopup: false,
+              });
+            }
+
+            // IMPORTANT: Intercepter openAlert ici aussi
+            (function () {
+              if (tarteaucitron.userInterface && tarteaucitron.userInterface.openAlert) {
+                var originalOpenAlert = tarteaucitron.userInterface.openAlert;
+                tarteaucitron.userInterface.openAlert = function () {
+                  if (hasValidConsent()) {
+                    return;
+                  }
+                  return originalOpenAlert.apply(this, arguments);
+                };
+              }
+            })();
+          }
+        });
+      }
+
+      // Vérifier et supprimer les doublons de popup (seulement les vraies duplications)
+      // IMPORTANT: Ne supprimer QUE les vraies duplications, jamais la popup principale
+      (function () {
+        function removeDuplicatePopups() {
+          // Vérifier s'il y a vraiment plusieurs popups avec le même ID (anomalie)
+          // Normalement, il ne devrait y avoir qu'une seule popup avec l'ID tarteaucitronAlertBig
+          var alertBigs = document.querySelectorAll('#tarteaucitronAlertBig');
+
+          // Si on trouve plusieurs popups avec le même ID, c'est une anomalie
+          // Garder seulement la première et supprimer les autres
+          if (alertBigs.length > 1) {
+            console.warn('TarteAuCitron: Détection de plusieurs popups avec le même ID. Suppression des doublons.');
+            // Garder la première, supprimer les autres
+            for (var i = 1; i < alertBigs.length; i++) {
+              alertBigs[i].remove();
+            }
+          }
+
+          // Toujours cacher alertSmall (on utilise seulement alertBig)
+          // Mais ne pas supprimer alertBig si elle est la seule
+          var alertSmalls = document.querySelectorAll('#tarteaucitronAlertSmall');
+          for (var j = 0; j < alertSmalls.length; j++) {
+            alertSmalls[j].style.display = 'none';
+            alertSmalls[j].style.visibility = 'hidden';
+            alertSmalls[j].style.opacity = '0';
+          }
+        }
+
+        // Mécanisme de secours : surveiller et forcer la fermeture si le consentement existe
+        if (typeof MutationObserver !== 'undefined') {
+          var popupObserver = new MutationObserver(function (mutations) {
+            if (hasValidConsent()) {
+              var alertBig = document.getElementById('tarteaucitronAlertBig');
+              if (alertBig) {
+                // Vérifier si la popup est visible (via style inline ou computed style)
+                var computedStyle = window.getComputedStyle(alertBig);
+                var isVisible = computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden' && computedStyle.opacity !== '0';
+
+                if (isVisible) {
+                  alertBig.style.display = 'none !important';
+                  alertBig.style.visibility = 'hidden !important';
+                  alertBig.style.opacity = '0 !important';
+
+                  var root = document.getElementById('tarteaucitronRoot');
+                  if (root) {
+                    root.style.display = 'none !important';
+                    root.style.visibility = 'hidden !important';
+                  }
+
+                  var back = document.getElementById('tarteaucitronBack');
+                  if (back) {
+                    back.style.display = 'none !important';
+                  }
+                }
+              }
+            }
+          });
+
+          if (document.body) {
+            popupObserver.observe(document.body, {
+              childList: true,
+              subtree: true,
+              attributes: true,
+              attributeFilter: ['style', 'class'],
+            });
+          }
+
+          // Vérifier aussi périodiquement (toutes les 500ms)
+          setInterval(function () {
+            if (hasValidConsent()) {
+              var alertBig = document.getElementById('tarteaucitronAlertBig');
+              if (alertBig) {
+                var computedStyle = window.getComputedStyle(alertBig);
+                var isVisible = computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden' && computedStyle.opacity !== '0';
+
+                if (isVisible) {
+                  alertBig.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important;';
+
+                  var root = document.getElementById('tarteaucitronRoot');
+                  if (root) {
+                    root.style.cssText = 'display: none !important; visibility: hidden !important;';
+                  }
+
+                  var back = document.getElementById('tarteaucitronBack');
+                  if (back) {
+                    back.style.cssText = 'display: none !important;';
+                  }
+                }
+              }
+            }
+          }, 500);
+        }
+
+        // Vérifier seulement après un délai pour ne pas interférer avec l'affichage initial
+        // Ne pas supprimer la popup principale, seulement les doublons
+        setTimeout(function () {
+          var alertBigs = document.querySelectorAll('#tarteaucitronAlertBig');
+          if (alertBigs.length > 1) {
+            removeDuplicatePopups();
+          }
+        }, 2000); // Délai plus long pour être sûr que la popup principale est créée
+
+        // Observer pour supprimer les doublons (seulement les vraies duplications)
+        if (typeof MutationObserver !== 'undefined') {
+          var duplicateObserver = new MutationObserver(function (mutations) {
+            // Vérifier seulement si on détecte vraiment plusieurs popups
+            var alertBigs = document.querySelectorAll('#tarteaucitronAlertBig');
+            if (alertBigs.length > 1) {
+              removeDuplicatePopups();
+            }
+          });
+
+          if (document.body) {
+            duplicateObserver.observe(document.body, {
+              childList: true,
+              subtree: true,
+            });
+          }
+        }
+      })();
+
+      // Si un consentement existe, empêcher l'affichage de la popup
+      // Cette fonction s'exécute APRÈS l'initialisation de TarteAuCitron
+      (function () {
+        // Vérifier périodiquement et cacher les popups si consentement existe
+        function checkAndHidePopups() {
+          if (hasValidConsent()) {
+            // Consentement existe, cacher les popups
+            var alertBig = document.getElementById('tarteaucitronAlertBig');
+            var alertSmall = document.getElementById('tarteaucitronAlertSmall');
+            var tarteaucitronPanel = document.getElementById('tarteaucitron');
+            var tarteaucitronBack = document.getElementById('tarteaucitronBack');
+
+            if (alertBig) {
+              alertBig.style.display = 'none';
+              alertBig.style.visibility = 'hidden';
+              alertBig.style.opacity = '0';
+            }
+            if (alertSmall) {
+              alertSmall.style.display = 'none';
+              alertSmall.style.visibility = 'hidden';
+              alertSmall.style.opacity = '0';
+            }
+            if (tarteaucitronPanel) {
+              tarteaucitronPanel.style.display = 'none';
+              tarteaucitronPanel.style.visibility = 'hidden';
+              tarteaucitronPanel.style.opacity = '0';
+            }
+            if (tarteaucitronBack) {
+              tarteaucitronBack.style.display = 'none';
+            }
+
+            // Mettre à jour le style CSS aussi
+            var hideStyle = document.getElementById('tarteaucitron-hide-if-consent');
+            if (hideStyle) {
+              hideStyle.textContent = `
+                #tarteaucitronAlertBig,
+                #tarteaucitronAlertSmall,
+                #tarteaucitron,
+                #tarteaucitronBack,
+                #tarteaucitronRoot.tarteaucitronBeforeVisible {
+                  display: none !important;
+                  visibility: hidden !important;
+                  opacity: 0 !important;
+                }
+              `;
+            }
+          } else {
+            // Pas de consentement, s'assurer que le style est vide
+            var hideStyle = document.getElementById('tarteaucitron-hide-if-consent');
+            if (hideStyle) {
+              hideStyle.textContent = '';
+            }
+
+            // S'assurer que la popup peut s'afficher si elle existe
+            setTimeout(function () {
+              var alertBig = document.getElementById('tarteaucitronAlertBig');
+              if (alertBig && !hasValidConsent()) {
+                // Si la popup est cachée par erreur, la réafficher
+                var computedStyle = window.getComputedStyle(alertBig);
+                if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+                  // Vérifier que ce n'est pas à cause du style injecté
+                  var hideStyleCheck = document.getElementById('tarteaucitron-hide-if-consent');
+                  if (!hideStyleCheck || !hideStyleCheck.textContent.trim()) {
+                    // Le style est vide, donc on peut réafficher
+                    alertBig.style.display = '';
+                    alertBig.style.visibility = '';
+                    alertBig.style.opacity = '';
+                  }
+                }
+              }
+            }, 500);
+          }
+        }
+
+        // Attendre que le DOM soit prêt avant de vérifier
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(checkAndHidePopups, 100);
+          });
+        } else {
+          setTimeout(checkAndHidePopups, 100);
+        }
+
+        // Vérifier périodiquement
+        setTimeout(checkAndHidePopups, 500);
+        setTimeout(checkAndHidePopups, 1000);
+        setTimeout(checkAndHidePopups, 2000);
+
+        // Observer les changements du DOM
+        if (typeof MutationObserver !== 'undefined') {
+          var observer = new MutationObserver(function (mutations) {
+            // Vérifier seulement si une popup apparaît
+            if (hasValidConsent()) {
+              checkAndHidePopups();
+            }
+          });
+
+          if (document.body) {
+            observer.observe(document.body, {
+              childList: true,
+              subtree: true,
+              attributes: true,
+              attributeFilter: ['style', 'class'],
+            });
+          }
+        }
+      })();
+
+      // Permettre le scroll de la page
+      (function () {
+        function enableScroll() {
+          if (document.documentElement) {
+            document.documentElement.style.overflow = 'auto';
+            document.documentElement.style.overflowY = 'scroll';
+            document.documentElement.classList.remove('tarteaucitron-modal-open-noscroll');
+          }
+          if (document.body) {
+            document.body.style.overflow = 'auto';
+            document.body.style.overflowY = 'scroll';
+            document.body.classList.remove('tarteaucitron-modal-open-noscroll');
+          }
+        }
+
+        // Exécuter après un court délai
+        setTimeout(function () {
+          enableScroll();
+          setInterval(enableScroll, 300);
+        }, 500);
+      })();
+    </script>
+
+    <!-- Google Analytics - BLOQUÉ dans TarteAuCitron -->
+    <script>
+      // IMPORTANT: Empêcher TarteAuCitron de détecter et charger GA4 automatiquement
+      // TarteAuCitron charge GA4 si tarteaucitron.user.gtagUa est défini (ligne 3657 de tarteaucitron.services.js)
+      // On empêche cela en ne définissant JAMAIS gtagUa
+
+      // Ne RIEN définir pour gtagUa - GA4 sera géré manuellement
+      // tarteaucitron.user.gtagUa = undefined; // Ne même pas initialiser
+    </script>
+
+    <!-- Script pour mettre en gras "Aucune publicité, aucun ciblage marketing" et wrapper les boutons -->
+    <script>
+      (function () {
+        'use strict';
+
+        var lastFormattedHTML = '';
+
+        function formatCookieText() {
+          try {
+            var disclaimerElement = document.getElementById('tarteaucitronDisclaimerAlert');
+            if (!disclaimerElement) return false;
+
+            var currentHTML = disclaimerElement.innerHTML;
+            var currentText = disclaimerElement.textContent || disclaimerElement.innerText || '';
+
+            // Si déjà formaté correctement, ne rien faire
+            if (currentHTML === lastFormattedHTML && currentHTML.indexOf('<br>') !== -1) {
+              return true;
+            }
+
+            // Vérifier si le texte contient "Aucun cookie publicitaire n'est utilisé"
+            if (currentHTML.indexOf('<br>') === -1 && currentText.indexOf("Aucun cookie publicitaire n'est utilisé") !== -1) {
+              // Reconstruire le texte avec retour à la ligne et mise en gras
+              var formattedText = currentText.replace(
+                /(Aucun cookie publicitaire n'est utilisé\.?)/g,
+                '<br><br><strong style="font-weight: 700; color: #1f2937;">$1</strong>',
+              );
+
+              disclaimerElement.innerHTML = formattedText;
+              lastFormattedHTML = formattedText;
+              return true;
+            }
+
+            // Vérifier si le texte a été réécrit par TarteAuCitron (pas de <br> mais contient le texte)
+            if (currentHTML.indexOf('<br>') === -1 && currentText.indexOf('Ces données sont collectées') !== -1) {
+              // Reconstruire le texte avec les retours à la ligne
+              var formattedText =
+                "Nous utilisons des cookies uniquement pour mesurer l'audience et améliorer les performances du site (temps de chargement, pages consultées, stabilité).<br><br>Ces données sont collectées à des fins statistiques via Google Analytics.<br><br>Aucune publicité, aucun ciblage marketing.";
+
+              // Mettre en gras "Aucune publicité, aucun ciblage marketing"
+              formattedText = formattedText.replace(
+                /(Aucune publicité, aucun ciblage marketing\.?)/g,
+                '<strong style="font-weight: 700; color: #1f2937;">$1</strong>',
+              );
+
+              disclaimerElement.innerHTML = formattedText;
+              lastFormattedHTML = formattedText;
+              return true;
+            }
+
+            // Si le texte contient \n, le convertir en <br>
+            if (currentText.indexOf('\n') !== -1) {
+              var formattedText = currentText.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+
+              // Mettre en gras "Aucun cookie publicitaire n'est utilisé" avec retour à la ligne
+              if (formattedText.indexOf("Aucun cookie publicitaire n'est utilisé") !== -1) {
+                formattedText = formattedText.replace(
+                  /(Aucun cookie publicitaire n'est utilisé\.?)/g,
+                  '<br><br><strong style="font-weight: 700; color: #1f2937;">$1</strong>',
+                );
+              }
+
+              // Mettre en gras "Aucune publicité, aucun ciblage marketing"
+              if (formattedText.indexOf('Aucune publicité, aucun ciblage marketing') !== -1) {
+                formattedText = formattedText.replace(
+                  /(Aucune publicité, aucun ciblage marketing\.?)/g,
+                  '<strong style="font-weight: 700; color: #1f2937;">$1</strong>',
+                );
+              }
+
+              // Ajouter l'icône de cookie au début si elle n'est pas déjà présente
+              if (formattedText.indexOf('🍪') === -1) {
+                formattedText =
+                  '<span style="display: inline-block; margin-right: 8px; font-size: 1.2em; vertical-align: middle;">🍪</span>' +
+                  formattedText;
+              }
+
+              if (disclaimerElement.innerHTML !== formattedText) {
+                disclaimerElement.innerHTML = formattedText;
+                lastFormattedHTML = formattedText;
+              }
+              return true;
+            }
+
+            // Vérifier si le texte contient "Aucun cookie publicitaire n'est utilisé" sans formatage
+            if (currentText.indexOf("Aucun cookie publicitaire n'est utilisé") !== -1 && currentHTML.indexOf('<strong') === -1) {
+              var formattedText = currentText.replace(
+                /(Aucun cookie publicitaire n'est utilisé\.?)/g,
+                '<strong style="font-weight: 700; color: #1f2937;">$1</strong>',
+              );
+
+              disclaimerElement.innerHTML = formattedText;
+              lastFormattedHTML = formattedText;
+              return true;
+            }
+
+            return false;
+          } catch (e) {
+            console.error('Error formatting cookie text:', e);
+            return false;
+          }
+        }
+
+        function wrapButtons() {
+          try {
+            var alertBig = document.getElementById('tarteaucitronAlertBig');
+            if (!alertBig) return false;
+
+            var existingWrapper = alertBig.querySelector('.tarteaucitron-buttons-wrapper');
+            if (existingWrapper) return true; // Déjà wrappé
+
+            var buttons = alertBig.querySelectorAll('button.tarteaucitronCTAButton');
+            if (buttons.length === 0) return false;
+
+            // Ne pas manipuler la visibilité ici, c'est géré par formatPopupImmediately()
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'tarteaucitron-buttons-wrapper';
+            wrapper.style.cssText = 'display: flex; flex-direction: row; gap: 12px; margin-top: 24px; width: 100%;';
+
+            for (var i = 0; i < buttons.length; i++) {
+              wrapper.appendChild(buttons[i]);
+            }
+
+            alertBig.appendChild(wrapper);
+
+            return true; // Wrappé avec succès
+          } catch (e) {
+            console.error('Error wrapping buttons:', e);
+            return false;
+          }
+        }
+
+        function initCookieScripts() {
+          // Utiliser formatPopupImmediately pour éviter les duplications
+          formatPopupImmediately();
+          return true;
+        }
+
+        // Fonction pour formater immédiatement dès que la popup apparaît
+        function formatPopupImmediately() {
+          var alertBig = document.getElementById('tarteaucitronAlertBig');
+          if (alertBig && !alertBig.hasAttribute('data-formatted')) {
+            // S'assurer que la popup est cachée et positionnée à gauche pendant le formatage
+            // Le CSS devrait déjà le faire, mais on force au cas où
+            alertBig.style.visibility = 'hidden';
+            alertBig.style.opacity = '0';
+            alertBig.style.transform = 'translateX(-100%)';
+
+            // Formater de manière synchrone pour éviter le flash
+            formatCookieText();
+            wrapButtons();
+
+            // Marquer comme formatée
+            alertBig.setAttribute('data-formatted', 'true');
+
+            // Utiliser requestAnimationFrame pour réafficher au prochain frame
+            // Cela garantit que le formatage est terminé avant l'affichage
+            // L'animation CSS se chargera de faire glisser la popup depuis la gauche
+            requestAnimationFrame(function () {
+              requestAnimationFrame(function () {
+                if (alertBig && alertBig.hasAttribute('data-formatted')) {
+                  // Réinitialiser le transform pour permettre l'animation CSS
+                  alertBig.style.transform = '';
+                  alertBig.style.visibility = 'visible';
+                  alertBig.style.opacity = '1';
+                }
+              });
+            });
+          }
+        }
+
+        // Observer pour formater dès que la popup est créée dans le DOM
+        if (typeof MutationObserver !== 'undefined') {
+          var formatObserver = new MutationObserver(function (mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+              var mutation = mutations[i];
+              if (mutation.type === 'childList') {
+                // Vérifier si la popup vient d'être ajoutée
+                for (var j = 0; j < mutation.addedNodes.length; j++) {
+                  var node = mutation.addedNodes[j];
+                  if (node.id === 'tarteaucitronAlertBig' || (node.querySelector && node.querySelector('#tarteaucitronAlertBig'))) {
+                    // Popup créée, formater immédiatement de manière synchrone
+                    // Utiliser requestAnimationFrame pour s'assurer que c'est fait avant le rendu
+                    requestAnimationFrame(function () {
+                      formatPopupImmediately();
+                    });
+                  }
+                }
+              }
+            }
+          });
+
+          if (document.body) {
+            formatObserver.observe(document.body, {
+              childList: true,
+              subtree: true,
+            });
+          }
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            // Essayer immédiatement
+            formatPopupImmediately();
+            setTimeout(initCookieScripts, 0);
+            setTimeout(initCookieScripts, 50);
+            setTimeout(initCookieScripts, 100);
+            setTimeout(initCookieScripts, 500);
+          });
+        } else {
+          // Essayer immédiatement
+          formatPopupImmediately();
+          setTimeout(initCookieScripts, 0);
+          setTimeout(initCookieScripts, 50);
+          setTimeout(initCookieScripts, 100);
+          setTimeout(initCookieScripts, 500);
+        }
+
+        var observer = null;
+        var formatInterval = null;
+
+        try {
+          if (typeof MutationObserver !== 'undefined') {
+            observer = new MutationObserver(function (mutations) {
+              var shouldFormat = false;
+              var shouldWrap = false;
+
+              for (var i = 0; i < mutations.length; i++) {
+                var mutation = mutations[i];
+                var target = mutation.target;
+
+                if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                  if (
+                    target.id === 'tarteaucitronDisclaimerAlert' ||
+                    (target.querySelector && target.querySelector('#tarteaucitronDisclaimerAlert'))
+                  ) {
+                    shouldFormat = true;
+                  }
+                  if (target.id === 'tarteaucitronAlertBig' || (target.querySelector && target.querySelector('#tarteaucitronAlertBig'))) {
+                    shouldWrap = true;
+                  }
+
+                  // Vérifier les nœuds ajoutés
+                  if (mutation.addedNodes) {
+                    for (var j = 0; j < mutation.addedNodes.length; j++) {
+                      var node = mutation.addedNodes[j];
+                      if (node.id === 'tarteaucitronDisclaimerAlert' || node.id === 'tarteaucitronAlertBig') {
+                        shouldFormat = true;
+                        shouldWrap = true;
+                      }
+                    }
+                  }
+                }
+              }
+
+              if (shouldFormat || shouldWrap) {
+                // Utiliser formatPopupImmediately pour formater et wrapper en une seule fois
+                // Cela garantit que la popup est cachée pendant le formatage
+                formatPopupImmediately();
+              }
+            });
+
+            if (document.body) {
+              observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+                attributes: false,
+              });
+            }
+          }
+
+          // Intervalle de vérification continue pour maintenir le formatage
+          formatInterval = setInterval(function () {
+            var disclaimerElement = document.getElementById('tarteaucitronDisclaimerAlert');
+            if (disclaimerElement) {
+              var html = disclaimerElement.innerHTML || '';
+              var text = disclaimerElement.textContent || '';
+
+              // Si le texte contient "Ces données" mais pas de <br>, reformater
+              if (text.indexOf('Ces données sont collectées') !== -1 && html.indexOf('<br>') === -1) {
+                formatCookieText();
+              }
+            }
+          }, 100);
+        } catch (e) {
+          console.error('Error setting up observer:', e);
+        }
+      })();
+    </script>
+
+    <!-- Script pour modifier le comportement du bouton "Je choisis" et "Tout accepter" -->
+    <script>
+      (function () {
+        'use strict';
+
+        // Intercepter le bouton "Tout accepter" pour forcer la fermeture de la popup
+        function interceptAcceptAllButton() {
+          var acceptAllButton = document.getElementById('tarteaucitronAllAllowed');
+          if (acceptAllButton && !acceptAllButton.hasAttribute('data-custom-intercepted-accept')) {
+            acceptAllButton.setAttribute('data-custom-intercepted-accept', 'true');
+
+            // Ajouter un listener pour forcer la fermeture - HAUTE PRIORITÉ
+            acceptAllButton.addEventListener(
+              'click',
+              function (e) {
+                console.log('Tout accepter clicked - forcing closure');
+
+                // Empêcher TOUT comportement par défaut
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+
+                // Enregistrer le consentement GA4 IMMÉDIATEMENT
+                consentGiven = true; // Désactiver le MutationObserver
+                isCustomView = false; // Désactiver isCustomView
+
+                // Utiliser saveGA4Consent() qui enregistre dans localStorage ET dans le cookie TarteAuCitron
+                saveGA4Consent(true);
+
+                // Initialiser GA4 avec consent "granted"
+                initGA4ConsentMode(true);
+
+                // Fonction pour forcer la fermeture
+                function forceClose() {
+                  // Forcer la fermeture IMMÉDIATEMENT (pas de délai)
+                  var hideStyle = document.getElementById('tarteaucitron-hide-if-consent');
+                  if (hideStyle) {
+                    hideStyle.textContent = `
+                    #tarteaucitronAlertBig,
+                    #tarteaucitronAlertSmall,
+                    #tarteaucitron,
+                    #tarteaucitronBack,
+                    #tarteaucitronRoot.tarteaucitronBeforeVisible,
+                    #tarteaucitronRoot {
+                      display: none !important;
+                      visibility: hidden !important;
+                      opacity: 0 !important;
+                    }
+                  `;
+                  }
+
+                  // Forcer la fermeture de TOUS les éléments TarteAuCitron
+                  var alertBig = document.getElementById('tarteaucitronAlertBig');
+                  if (alertBig) {
+                    alertBig.style.display = 'none !important';
+                    alertBig.style.visibility = 'hidden !important';
+                    alertBig.style.opacity = '0 !important';
+                    alertBig.remove(); // Supprimer complètement
+                  }
+
+                  var alertSmall = document.getElementById('tarteaucitronAlertSmall');
+                  if (alertSmall) {
+                    alertSmall.style.display = 'none !important';
+                    alertSmall.remove();
+                  }
+
+                  // Cacher également le backdrop
+                  var root = document.getElementById('tarteaucitronRoot');
+                  if (root) {
+                    root.style.display = 'none !important';
+                    root.style.visibility = 'hidden !important';
+                    root.style.opacity = '0 !important';
+                  }
+
+                  var back = document.getElementById('tarteaucitronBack');
+                  if (back) {
+                    back.style.display = 'none !important';
+                  }
+
+                  console.log('Popup forcefully closed and removed');
+                }
+
+                // Forcer la fermeture immédiatement
+                forceClose();
+
+                // Et encore après un court délai au cas où TarteAuCitron réaffiche
+                setTimeout(forceClose, 50);
+                setTimeout(forceClose, 100);
+                setTimeout(forceClose, 200);
+
+                // Appeler TarteAuCitron pour enregistrer le consentement
+                if (typeof tarteaucitron !== 'undefined' && tarteaucitron.userInterface) {
+                  tarteaucitron.userInterface.respondAll(true);
+                }
+
+                return false;
+              },
+              true,
+            ); // Utiliser capture phase pour être AVANT TarteAuCitron
+          }
+        }
+
+        // Essayer d'intercepter immédiatement et périodiquement
+        interceptAcceptAllButton();
+        setInterval(interceptAcceptAllButton, 200);
+
+        // ===== FONCTIONS DE GESTION DU CONSENTEMENT =====
+        // Définir ces fonctions ICI, AVANT le listener global qui les utilise
+
+        function getGA4Consent() {
+          try {
+            var consent = localStorage.getItem('ga4_consent');
+            return consent === 'true';
+          } catch (e) {
+            return false;
+          }
+        }
+
+        function saveGA4Consent(consent) {
+          try {
+            localStorage.setItem('ga4_consent', consent ? 'true' : 'false');
+            localStorage.setItem('ga4_consent_date', new Date().toISOString());
+
+            // IMPORTANT: Enregistrer aussi dans le cookie TarteAuCitron
+            // pour que TarteAuCitron sache que le consentement a été donné
+            saveTarteaucitronConsent(consent);
+          } catch (e) {
+            console.error('Error saving consent:', e);
+          }
+        }
+
+        function saveTarteaucitronConsent(consent) {
+          try {
+            // Créer un objet de consent pour TarteAuCitron
+            var consentData = {};
+
+            // Si consent = true, tous les services sont acceptés
+            // Si consent = false, tous les services sont refusés
+            consentData['gtag'] = consent;
+
+            // Encoder et sauvegarder dans le cookie
+            var cookieValue = encodeURIComponent(JSON.stringify(consentData));
+            var expiryDate = new Date();
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1); // 1 an
+
+            document.cookie = 'tarteaucitron=' + cookieValue + '; expires=' + expiryDate.toUTCString() + '; path=/; SameSite=Lax';
+          } catch (e) {
+            console.error('Error saving TarteAuCitron cookie:', e);
+          }
+        }
+
+        // ===== FIN DES FONCTIONS DE CONSENTEMENT =====
+
+        // Intercepteur global pour TOUS les clics sur les boutons TarteAuCitron
+        document.addEventListener(
+          'click',
+          function (e) {
+            var target = e.target;
+
+            // Vérifier si c'est un bouton TarteAuCitron
+            if (target && target.tagName === 'BUTTON') {
+              // Si c'est "Tout accepter" ou un bouton similaire
+              if (
+                target.id === 'tarteaucitronAllAllowed' ||
+                target.id === 'tarteaucitronPersonalize2' ||
+                target.textContent.indexOf('accepter') !== -1 ||
+                target.textContent.indexOf('Accepter') !== -1
+              ) {
+                // Empêcher le comportement par défaut
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+
+                // Enregistrer le consentement
+                consentGiven = true;
+                isCustomView = false;
+
+                // Utiliser la fonction saveGA4Consent qui enregistre dans localStorage ET dans le cookie TarteAuCitron
+                saveGA4Consent(true);
+
+                // IMPORTANT: Charger GA4 NOUS-MÊMES avec le bon consent mode AVANT TarteAuCitron
+                // Ne PAS utiliser respondAll car il charge GA4 avec consent "denied"
+
+                // Initialiser GA4 avec consent "granted" immédiatement
+                var GA4_ID = 'G-DPX4BNV725';
+
+                // ÉTAPE 1: Initialiser dataLayer EN PREMIER
+                window.dataLayer = window.dataLayer || [];
+
+                // ÉTAPE 2: Créer gtag IMMÉDIATEMENT (avant de définir le consent)
+                if (typeof gtag === 'undefined') {
+                  function gtag() {
+                    window.dataLayer.push(arguments);
+                  }
+                  window.gtag = gtag;
+                }
+
+                // ÉTAPE 3: Définir le consent À "GRANTED" AVANT de charger le script
+                // CRITIQUE : le consent doit être défini AVANT que le script GA4 ne démarre
+                // Utiliser gtag() au lieu de dataLayer.push() pour le bon format
+                gtag('consent', 'default', {
+                  analytics_storage: 'granted',
+                  ad_storage: 'denied',
+                  ad_user_data: 'denied',
+                  ad_personalization: 'denied',
+                  wait_for_update: 0,
+                });
+
+                // ÉTAPE 4: Initialiser gtag avec la date
+                gtag('js', new Date());
+
+                // Charger le script GA4 si pas déjà chargé
+                var ga4Script = document.querySelector('script[src*="gtag/js"]');
+
+                if (!ga4Script) {
+                  var script = document.createElement('script');
+                  script.async = true;
+                  script.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA4_ID;
+
+                  script.onload = function () {
+                    // Le consent est déjà défini à "granted" AVANT le chargement
+                    // On configure juste GA4 maintenant
+                    gtag('config', GA4_ID, {
+                      anonymize_ip: true,
+                      cookie_flags: 'SameSite=None;Secure',
+                      send_page_view: true,
+                    });
+                  };
+
+                  script.onerror = function () {
+                    console.error('Error loading GA4 script');
+                  };
+
+                  document.head.appendChild(script);
+                } else {
+                  // Script déjà chargé, mettre à jour le consent EXPLICITEMENT
+                  gtag('consent', 'update', {
+                    analytics_storage: 'granted',
+                    ad_storage: 'denied',
+                    ad_user_data: 'denied',
+                    ad_personalization: 'denied',
+                  });
+
+                  // Configurer GA4
+                  gtag('config', GA4_ID, {
+                    anonymize_ip: true,
+                    cookie_flags: 'SameSite=None;Secure',
+                    send_page_view: true,
+                  });
+                }
+
+                // Mettre à jour l'état de TarteAuCitron SANS charger le script
+                if (typeof tarteaucitron !== 'undefined') {
+                  if (tarteaucitron.state) {
+                    tarteaucitron.state.gtag = true;
+                  }
+
+                  // Ne PAS modifier tarteaucitron.services.gtag car cela cause une erreur
+                  // TarteAuCitron n'a pas de service 'gtag' enregistré si on ne le configure pas
+
+                  // Ne PAS appeler respondAll car il charge GA4 avec consent "denied"
+                  // Fermer juste la popup
+                  if (tarteaucitron.userInterface) {
+                    tarteaucitron.userInterface.closeAlert();
+                  }
+                }
+
+                // Mettre à jour le CSS pour cacher la popup
+                var hideStyle = document.getElementById('tarteaucitron-hide-if-consent');
+                if (hideStyle) {
+                  hideStyle.textContent = `
+                  #tarteaucitronAlertBig,
+                  #tarteaucitronAlertSmall,
+                  #tarteaucitron,
+                  #tarteaucitronBack,
+                  #tarteaucitronRoot.tarteaucitronBeforeVisible,
+                  #tarteaucitronRoot {
+                    display: none !important;
+                    visibility: hidden !important;
+                    opacity: 0 !important;
+                  }
+                `;
+                }
+
+                // Forcer la fermeture immédiate et répétée
+                function forceCloseNow() {
+                  var alertBig = document.getElementById('tarteaucitronAlertBig');
+                  var alertSmall = document.getElementById('tarteaucitronAlertSmall');
+                  var root = document.getElementById('tarteaucitronRoot');
+                  var back = document.getElementById('tarteaucitronBack');
+
+                  if (alertBig) {
+                    alertBig.style.setProperty('display', 'none', 'important');
+                    alertBig.style.setProperty('visibility', 'hidden', 'important');
+                    alertBig.style.setProperty('opacity', '0', 'important');
+                  }
+
+                  if (alertSmall) {
+                    alertSmall.style.setProperty('display', 'none', 'important');
+                  }
+
+                  if (root) {
+                    root.style.setProperty('display', 'none', 'important');
+                    root.style.setProperty('visibility', 'hidden', 'important');
+                    root.style.setProperty('opacity', '0', 'important');
+                  }
+
+                  if (back) {
+                    back.style.setProperty('display', 'none', 'important');
+                  }
+                }
+
+                // Exécuter immédiatement et plusieurs fois
+                forceCloseNow();
+                setTimeout(forceCloseNow, 10);
+                setTimeout(forceCloseNow, 50);
+                setTimeout(forceCloseNow, 100);
+                setTimeout(forceCloseNow, 200);
+                setTimeout(forceCloseNow, 500);
+
+                // Empêcher TarteAuCitron de recréer la popup
+                if (typeof tarteaucitron !== 'undefined') {
+                  // Désactiver la réouverture automatique
+                  if (tarteaucitron.userInterface && tarteaucitron.userInterface.openAlert) {
+                    var originalOpenAlert = tarteaucitron.userInterface.openAlert;
+                    tarteaucitron.userInterface.openAlert = function () {
+                      if (!consentGiven) {
+                        return originalOpenAlert.apply(this, arguments);
+                      }
+                      return false;
+                    };
+                  }
+                }
+
+                return false;
+              }
+            }
+          },
+          true,
+        ); // Capture phase
+
+        // Observer pour intercepter quand le bouton est créé
+        if (typeof MutationObserver !== 'undefined') {
+          var acceptObserver = new MutationObserver(function (mutations) {
+            interceptAcceptAllButton();
+          });
+
+          if (document.body) {
+            acceptObserver.observe(document.body, {
+              childList: true,
+              subtree: true,
+            });
+          }
+        }
+
+        // Intercepter addClickEventToId AVANT que TarteAuCitron ne charge complètement
+        function interceptTarteAuCitronAddClick() {
+          if (typeof tarteaucitron !== 'undefined' && tarteaucitron.addClickEventToId) {
+            // Vérifier si déjà intercepté
+            if (tarteaucitron.addClickEventToId._customIntercepted) {
+              return true;
+            }
+
+            var originalAddClickEventToId = tarteaucitron.addClickEventToId;
+            tarteaucitron.addClickEventToId = function (id, callback) {
+              if (id === 'tarteaucitronAllDenied2') {
+                // Ne pas ajouter le listener par défaut pour ce bouton
+                // Notre listener personnalisé gère ce bouton
+                return;
+              }
+              return originalAddClickEventToId.call(tarteaucitron, id, callback);
+            };
+            tarteaucitron.addClickEventToId._customIntercepted = true;
+            return true;
+          }
+          return false;
+        }
+
+        // Essayer d'intercepter immédiatement
+        interceptTarteAuCitronAddClick();
+
+        // Si TarteAuCitron n'est pas encore chargé, essayer périodiquement
+        if (!interceptTarteAuCitronAddClick()) {
+          var interceptInterval = setInterval(function () {
+            if (interceptTarteAuCitronAddClick()) {
+              clearInterval(interceptInterval);
+            }
+          }, 50);
+
+          // Arrêter après 5 secondes
+          setTimeout(function () {
+            clearInterval(interceptInterval);
+          }, 5000);
+        }
+
+        var isCustomView = false;
+        var originalTitle = '';
+        var originalText = '';
+        var originalButtons = null;
+        var GA4_ID = 'G-DPX4BNV725';
+        var consentGiven = false; // Variable globale pour désactiver le MutationObserver
+
+        // Les fonctions getGA4Consent, saveGA4Consent et saveTarteaucitronConsent
+        // sont maintenant définies plus haut dans le code (ligne ~700)
+
+        // Fonction pour initialiser gtag avec consent mode
+        function initGA4ConsentMode(consent) {
+          var GA4_ID = 'G-DPX4BNV725';
+
+          // ÉTAPE 1: Initialiser dataLayer EN PREMIER
+          window.dataLayer = window.dataLayer || [];
+
+          // ÉTAPE 2: Créer gtag IMMÉDIATEMENT (avant de définir le consent)
+          if (typeof gtag === 'undefined') {
+            function gtag() {
+              window.dataLayer.push(arguments);
+            }
+            window.gtag = gtag;
+          }
+
+          // ÉTAPE 3: Définir le consent À "GRANTED" AVANT de charger le script
+          // CRITIQUE : le consent doit être défini AVANT que le script GA4 ne démarre
+          gtag('consent', 'default', {
+            analytics_storage: consent ? 'granted' : 'denied',
+            ad_storage: 'denied',
+            ad_user_data: 'denied',
+            ad_personalization: 'denied',
+            wait_for_update: 0,
+          });
+
+          // ÉTAPE 4: Initialiser gtag avec la date
+          gtag('js', new Date());
+
+          // Si consentement donné et que le script GA4 n'est pas encore chargé
+          if (consent) {
+            // Vérifier si le script GA4 est déjà chargé
+            var ga4Script = document.querySelector('script[src*="gtag/js"]');
+            if (!ga4Script) {
+              // Charger le script GA4
+              var script1 = document.createElement('script');
+              script1.async = true;
+              script1.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA4_ID;
+
+              script1.onload = function () {
+                gtag('config', GA4_ID, {
+                  anonymize_ip: true,
+                  cookie_flags: 'SameSite=None;Secure',
+                  send_page_view: true,
+                });
+              };
+
+              document.head.appendChild(script1);
+            } else {
+              // Script déjà chargé, juste configurer
+              gtag('config', GA4_ID, {
+                anonymize_ip: true,
+                cookie_flags: 'SameSite=None;Secure',
+                send_page_view: true,
+              });
+            }
+          }
+        }
+
+        // Fonction pour créer l'icône Google Analytics depuis l'URL
+        function createAnalyticsIcon() {
+          var iconContainer = document.createElement('div');
+          iconContainer.className = 'tarteaucitron-ga4-icon-container';
+          iconContainer.style.cssText =
+            'position: relative; width: 24px; height: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;';
+
+          // Icône principale Google Analytics
+          var icon = document.createElement('img');
+          icon.src = 'https://favicons.axept.io/favicons?domain=https://analytics.google.com/';
+          icon.alt = 'Google Analytics';
+          icon.width = 24;
+          icon.height = 24;
+          icon.style.cssText = 'width: 24px; height: 24px; object-fit: contain;';
+          iconContainer.appendChild(icon);
+
+          return iconContainer;
+        }
+
+        // Fonction pour créer un toggle switch
+        function createToggleSwitch(checked, onChange) {
+          var label = document.createElement('label');
+          label.className = 'tarteaucitron-ga4-toggle';
+          label.style.cssText = 'position: relative; display: inline-block; width: 48px; height: 24px; margin: 0; cursor: pointer;';
+
+          var input = document.createElement('input');
+          input.type = 'checkbox';
+          input.checked = checked;
+          input.style.cssText = 'opacity: 0; width: 0; height: 0;';
+          input.addEventListener('change', function () {
+            onChange(this.checked);
+          });
+
+          var span = document.createElement('span');
+          span.className = 'tarteaucitron-ga4-slider';
+          span.style.cssText =
+            'position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: 0.3s; border-radius: 24px;';
+
+          var sliderBefore = document.createElement('span');
+          sliderBefore.style.cssText =
+            'position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%;';
+
+          if (checked) {
+            span.style.backgroundColor = 'hsl(245, 58%, 62%)';
+            sliderBefore.style.transform = 'translateX(24px)';
+          }
+
+          input.addEventListener('change', function () {
+            if (this.checked) {
+              span.style.backgroundColor = 'hsl(245, 58%, 62%)';
+              sliderBefore.style.transform = 'translateX(24px)';
+            } else {
+              span.style.backgroundColor = '#ccc';
+              sliderBefore.style.transform = 'translateX(0)';
+            }
+          });
+
+          span.appendChild(sliderBefore);
+          label.appendChild(input);
+          label.appendChild(span);
+
+          return label;
+        }
+
+        function switchToCustomView() {
+          try {
+            var alertBig = document.getElementById('tarteaucitronAlertBig');
+            if (!alertBig) return;
+
+            // Forcer l'affichage du popup
+            alertBig.style.display = 'block';
+            alertBig.style.visibility = 'visible';
+            alertBig.style.opacity = '1';
+
+            if (typeof tarteaucitron !== 'undefined' && tarteaucitron.userInterface) {
+              tarteaucitron.userInterface.addClass('tarteaucitronRoot', 'tarteaucitronBeforeVisible');
+              tarteaucitron.userInterface.css('tarteaucitronAlertBig', 'display', 'block');
+            }
+
+            // Sauvegarder l'état original
+            if (!isCustomView) {
+              // Trouver le titre (peut être dans ::before ou un élément h1)
+              var titleElement = alertBig.querySelector('h1, .tarteaucitronH1');
+              if (titleElement) {
+                originalTitle = titleElement.textContent || alertBig.getAttribute('data-original-title') || '';
+              } else {
+                // Le titre peut être dans le ::before, on le récupère via le style
+                var computedStyle = window.getComputedStyle(alertBig, '::before');
+                originalTitle = computedStyle.content || 'Une navigation respectueuse de votre vie privée';
+              }
+
+              var disclaimerElement = document.getElementById('tarteaucitronDisclaimerAlert');
+              if (disclaimerElement) {
+                originalText = disclaimerElement.innerHTML;
+              }
+
+              // Sauvegarder les boutons originaux
+              var buttonsWrapper = alertBig.querySelector('.tarteaucitron-buttons-wrapper');
+              if (buttonsWrapper) {
+                originalButtons = buttonsWrapper.cloneNode(true);
+              }
+            }
+
+            // Changer le titre via la variable CSS
+            alertBig.setAttribute('data-custom-title', 'true');
+            alertBig.style.setProperty('--tacTitleBanner', '"' + tarteaucitron.lang.customTitle + '"');
+
+            // Changer le texte
+            var disclaimerElement = document.getElementById('tarteaucitronDisclaimerAlert');
+            if (disclaimerElement) {
+              var customTextHTML = tarteaucitron.lang.customText.replace(/\n/g, '<br>');
+
+              // Créer le conteneur pour le texte et la ligne GA4
+              var textContainer = document.createElement('div');
+              textContainer.className = 'tarteaucitron-custom-content';
+
+              // Texte explicatif
+              var textDiv = document.createElement('div');
+              textDiv.className = 'tarteaucitron-custom-text';
+              textDiv.innerHTML = customTextHTML;
+              textDiv.style.cssText = 'margin-bottom: 24px; color: #1f2937; font-size: 1rem; line-height: 1.6;';
+              textContainer.appendChild(textDiv);
+
+              // Ligne GA4 avec icône et toggle (style carte blanche)
+              var ga4Row = document.createElement('div');
+              ga4Row.className = 'tarteaucitron-ga4-row';
+              ga4Row.style.cssText =
+                'display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; margin-top: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);';
+
+              var ga4Left = document.createElement('div');
+              ga4Left.style.cssText = 'display: flex; align-items: flex-start; gap: 10px; flex: 1;';
+
+              // Icône Analytics
+              var analyticsIcon = createAnalyticsIcon();
+
+              // Conteneur texte (titre + description)
+              var ga4TextContainer = document.createElement('div');
+              ga4TextContainer.style.cssText = 'display: flex; flex-direction: column; gap: 2px; flex: 1;';
+
+              // Titre "Google Analytics 4"
+              var ga4Title = document.createElement('div');
+              ga4Title.className = 'tarteaucitron-ga4-title';
+              ga4Title.textContent = tarteaucitron.lang.ga4Name;
+              ga4Title.style.cssText = 'color: #1f2937; font-size: 0.9375rem; font-weight: 700; line-height: 1.3; margin: 0; padding: 0;';
+
+              // Texte descriptif
+              var ga4Text = document.createElement('div');
+              ga4Text.className = 'tarteaucitron-ga4-label';
+              ga4Text.textContent = tarteaucitron.lang.ga4Label;
+              ga4Text.style.cssText = 'color: #6b7280; font-size: 0.8125rem; font-weight: 400; line-height: 1.3; margin: 0; padding: 0;';
+
+              ga4TextContainer.appendChild(ga4Title);
+              ga4TextContainer.appendChild(ga4Text);
+
+              ga4Left.appendChild(analyticsIcon);
+              ga4Left.appendChild(ga4TextContainer);
+
+              // Toggle switch - DÉSACTIVÉ par défaut (false)
+              // Toujours désactivé par défaut lors de l'ouverture de la vue personnalisée
+              // L'utilisateur doit activer le toggle manuellement s'il souhaite accepter GA
+              var ga4Consent = false; // Par défaut, toujours désactivé
+
+              // Le toggle ne sauvegarde PAS immédiatement - juste changement visuel
+              // La sauvegarde se fait uniquement quand on clique sur "Terminer" ou "J'accepte tout"
+              var toggle = createToggleSwitch(ga4Consent, function (checked) {
+                // Ne PAS sauvegarder immédiatement - juste mettre à jour l'état visuel
+                // L'état sera sauvegardé uniquement quand l'utilisateur clique sur "Terminer" ou "J'accepte tout"
+
+                // Mettre à jour l'état dans TarteAuCitron (temporaire, pas sauvegardé)
+                if (typeof tarteaucitron !== 'undefined') {
+                  if (tarteaucitron.state) {
+                    tarteaucitron.state.gtag = checked;
+                  }
+                }
+              });
+
+              ga4Row.appendChild(ga4Left);
+              ga4Row.appendChild(toggle);
+              textContainer.appendChild(ga4Row);
+
+              disclaimerElement.innerHTML = '';
+              disclaimerElement.classList.add('has-custom-content');
+              disclaimerElement.appendChild(textContainer);
+            }
+
+            // Remplacer les boutons
+            var buttonsWrapper = alertBig.querySelector('.tarteaucitron-buttons-wrapper');
+            if (buttonsWrapper) {
+              buttonsWrapper.innerHTML = '';
+
+              // Bouton Retour - Navigation uniquement, AUCUN consentement enregistré
+              var backButton = document.createElement('button');
+              backButton.type = 'button';
+              backButton.className = 'tarteaucitronCTAButton tarteaucitronCustomBack';
+              backButton.textContent = tarteaucitron.lang.back;
+              backButton.style.cssText =
+                'flex: 1; padding: 10px 16px; border-radius: 0; font-size: 1rem; font-weight: 600; cursor: pointer; background: #ffffff; color: #1f2937; border: 1px solid #d1d5db; margin: 0; white-space: nowrap;';
+              backButton.addEventListener('click', function () {
+                // Retour = Navigation uniquement
+                // ❌ Aucun cookie activé
+                // ❌ Aucun consentement enregistré
+                // ❌ Google Analytics reste désactivé
+                switchToOriginalView();
+              });
+
+              // Bouton J'accepte tout - Accepter GA + Enregistrer + Fermer
+              var acceptAllButton = document.createElement('button');
+              acceptAllButton.type = 'button';
+              acceptAllButton.className = 'tarteaucitronCTAButton tarteaucitronCustomAcceptAll';
+              acceptAllButton.textContent = tarteaucitron.lang.acceptAllCustom;
+              acceptAllButton.style.cssText =
+                'flex: 1; padding: 10px 16px; border-radius: 0; font-size: 1rem; font-weight: 600; cursor: pointer; background: hsl(245, 58%, 62%); color: #ffffff; border: none; margin: 0; white-space: nowrap;';
+              acceptAllButton.addEventListener('click', function () {
+                // J'accepte tout = Accepter GA + Enregistrer + Fermer
+                // ✅ Google Analytics activé
+                // ✅ Consentement enregistré (analytics = true)
+                // ✅ Chargement de GA4
+                // ✅ Fermeture définitive de la pop-up
+
+                console.log("J'accepte tout clicked - second popup");
+
+                // Activer le toggle visuellement
+                var toggleInput = alertBig.querySelector('.tarteaucitron-ga4-toggle input[type="checkbox"]');
+                if (toggleInput) {
+                  toggleInput.checked = true;
+                  var slider = toggleInput.nextElementSibling;
+                  if (slider) {
+                    slider.style.backgroundColor = 'hsl(245, 58%, 62%)';
+                    var sliderBefore = slider.querySelector('span');
+                    if (sliderBefore) {
+                      sliderBefore.style.transform = 'translateX(24px)';
+                    }
+                  }
+                }
+
+                // Enregistrer le consentement
+                saveGA4Consent(true);
+                initGA4ConsentMode(true);
+
+                // IMPORTANT: Réinitialiser isCustomView et consentGiven pour empêcher la réouverture
+                isCustomView = false;
+                consentGiven = true;
+
+                // Mettre à jour le CSS pour cacher la popup immédiatement
+                var hideStyle = document.getElementById('tarteaucitron-hide-if-consent');
+                if (hideStyle) {
+                  hideStyle.textContent = `
+                    #tarteaucitronAlertBig,
+                    #tarteaucitronAlertSmall,
+                    #tarteaucitron,
+                    #tarteaucitronBack,
+                    #tarteaucitronRoot.tarteaucitronBeforeVisible {
+                      display: none !important;
+                      visibility: hidden !important;
+                      opacity: 0 !important;
+                    }
+                  `;
+                }
+
+                // Forcer la fermeture immédiate de la popup
+                if (alertBig) {
+                  alertBig.style.display = 'none';
+                  alertBig.style.visibility = 'hidden';
+                  alertBig.style.opacity = '0';
+                }
+
+                // Cacher le backdrop
+                var root = document.getElementById('tarteaucitronRoot');
+                if (root) {
+                  root.style.display = 'none';
+                }
+
+                // IMPORTANT: Ne PAS appeler tarteaucitron.setConsent('gtag', ...) car le service gtag n'existe pas
+                // Nous gérons GA4 manuellement via saveGA4Consent() et initGA4ConsentMode()
+                // Juste mettre à jour l'état dans tarteaucitron.state pour la cohérence
+                if (typeof tarteaucitron !== 'undefined' && tarteaucitron.state) {
+                  tarteaucitron.state.gtag = true;
+                }
+
+                // Fermer la popup via TarteAuCitron si possible
+                if (typeof tarteaucitron !== 'undefined' && tarteaucitron.userInterface) {
+                  try {
+                    tarteaucitron.userInterface.closeAlert();
+                  } catch (e) {
+                    // Erreur attendue si le service gtag n'est pas enregistré dans TarteAuCitron
+                  }
+                }
+              });
+
+              // Bouton Terminer - TOUJOURS refuser GA + Fermer
+              var finishButton = document.createElement('button');
+              finishButton.type = 'button';
+              finishButton.className = 'tarteaucitronCTAButton tarteaucitronCustomFinish';
+              finishButton.textContent = tarteaucitron.lang.finish;
+              finishButton.style.cssText =
+                'flex: 1; padding: 10px 16px; border-radius: 0; font-size: 1rem; font-weight: 600; cursor: pointer; background: #ffffff; color: #1f2937; border: 1px solid #d1d5db; margin: 0; white-space: nowrap;';
+              finishButton.addEventListener('click', function () {
+                // Terminer = TOUJOURS refuser GA + Fermer
+                // ❌ Google Analytics désactivé (peu importe l'état du toggle)
+                // ✅ Consentement enregistré (analytics = false)
+                // ✅ Fermeture définitive de la pop-up
+                // 👉 Terminer ≠ Accepter
+
+                console.log('Terminer clicked');
+
+                // TOUJOURS refuser GA, indépendamment de l'état du toggle
+                var ga4Consent = false;
+
+                // Désactiver le toggle visuellement
+                var toggleInput = alertBig.querySelector('.tarteaucitron-ga4-toggle input[type="checkbox"]');
+                if (toggleInput && toggleInput.checked) {
+                  toggleInput.checked = false;
+                  var slider = toggleInput.nextElementSibling;
+                  if (slider) {
+                    slider.style.backgroundColor = '#ccc';
+                    var sliderBefore = slider.querySelector('span');
+                    if (sliderBefore) {
+                      sliderBefore.style.transform = 'translateX(0)';
+                    }
+                  }
+                }
+
+                // Enregistrer le refus de consentement
+                saveGA4Consent(false);
+                initGA4ConsentMode(false);
+
+                // IMPORTANT: Réinitialiser isCustomView et consentGiven pour empêcher la réouverture
+                isCustomView = false;
+                consentGiven = true;
+
+                // Mettre à jour le CSS pour cacher la popup immédiatement
+                var hideStyle = document.getElementById('tarteaucitron-hide-if-consent');
+                if (hideStyle) {
+                  hideStyle.textContent = `
+                    #tarteaucitronAlertBig,
+                    #tarteaucitronAlertSmall,
+                    #tarteaucitron,
+                    #tarteaucitronBack,
+                    #tarteaucitronRoot.tarteaucitronBeforeVisible {
+                      display: none !important;
+                      visibility: hidden !important;
+                      opacity: 0 !important;
+                    }
+                  `;
+                }
+
+                // Forcer la fermeture immédiate de la popup
+                if (alertBig) {
+                  alertBig.style.display = 'none';
+                  alertBig.style.visibility = 'hidden';
+                  alertBig.style.opacity = '0';
+                }
+
+                // Cacher le backdrop
+                var root = document.getElementById('tarteaucitronRoot');
+                if (root) {
+                  root.style.display = 'none';
+                }
+
+                // IMPORTANT: Ne PAS appeler tarteaucitron.setConsent('gtag', ...) car le service gtag n'existe pas
+                // Nous gérons GA4 manuellement via saveGA4Consent() et initGA4ConsentMode()
+                // Juste mettre à jour l'état dans tarteaucitron.state pour la cohérence
+                if (typeof tarteaucitron !== 'undefined' && tarteaucitron.state) {
+                  tarteaucitron.state.gtag = false;
+                }
+
+                // Fermer la popup via TarteAuCitron si possible
+                if (typeof tarteaucitron !== 'undefined' && tarteaucitron.userInterface) {
+                  try {
+                    tarteaucitron.userInterface.closeAlert();
+                  } catch (e) {
+                    // Erreur attendue si le service gtag n'est pas enregistré dans TarteAuCitron
+                  }
+                }
+              });
+
+              buttonsWrapper.appendChild(finishButton);
+              buttonsWrapper.appendChild(acceptAllButton);
+              buttonsWrapper.appendChild(backButton);
+            }
+
+            isCustomView = true;
+          } catch (e) {
+            console.error('Error switching to custom view:', e);
+          }
+        }
+
+        function switchToOriginalView() {
+          try {
+            var alertBig = document.getElementById('tarteaucitronAlertBig');
+            if (!alertBig) return;
+
+            // Restaurer le titre
+            alertBig.removeAttribute('data-custom-title');
+            alertBig.style.removeProperty('--tacTitleBanner');
+
+            // Restaurer le texte
+            var disclaimerElement = document.getElementById('tarteaucitronDisclaimerAlert');
+            if (disclaimerElement && originalText) {
+              disclaimerElement.classList.remove('has-custom-content');
+              disclaimerElement.innerHTML = originalText;
+            }
+
+            // Restaurer les boutons
+            var buttonsWrapper = alertBig.querySelector('.tarteaucitron-buttons-wrapper');
+            if (buttonsWrapper && originalButtons) {
+              // Remplacer complètement le wrapper pour restaurer les événements originaux
+              var newWrapper = originalButtons.cloneNode(true);
+              buttonsWrapper.parentNode.replaceChild(newWrapper, buttonsWrapper);
+
+              // Réattacher l'événement au bouton "Je choisis"
+              var denyButton = newWrapper.querySelector('#tarteaucitronAllDenied2');
+              if (denyButton) {
+                // Supprimer les anciens listeners en clonant
+                var newDenyButton = denyButton.cloneNode(true);
+                denyButton.parentNode.replaceChild(newDenyButton, denyButton);
+
+                newDenyButton.addEventListener('click', function (e) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  switchToCustomView();
+                });
+              }
+            }
+
+            isCustomView = false;
+          } catch (e) {
+            console.error('Error switching to original view:', e);
+          }
+        }
+
+        function interceptJeChoisisButton() {
+          try {
+            var denyButton = document.getElementById('tarteaucitronAllDenied2');
+            if (denyButton && !denyButton.hasAttribute('data-custom-intercepted')) {
+              denyButton.setAttribute('data-custom-intercepted', 'true');
+
+              // Supprimer TOUS les event listeners en clonant le bouton
+              var newDenyButton = denyButton.cloneNode(true);
+              newDenyButton.setAttribute('data-custom-intercepted', 'true');
+
+              // Remplacer le bouton
+              if (denyButton.parentNode) {
+                denyButton.parentNode.replaceChild(newDenyButton, denyButton);
+              }
+
+              // Ajouter notre listener avec capture pour l'exécuter en premier
+              newDenyButton.addEventListener(
+                'click',
+                function (e) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.stopImmediatePropagation();
+
+                  // Empêcher le comportement par défaut de TarteAuCitron
+                  if (typeof tarteaucitron !== 'undefined' && tarteaucitron.userInterface) {
+                    // Ne pas appeler respondAll qui ferme le popup
+                  }
+
+                  // S'assurer que le popup est visible
+                  var alertBig = document.getElementById('tarteaucitronAlertBig');
+                  if (alertBig) {
+                    // Forcer l'affichage du popup
+                    alertBig.style.display = 'block';
+                    alertBig.style.visibility = 'visible';
+                    alertBig.style.opacity = '1';
+
+                    if (typeof tarteaucitron !== 'undefined' && tarteaucitron.userInterface) {
+                      tarteaucitron.userInterface.css('tarteaucitronAlertBig', 'display', 'block');
+                      tarteaucitron.userInterface.addClass('tarteaucitronRoot', 'tarteaucitronBeforeVisible');
+                    }
+                  } else {
+                    // Si le popup n'existe pas, le créer
+                    if (typeof tarteaucitron !== 'undefined' && tarteaucitron.userInterface) {
+                      tarteaucitron.userInterface.openAlert();
+                    }
+                  }
+
+                  // Basculer vers la vue personnalisée
+                  setTimeout(function () {
+                    switchToCustomView();
+                  }, 100);
+
+                  return false;
+                },
+                true,
+              ); // Utiliser capture phase pour exécuter en premier
+            }
+          } catch (e) {
+            console.error('Error intercepting button:', e);
+          }
+        }
+
+        // Attendre que le popup soit créé
+        function waitForPopup() {
+          var alertBig = document.getElementById('tarteaucitronAlertBig');
+          if (alertBig) {
+            interceptJeChoisisButton();
+          } else {
+            setTimeout(waitForPopup, 100);
+          }
+        }
+
+        // Observer les changements du DOM pour maintenir le popup ouvert
+        if (typeof MutationObserver !== 'undefined') {
+          var observer = new MutationObserver(function (mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+              var mutation = mutations[i];
+              if (mutation.type === 'childList') {
+                var denyButton = document.getElementById('tarteaucitronAllDenied2');
+                if (denyButton && !denyButton.hasAttribute('data-custom-intercepted')) {
+                  denyButton.setAttribute('data-custom-intercepted', 'true');
+                  interceptJeChoisisButton();
+                }
+              }
+
+              // Empêcher la fermeture automatique du popup si on est en vue personnalisée
+              // MAIS permettre la fermeture si le consentement a été donné/refusé
+              if (!consentGiven && isCustomView && mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                var alertBig = document.getElementById('tarteaucitronAlertBig');
+                if (alertBig && alertBig.style.display === 'none') {
+                  // Vérifier si le consentement a été enregistré
+                  var hasConsent = false;
+                  try {
+                    var consent = localStorage.getItem('ga4_consent');
+                    hasConsent = consent === 'true' || consent === 'false';
+                    console.log(
+                      'MutationObserver: checking consent, hasConsent:',
+                      hasConsent,
+                      'consent:',
+                      consent,
+                      'isCustomView:',
+                      isCustomView,
+                      'consentGiven:',
+                      consentGiven,
+                    );
+                  } catch (e) {
+                    console.error('MutationObserver: error checking consent:', e);
+                  }
+
+                  // Ne réafficher la popup QUE si aucun consentement n'a été enregistré
+                  if (!hasConsent && !consentGiven) {
+                    console.log('MutationObserver: no consent found, reopening popup');
+                    setTimeout(function () {
+                      if (isCustomView && alertBig && !consentGiven) {
+                        alertBig.style.display = 'block';
+                        alertBig.style.visibility = 'visible';
+                        alertBig.style.opacity = '1';
+                        if (typeof tarteaucitron !== 'undefined' && tarteaucitron.userInterface) {
+                          tarteaucitron.userInterface.addClass('tarteaucitronRoot', 'tarteaucitronBeforeVisible');
+                        }
+                      }
+                    }, 10);
+                  } else {
+                    console.log('MutationObserver: consent found or consentGiven=true, allowing popup to close');
+                  }
+                }
+              }
+            }
+          });
+
+          if (document.body) {
+            observer.observe(document.body, {
+              childList: true,
+              subtree: true,
+              attributes: true,
+              attributeFilter: ['style', 'class'],
+            });
+          }
+        }
+
+        // Fonction pour rouvrir la popup de gestion des cookies
+        window.reopenCookiePreferences = function () {
+          try {
+            var alertBig = document.getElementById('tarteaucitronAlertBig');
+
+            // Forcer l'affichage du popup
+            if (alertBig) {
+              alertBig.style.display = 'block';
+              alertBig.style.visibility = 'visible';
+              alertBig.style.opacity = '1';
+
+              if (typeof tarteaucitron !== 'undefined' && tarteaucitron.userInterface) {
+                tarteaucitron.userInterface.css('tarteaucitronAlertBig', 'display', 'block');
+                tarteaucitron.userInterface.addClass('tarteaucitronRoot', 'tarteaucitronBeforeVisible');
+              }
+
+              // Basculer directement vers la vue personnalisée
+              setTimeout(function () {
+                switchToCustomView();
+              }, 100);
+            } else {
+              // Si le popup n'existe pas, le créer via TarteAuCitron
+              if (typeof tarteaucitron !== 'undefined') {
+                tarteaucitron.userInterface.openAlert();
+                setTimeout(function () {
+                  var newAlertBig = document.getElementById('tarteaucitronAlertBig');
+                  if (newAlertBig) {
+                    newAlertBig.style.display = 'block';
+                    newAlertBig.style.visibility = 'visible';
+                    newAlertBig.style.opacity = '1';
+                  }
+                  switchToCustomView();
+                }, 300);
+              }
+            }
+          } catch (e) {
+            console.error('Error reopening cookie preferences:', e);
+          }
+        };
+
+        // Initialiser le consent mode au chargement
+        function initConsentOnLoad() {
+          // Attendre que TarteAuCitron soit complètement initialisé
+          function tryInitConsent() {
+            if (typeof tarteaucitron === 'undefined' || !tarteaucitron.services || !tarteaucitron.job) {
+              setTimeout(tryInitConsent, 100);
+              return;
+            }
+
+            var consent = getGA4Consent();
+
+            // IMPORTANT: Ne charger GA4 QUE si le consentement est explicitement true
+            // Si consent = false ou undefined, ne rien faire
+            if (consent) {
+              initGA4ConsentMode(true);
+
+              // Ne PAS appeler tarteaucitron.setConsent car gtag n'est plus dans tarteaucitron.job
+              // On a désactivé la configuration TarteAuCitron pour gtag
+            }
+          }
+
+          tryInitConsent();
+        }
+
+        // Mécanisme de secours : surveiller et forcer la fermeture si consentGiven = true
+        setInterval(function () {
+          if (consentGiven) {
+            var alertBig = document.getElementById('tarteaucitronAlertBig');
+            var root = document.getElementById('tarteaucitronRoot');
+
+            if (alertBig && window.getComputedStyle(alertBig).display !== 'none') {
+              alertBig.style.setProperty('display', 'none', 'important');
+              alertBig.style.setProperty('visibility', 'hidden', 'important');
+              alertBig.style.setProperty('opacity', '0', 'important');
+
+              if (root) {
+                root.style.setProperty('display', 'none', 'important');
+              }
+            }
+          }
+        }, 100);
+
+        // Essayer immédiatement
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function () {
+            initConsentOnLoad();
+            setTimeout(waitForPopup, 100);
+            setTimeout(waitForPopup, 500);
+            setTimeout(waitForPopup, 1000);
+          });
+        } else {
+          initConsentOnLoad();
+          setTimeout(waitForPopup, 100);
+          setTimeout(waitForPopup, 500);
+          setTimeout(waitForPopup, 1000);
+        }
+      })();
     </script>
 
     <!-- jhipster-needle-add-resources-to-root - JHipster will add new resources here -->
