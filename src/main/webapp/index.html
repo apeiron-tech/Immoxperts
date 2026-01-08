@@ -1344,10 +1344,10 @@
               ga4Left.appendChild(analyticsIcon);
               ga4Left.appendChild(ga4TextContainer);
 
-              // Toggle switch - DÉSACTIVÉ par défaut (false)
-              // Toujours désactivé par défaut lors de l'ouverture de la vue personnalisée
-              // L'utilisateur doit activer le toggle manuellement s'il souhaite accepter GA
-              var ga4Consent = false; // Par défaut, toujours désactivé
+              // Toggle switch - ACTIVÉ par défaut (true)
+              // Activé par défaut lors de l'ouverture de la vue personnalisée
+              // L'utilisateur peut désactiver le toggle s'il ne souhaite pas accepter GA
+              var ga4Consent = true; // Par défaut, activé
 
               // Le toggle ne sauvegarde PAS immédiatement - juste changement visuel
               // La sauvegarde se fait uniquement quand on clique sur "Terminer" ou "J'accepte tout"
@@ -1362,6 +1362,13 @@
                   }
                 }
               });
+
+              // Initialiser l'état TarteAuCitron avec la valeur par défaut (true)
+              if (typeof tarteaucitron !== 'undefined') {
+                if (tarteaucitron.state) {
+                  tarteaucitron.state.gtag = ga4Consent;
+                }
+              }
 
               ga4Row.appendChild(ga4Left);
               ga4Row.appendChild(toggle);
