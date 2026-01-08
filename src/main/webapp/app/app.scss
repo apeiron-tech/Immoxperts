@@ -339,6 +339,11 @@ body {
 body {
   font-family: 'Maven Pro', sans-serif;
 }
+
+/* Lower SearchBar z-index when mobile menu is open so menu appears above */
+body.mobile-menu-open .mobile-search-bar {
+  z-index: 30 !important;
+}
 /* Custom Mapbox Popup Styles */
 .mapboxgl-popup {
   font-family: 'Courier New', Courier, monospace;

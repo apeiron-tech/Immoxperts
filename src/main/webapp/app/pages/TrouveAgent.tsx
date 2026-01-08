@@ -186,32 +186,35 @@ const TrouveAgent: React.FC = () => {
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                  <span className="text-gray-900">Accès gratuit aux données de ventes immobilières</span>
+                  <span className="text-sm sm:text-base text-gray-600">Accès gratuit aux données de ventes immobilières</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                  <span className="text-gray-900">Outils d'analyse et de simulation pour tous</span>
+                  <span className="text-sm sm:text-base text-gray-600">Outils d'analyse et de simulation pour tous</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                  <span className="text-gray-900">Solutions professionnelles pour les agents et agences</span>
+                  <span className="text-sm sm:text-base text-gray-600">Solutions professionnelles pour les agents et agences</span>
                 </li>
               </ul>
             </div>
 
             <div className="bg-white rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl border border-gray-200">
-              <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-3 items-end">
+              {/* Mobile: Stack vertically, Desktop: 3 columns */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-2 md:gap-3">
                 {stats.map((stat, index) => (
-                  <div key={index} className="text-center flex flex-col items-center">
+                  <div key={index} className="text-center flex flex-col items-center sm:items-center">
                     <p
-                      className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold whitespace-pre-line leading-tight mb-2 sm:mb-3"
+                      className="text-2xl sm:text-lg md:text-xl lg:text-2xl font-bold leading-tight mb-2 sm:mb-3"
                       style={{
                         color: 'hsl(245 58% 62%)',
                       }}
                     >
                       {stat.value}
                     </p>
-                    <p className="text-[10px] sm:text-xs md:text-sm text-gray-600 leading-tight whitespace-nowrap">{stat.label}</p>
+                    <p className="text-xs sm:text-xs md:text-sm text-gray-600 leading-tight text-center px-2 sm:px-0 sm:whitespace-nowrap">
+                      {stat.label}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -245,13 +248,13 @@ const TrouveAgent: React.FC = () => {
         </div>
       </section>
 
-      {/* Blog Section */}
-      <section className="py-12 md:py-20 bg-white px-4 sm:px-6 md:px-8">
+      {/* Blog Section - Hidden */}
+      {/* <section className="py-12 md:py-20 bg-white px-4 sm:px-6 md:px-8">
         <div className="container mx-auto">
           <SectionTitle title="Le blog Propsight" subtitle="Guides, analyses et actualités pour réussir vos projets immobiliers." />
 
           {/* Featured Post */}
-          <div className="mb-12">
+      {/* <div className="mb-12">
             <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
               <div className="grid md:grid-cols-2">
                 <div className="aspect-video md:aspect-auto">
@@ -290,10 +293,10 @@ const TrouveAgent: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
 
-          {/* Posts Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Posts Grid */}
+      {/* <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {blogPosts.slice(1).map((post, index) => (
               <article
                 key={index}
@@ -328,10 +331,10 @@ const TrouveAgent: React.FC = () => {
                 </div>
               </article>
             ))}
-          </div>
+          </div> */}
 
-          {/* View All Button */}
-          <div className="text-center mt-10">
+      {/* View All Button */}
+      {/* <div className="text-center mt-10">
             <button
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium border-2 transition-all duration-200 hover:opacity-90"
               style={{
@@ -343,9 +346,9 @@ const TrouveAgent: React.FC = () => {
               Voir tous les articles
               <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
-        </div>
-      </section>
+          </div> */}
+      {/* </div>
+      </section> */}
 
       {/* What we offer - Hidden */}
       {/* <section className="py-12 md:py-20 bg-gray-50 px-4 sm:px-6 md:px-8">

@@ -582,7 +582,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       {/* Mobile-first design */}
       <div className="w-full">
         {/* Mobile Search Bar - Full width, clean design like ImmoData */}
-        <div className="block md:hidden sticky top-0 z-[60] bg-white shadow-sm">
+        <div className="block md:hidden sticky top-0 z-[60] bg-white shadow-sm mobile-search-bar">
           <div className="px-4 py-3">
             <div className="flex items-center gap-3">
               {/* Search Input Container */}

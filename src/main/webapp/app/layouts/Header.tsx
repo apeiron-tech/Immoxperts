@@ -47,6 +47,19 @@ const Header: React.FC = () => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Add/remove class on body when mobile menu opens/closes to hide SearchBar
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.classList.add('mobile-menu-open');
+    } else {
+      document.body.classList.remove('mobile-menu-open');
+    }
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('mobile-menu-open');
+    };
+  }, [mobileMenuOpen]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -67,7 +80,7 @@ const Header: React.FC = () => {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white border-b border-gray-200 ${
+        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 bg-white border-b border-gray-200 ${
           isScrolled ? 'shadow-md' : ''
         }`}
       >
@@ -201,19 +214,22 @@ const Header: React.FC = () => {
         </div>
       </header>
       <div
-        className="fixed top-0 left-0 right-0 z-50 w-full h-[3px] bg-gradient-to-r from-blue-500 via-purple-500 to-yellow-300"
+        className="fixed top-0 left-0 right-0 z-[100] w-full h-[3px] bg-gradient-to-r from-blue-500 via-purple-500 to-yellow-300"
         style={{ marginTop: '73px' }}
       />
 
       {/* Mobile Navigation Menu */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-[70] md:hidden">
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} style={{ top: '73px' }} />
 
-          {/* Menu Panel */}
-          <div className="absolute top-0 left-0 right-0 bg-white/95 backdrop-blur-lg shadow-2xl border-b border-gray-200/50">
-            <div className="pt-20 pb-6">
+          {/* Menu Panel - Starts below header */}
+          <div
+            className="absolute left-0 right-0 bg-white/95 backdrop-blur-lg shadow-2xl border-b border-gray-200/50"
+            style={{ top: '73px' }}
+          >
+            <div className="pt-6 pb-6">
               <nav className="px-6 space-y-2">
                 {/* Navigation Items */}
                 {navItems.map((item, index) => {
