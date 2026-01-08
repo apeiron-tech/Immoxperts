@@ -1307,7 +1307,7 @@
               var textDiv = document.createElement('div');
               textDiv.className = 'tarteaucitron-custom-text';
               textDiv.innerHTML = customTextHTML;
-              textDiv.style.cssText = 'margin-bottom: 24px; color: #1f2937; font-size: 1rem; line-height: 1.6;';
+              textDiv.style.cssText = 'margin-bottom: 24px; color: #1f2937; font-size: 1.3125rem; line-height: 1.6;';
               textContainer.appendChild(textDiv);
 
               // Ligne GA4 avec icône et toggle (style carte blanche)
@@ -1330,13 +1330,13 @@
               var ga4Title = document.createElement('div');
               ga4Title.className = 'tarteaucitron-ga4-title';
               ga4Title.textContent = tarteaucitron.lang.ga4Name;
-              ga4Title.style.cssText = 'color: #1f2937; font-size: 0.9375rem; font-weight: 700; line-height: 1.3; margin: 0; padding: 0;';
+              ga4Title.style.cssText = 'color: #1f2937; font-size: 1.25rem; font-weight: 700; line-height: 1.3; margin: 0; padding: 0;';
 
               // Texte descriptif
               var ga4Text = document.createElement('div');
               ga4Text.className = 'tarteaucitron-ga4-label';
               ga4Text.textContent = tarteaucitron.lang.ga4Label;
-              ga4Text.style.cssText = 'color: #6b7280; font-size: 0.8125rem; font-weight: 400; line-height: 1.3; margin: 0; padding: 0;';
+              ga4Text.style.cssText = 'color: #6b7280; font-size: 1.125rem; font-weight: 400; line-height: 1.3; margin: 0; padding: 0;';
 
               ga4TextContainer.appendChild(ga4Title);
               ga4TextContainer.appendChild(ga4Text);
@@ -1383,7 +1383,7 @@
               backButton.className = 'tarteaucitronCTAButton tarteaucitronCustomBack';
               backButton.textContent = tarteaucitron.lang.back;
               backButton.style.cssText =
-                'flex: 1; padding: 10px 16px; border-radius: 0; font-size: 1rem; font-weight: 600; cursor: pointer; background: #ffffff; color: #1f2937; border: 1px solid #d1d5db; margin: 0; white-space: nowrap;';
+                'flex: 1; padding: 10px 16px; border-radius: 0; font-size: 1.1875rem; font-weight: 600; cursor: pointer; background: #ffffff; color: #1f2937; border: 1px solid #d1d5db; margin: 0; white-space: nowrap;';
               backButton.addEventListener('click', function () {
                 // Retour = Navigation uniquement
                 // ❌ Aucun cookie activé
@@ -1398,7 +1398,7 @@
               acceptAllButton.className = 'tarteaucitronCTAButton tarteaucitronCustomAcceptAll';
               acceptAllButton.textContent = tarteaucitron.lang.acceptAllCustom;
               acceptAllButton.style.cssText =
-                'flex: 1; padding: 10px 16px; border-radius: 0; font-size: 1rem; font-weight: 600; cursor: pointer; background: hsl(245, 58%, 62%); color: #ffffff; border: none; margin: 0; white-space: nowrap;';
+                'flex: 1; padding: 10px 16px; border-radius: 0; font-size: 1.1875rem; font-weight: 600; cursor: pointer; background: hsl(245, 58%, 62%); color: #ffffff; border: none; margin: 0; white-space: nowrap;';
               acceptAllButton.addEventListener('click', function () {
                 // J'accepte tout = Accepter GA + Enregistrer + Fermer
                 // ✅ Google Analytics activé
@@ -1482,36 +1482,29 @@
               finishButton.className = 'tarteaucitronCTAButton tarteaucitronCustomFinish';
               finishButton.textContent = tarteaucitron.lang.finish;
               finishButton.style.cssText =
-                'flex: 1; padding: 10px 16px; border-radius: 0; font-size: 1rem; font-weight: 600; cursor: pointer; background: #ffffff; color: #1f2937; border: 1px solid #d1d5db; margin: 0; white-space: nowrap;';
+                'flex: 1; padding: 10px 16px; border-radius: 0; font-size: 1.1875rem; font-weight: 600; cursor: pointer; background: #ffffff; color: #1f2937; border: 1px solid #d1d5db; margin: 0; white-space: nowrap;';
               finishButton.addEventListener('click', function () {
-                // Terminer = TOUJOURS refuser GA + Fermer
-                // ❌ Google Analytics désactivé (peu importe l'état du toggle)
-                // ✅ Consentement enregistré (analytics = false)
+                // Terminer = Vérifier l'état du toggle et agir en conséquence
+                // Si toggle désactivé → GA4 reste désactivé
+                // Si toggle activé → GA4 s'active
+                // ✅ Consentement enregistré selon l'état du toggle
                 // ✅ Fermeture définitive de la pop-up
-                // 👉 Terminer ≠ Accepter
 
                 console.log('Terminer clicked');
 
-                // TOUJOURS refuser GA, indépendamment de l'état du toggle
+                // Vérifier l'état du toggle
+                var toggleInput = alertBig.querySelector('.tarteaucitron-ga4-toggle input[type="checkbox"]');
                 var ga4Consent = false;
 
-                // Désactiver le toggle visuellement
-                var toggleInput = alertBig.querySelector('.tarteaucitron-ga4-toggle input[type="checkbox"]');
-                if (toggleInput && toggleInput.checked) {
-                  toggleInput.checked = false;
-                  var slider = toggleInput.nextElementSibling;
-                  if (slider) {
-                    slider.style.backgroundColor = '#ccc';
-                    var sliderBefore = slider.querySelector('span');
-                    if (sliderBefore) {
-                      sliderBefore.style.transform = 'translateX(0)';
-                    }
-                  }
+                if (toggleInput) {
+                  // Utiliser l'état actuel du toggle
+                  ga4Consent = toggleInput.checked;
+                  console.log('Toggle state:', ga4Consent);
                 }
 
-                // Enregistrer le refus de consentement
-                saveGA4Consent(false);
-                initGA4ConsentMode(false);
+                // Enregistrer le consentement selon l'état du toggle
+                saveGA4Consent(ga4Consent);
+                initGA4ConsentMode(ga4Consent);
 
                 // IMPORTANT: Réinitialiser isCustomView et consentGiven pour empêcher la réouverture
                 isCustomView = false;
@@ -1550,7 +1543,7 @@
                 // Nous gérons GA4 manuellement via saveGA4Consent() et initGA4ConsentMode()
                 // Juste mettre à jour l'état dans tarteaucitron.state pour la cohérence
                 if (typeof tarteaucitron !== 'undefined' && tarteaucitron.state) {
-                  tarteaucitron.state.gtag = false;
+                  tarteaucitron.state.gtag = ga4Consent;
                 }
 
                 // Fermer la popup via TarteAuCitron si possible
