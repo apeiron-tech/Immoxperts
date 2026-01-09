@@ -16,7 +16,7 @@ services:
         - CMD
         - curl
         - -f
-        - https://immoxperts.apeiron-tech.dev/management/health
+        - https://propsight.fr/management/health
       interval: 5s
       timeout: 5s
       retries: 40

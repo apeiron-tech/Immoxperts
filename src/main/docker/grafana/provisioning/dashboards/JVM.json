@@ -3683,8 +3683,8 @@
         "allFormat": "glob",
         "allValue": null,
         "current": {
-          "text": "immoxperts.apeiron-tech.dev",
-          "value": "immoxperts.apeiron-tech.dev"
+          "text": "propsight.fr",
+          "value": "propsight.fr"
         },
         "datasource": "Prometheus",
         "definition": "",

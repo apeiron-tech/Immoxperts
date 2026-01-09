@@ -101,7 +101,7 @@ To ensure everything worked, run:
 java -jar target/*.jar
 ```
 
-Then navigate to [https://immoxperts.apeiron-tech.dev](https://immoxperts.apeiron-tech.dev) in your browser.
+Then navigate to [https://propsight.fr](https://propsight.fr) in your browser.
 
 Refer to [Using JHipster in production][] for more details.
 
