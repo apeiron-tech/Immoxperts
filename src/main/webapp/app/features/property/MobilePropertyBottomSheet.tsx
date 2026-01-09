@@ -35,7 +35,7 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
 
   return (
     <div className="md:hidden fixed bottom-0 z-[9500] w-full bg-white shadow-2xl">
-      <div className="relative" style={{ fontFamily: "'Maven Pro', sans-serif", padding: '16px 0px 0px 0px' }}>
+      <div className="relative" style={{ fontFamily: "'Inter var', sans-serif", padding: '16px 0px 0px 0px' }}>
         {/* Close Button */}
         <div className="absolute -top-4 right-2">
           <div className="cursor-pointer flex items-center" onClick={onClose}>
@@ -99,17 +99,17 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
               const details = [];
               if (property.rooms && property.rooms !== '' && property.rooms !== '0') {
                 details.push(
-                  `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.rooms}</span>`,
+                  `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.rooms}</span>`,
                 );
               }
               if (property.surface && property.surface !== '' && property.surface !== '0 m²') {
                 details.push(
-                  `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.surface}</span>`,
+                  `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.surface}</span>`,
                 );
               }
               if (property.terrain && property.terrain !== '' && property.terrain !== '0 m²') {
                 details.push(
-                  `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.terrain}</span>`,
+                  `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.terrain}</span>`,
                 );
               }
               const detailsText = details.length > 0 ? details.join('<span style="margin-left: 12px;"></span>') : '';
@@ -150,7 +150,7 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
                 color: currentIndex === 0 ? '#9ca3af' : '#666',
                 cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
-                fontFamily: 'Maven Pro',
+                fontFamily: 'Inter var',
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
@@ -177,7 +177,7 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
                 color: '#3b82f6',
                 fontWeight: 500,
                 padding: '0 12px',
-                fontFamily: 'Maven Pro',
+                fontFamily: 'Inter var',
                 display: 'flex',
                 alignItems: 'center',
               }}
@@ -195,7 +195,7 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
                 color: currentIndex === totalCount - 1 ? '#9ca3af' : '#666',
                 cursor: currentIndex === totalCount - 1 ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
-                fontFamily: 'Maven Pro',
+                fontFamily: 'Inter var',
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',

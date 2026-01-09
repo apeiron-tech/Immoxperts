@@ -91,15 +91,15 @@ const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick
   const details = [];
   if (rooms && rooms !== '' && rooms !== '0')
     details.push(
-      `<span style="color: rgba(12, 12, 12, 0.75);">Pièces </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
+      `<span style="color: rgba(12, 12, 12, 0.75);">Pièces </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
     );
   if (surface && surface !== '' && surface !== '0 m²')
     details.push(
-      `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${surface}</span>`,
+      `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${surface}</span>`,
     );
   if (terrain && terrain !== '' && terrain !== '0 m²')
     details.push(
-      `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${terrain}</span>`,
+      `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${terrain}</span>`,
     );
 
   const detailsText = details.length > 0 ? details.join('<span style="margin-left: 12px;"></span>') : '';
@@ -109,7 +109,7 @@ const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick
       style={{
         background: '#fff',
         padding: '1px',
-        fontFamily: "'Maven Pro', sans-serif",
+        fontFamily: "'Inter var', sans-serif",
         maxWidth: '450px',
         width: '100%',
         position: 'relative',
