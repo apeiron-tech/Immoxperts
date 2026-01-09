@@ -318,7 +318,7 @@
 @tailwind utilities;
 @import 'leaflet/dist/leaflet.css';
 
-@import url('https://fonts.googleapis.com/css2?family=Maven+Pro:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
 
 :root {
   --gradient-primary: linear-gradient(135deg, hsl(245 58% 62%) 0%, hsl(245 58% 52%) 100%);
@@ -334,10 +334,7 @@
 }
 
 body {
-  font-family: 'Maven Pro', sans-serif;
-}
-body {
-  font-family: 'Maven Pro', sans-serif;
+  font-family: 'Inter var', sans-serif;
 }
 
 /* Lower SearchBar z-index when mobile menu is open so menu appears above */

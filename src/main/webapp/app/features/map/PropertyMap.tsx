@@ -1945,15 +1945,15 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           const details = [];
                           if (rooms > 0)
                             details.push(
-                              `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
+                              `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
                             );
                           if (surface > 0)
                             details.push(
-                              `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${surface.toLocaleString('fr-FR')} m²</span>`,
+                              `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${surface.toLocaleString('fr-FR')} m²</span>`,
                             );
                           if (terrain > 0)
                             details.push(
-                              `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Maven Pro; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${terrain.toLocaleString('fr-FR')} m²</span>`,
+                              `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${terrain.toLocaleString('fr-FR')} m²</span>`,
                             );
 
                           const detailsText = details.length > 0 ? details.join('<span style="margin-left: 12px;"></span>') : '';
@@ -1962,7 +1962,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
              <div style="
                background: #fff;
                padding: 1px;
-               font-family: 'Maven Pro', sans-serif;
+               font-family: 'Inter var', sans-serif;
                max-width: 450px;
                width: 100%;
                min-height: 150px;
@@ -2441,7 +2441,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
             // Parcel popup style (when showMutations is false) - always use same style for 1 or multiple addresses
             if (!showMutations) {
               return `
-                <div style="padding: 8px 12px; font-family: 'Maven Pro', Arial, sans-serif;">
+                <div style="padding: 8px 12px; font-family: 'Inter var', Arial, sans-serif;">
                   <div style="font-weight: bold; font-size: 14px; color: #333; margin-bottom: 8px;">
                     Choisissez une adresse
                   </div>

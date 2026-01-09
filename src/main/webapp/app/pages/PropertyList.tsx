@@ -482,7 +482,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                     color: '#666',
                     cursor: 'pointer',
                     fontSize: '12px',
-                    fontFamily: 'Maven Pro',
+                    fontFamily: 'Inter var',
                     fontWeight: 600,
                   }}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
@@ -496,7 +496,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                     color: '#3b82f6',
                     fontWeight: 500,
                     padding: '0 12px',
-                    fontFamily: 'Maven Pro',
+                    fontFamily: 'Inter var',
                   }}
                 >
                   {currentIndex + 1} / {similarProperties.length}
@@ -511,7 +511,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                     color: '#666',
                     cursor: 'pointer',
                     fontSize: '12px',
-                    fontFamily: 'Maven Pro',
+                    fontFamily: 'Inter var',
                     fontWeight: 600,
                   }}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
