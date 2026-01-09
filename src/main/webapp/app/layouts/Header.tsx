@@ -240,16 +240,22 @@ const Header: React.FC = () => {
                       <div key={index}>
                         <div className="block py-4 px-4 rounded-xl text-base font-medium text-gray-700">{item.name}</div>
                         <div className="pl-4 space-y-1">
-                          {item.dropdown.map((dropdownItem, idx) => (
-                            <Link
-                              key={idx}
-                              to={dropdownItem.path}
-                              className="block py-3 px-4 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-all duration-200"
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              {dropdownItem.name}
-                            </Link>
-                          ))}
+                          {item.dropdown.map((dropdownItem, idx) => {
+                            const isDropdownActive = location.pathname === dropdownItem.path;
+                            return (
+                              <Link
+                                key={idx}
+                                to={dropdownItem.path}
+                                className={`block py-3 px-4 rounded-lg text-sm transition-all duration-200 ${
+                                  isDropdownActive ? 'font-semibold' : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                                style={isDropdownActive ? { color: '#7169FB' } : {}}
+                                onClick={() => setMobileMenuOpen(false)}
+                              >
+                                {dropdownItem.name}
+                              </Link>
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -259,9 +265,10 @@ const Header: React.FC = () => {
                     <Link
                       key={index}
                       to={item.path}
-                      className={`block py-4 px-4 rounded-xl text-base font-medium transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-purple-700 ${
-                        isActive ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-purple-700 font-semibold' : 'text-gray-700'
+                      className={`block py-4 px-4 rounded-xl text-base font-medium transition-all duration-200 ${
+                        isActive ? 'font-semibold' : 'text-gray-700'
                       }`}
+                      style={isActive ? { color: '#7169FB' } : {}}
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       {item.name}
