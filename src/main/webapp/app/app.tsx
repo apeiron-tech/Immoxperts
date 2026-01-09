@@ -21,9 +21,15 @@ const MainContent = () => {
   const location = useLocation();
   const hideFooter = location.pathname === '/PrixImmobliers';
 
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
     <div className="flex flex-col min-h-screen" style={{ background: '#F9FAFB' }}>
-      <div className="fixed top-0 left-0 right-0 z-50">
+      {/* Header wrapper: z-[100] to match Header component and ensure it stays above SearchBar (z-[50]) */}
+      <div className="fixed top-0 left-0 right-0 z-[100]">
         <Header />
       </div>
 

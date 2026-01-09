@@ -344,6 +344,25 @@ body {
 body.mobile-menu-open .mobile-search-bar {
   z-index: 30 !important;
 }
+
+/* iOS Safari fix: Ensure SearchBar never overlaps Header */
+/* Header has z-[100], so SearchBar must stay below */
+.mobile-search-bar {
+  z-index: 50 !important;
+  /* Prevent iOS Safari sticky positioning from creating new stacking context above fixed header */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Ensure Header always stays on top on iOS Safari */
+header {
+  z-index: 100 !important;
+  /* Create proper stacking context for iOS Safari */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  /* Header already has position: fixed from className, don't override */
+}
 /* Custom Mapbox Popup Styles */
 .mapboxgl-popup {
   font-family: 'Courier New', Courier, monospace;

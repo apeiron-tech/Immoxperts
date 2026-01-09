@@ -131,8 +131,9 @@ const Header: React.FC = () => {
                       <button
                         onClick={() => setDropdownOpen(!dropdownOpen)}
                         className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200 rounded-lg flex items-center gap-1 ${
-                          isActive ? 'bg-gray-100 text-[hsl(245_58%_62%)]' : 'text-gray-500 hover:text-gray-900'
+                          isActive ? 'bg-gray-100' : 'text-gray-500 hover:text-gray-900'
                         }`}
+                        style={isActive ? { color: '#7169FB' } : {}}
                       >
                         {item.name}
                         <svg
@@ -150,16 +151,22 @@ const Header: React.FC = () => {
                           className="fixed mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-[9999]"
                           style={{ top: '70px', left: 'auto' }}
                         >
-                          {item.dropdown.map((dropdownItem, idx) => (
-                            <Link
-                              key={idx}
-                              to={dropdownItem.path}
-                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-                              onClick={() => setDropdownOpen(false)}
-                            >
-                              {dropdownItem.name}
-                            </Link>
-                          ))}
+                          {item.dropdown.map((dropdownItem, idx) => {
+                            const isDropdownActive = location.pathname === dropdownItem.path;
+                            return (
+                              <Link
+                                key={idx}
+                                to={dropdownItem.path}
+                                className={`block px-4 py-2 text-sm transition-colors duration-200 ${
+                                  isDropdownActive ? 'font-semibold' : 'text-gray-700 hover:bg-gray-50'
+                                }`}
+                                style={isDropdownActive ? { color: '#7169FB' } : {}}
+                                onClick={() => setDropdownOpen(false)}
+                              >
+                                {dropdownItem.name}
+                              </Link>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -171,8 +178,9 @@ const Header: React.FC = () => {
                     key={index}
                     to={item.path}
                     className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200 rounded-lg ${
-                      isActive ? 'bg-gray-100 text-[hsl(245_58%_62%)]' : 'text-gray-500 hover:text-gray-900'
+                      isActive ? 'bg-gray-100' : 'text-gray-500 hover:text-gray-900'
                     }`}
+                    style={isActive ? { color: '#7169FB' } : {}}
                   >
                     {item.name}
                   </Link>
@@ -240,16 +248,22 @@ const Header: React.FC = () => {
                       <div key={index}>
                         <div className="block py-4 px-4 rounded-xl text-base font-medium text-gray-700">{item.name}</div>
                         <div className="pl-4 space-y-1">
-                          {item.dropdown.map((dropdownItem, idx) => (
-                            <Link
-                              key={idx}
-                              to={dropdownItem.path}
-                              className="block py-3 px-4 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-all duration-200"
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              {dropdownItem.name}
-                            </Link>
-                          ))}
+                          {item.dropdown.map((dropdownItem, idx) => {
+                            const isDropdownActive = location.pathname === dropdownItem.path;
+                            return (
+                              <Link
+                                key={idx}
+                                to={dropdownItem.path}
+                                className={`block py-3 px-4 rounded-lg text-sm transition-all duration-200 ${
+                                  isDropdownActive ? 'font-semibold' : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                                style={isDropdownActive ? { color: '#7169FB' } : {}}
+                                onClick={() => setMobileMenuOpen(false)}
+                              >
+                                {dropdownItem.name}
+                              </Link>
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -259,9 +273,10 @@ const Header: React.FC = () => {
                     <Link
                       key={index}
                       to={item.path}
-                      className={`block py-4 px-4 rounded-xl text-base font-medium transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-purple-700 ${
-                        isActive ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-purple-700 font-semibold' : 'text-gray-700'
+                      className={`block py-4 px-4 rounded-xl text-base font-medium transition-all duration-200 ${
+                        isActive ? 'font-semibold' : 'text-gray-700'
                       }`}
+                      style={isActive ? { color: '#7169FB' } : {}}
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       {item.name}

@@ -582,7 +582,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       {/* Mobile-first design */}
       <div className="w-full">
         {/* Mobile Search Bar - Full width, clean design like ImmoData */}
-        <div className="block md:hidden sticky top-0 z-[60] bg-white shadow-sm mobile-search-bar">
+        {/* z-index must be lower than Header (z-[100]) to prevent overlap on iOS Safari */}
+        <div className="block md:hidden sticky top-0 z-[50] bg-white shadow-sm mobile-search-bar">
           <div className="px-4 py-3">
             <div className="flex items-center gap-3">
               {/* Search Input Container */}
@@ -807,7 +808,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
         </div>
 
         {/* Desktop Search Bar - Keep existing design for larger screens */}
-        <div className="hidden md:block px-4 py-3 sticky top-0 z-40 bg-white shadow-sm">
+        {/* z-index must be lower than Header (z-[100]) to prevent overlap on iOS Safari */}
+        <div className="hidden md:block px-4 py-3 sticky top-0 z-[50] bg-white shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 max-w-2xl mx-auto w-full">
             {/* Search Input */}
             <div className="relative w-full">
