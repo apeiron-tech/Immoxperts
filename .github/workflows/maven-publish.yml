@@ -30,12 +30,17 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: 'maven'
 
-      # ---------- Node (REQUIRED for JHipster + Angular) ----------
+      # ---------- Node ----------
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
+
+      # ---------- Install frontend deps (FIXES rimraf error) ----------
+      - name: Install frontend dependencies
+        run: |
+          npm ci
 
       # ---------- Build ----------
       - name: Build JHipster app with Maven (skip tests)
