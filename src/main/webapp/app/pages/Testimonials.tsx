@@ -323,7 +323,7 @@ const Testimonials: React.FC = () => {
                 <ArrowRight className="h-4 w-4" />
               </button>
               <button
-                onClick={() => navigate('/TrouverAgent')}
+                onClick={() => navigate('/apropos')}
                 className="inline-flex items-center gap-2 px-6 py-3 font-medium rounded-lg border-2 transition-all duration-200 hover:opacity-90"
                 style={{ borderColor: 'hsl(245 58% 62%)', color: 'hsl(245 58% 62%)', backgroundColor: 'white' }}
               >

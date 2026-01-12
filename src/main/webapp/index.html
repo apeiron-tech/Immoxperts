@@ -22,6 +22,89 @@
     </style>
     <script src="/content/tarteaucitron/tarteaucitron.js"></script>
     <script src="/content/tarteaucitron/lang/tarteaucitron.fr.js"></script>
+    <!-- Global filter for Mapbox warnings - Must be before any Mapbox code loads -->
+    <script>
+      // Filter Mapbox warnings globally - intercepts all console.warn including from web workers
+      (function () {
+        'use strict';
+        if (window.__mapboxWarnFiltered) return;
+
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        const originalLog = console.log;
+
+        const shouldFilter = function () {
+          const args = Array.from(arguments);
+          const fullMessage = args
+            .map(arg => {
+              try {
+                return String(arg);
+              } catch (e) {
+                return '';
+              }
+            })
+            .join(' ')
+            .toLowerCase();
+
+          return (
+            fullMessage.includes('ignoring unknown image variable') ||
+            fullMessage.includes('image variable') ||
+            (fullMessage.includes('icon') && (fullMessage.includes('variable') || fullMessage.includes('unknown'))) ||
+            (fullMessage.includes('background') && (fullMessage.includes('variable') || fullMessage.includes('unknown'))) ||
+            (fullMessage.includes('stroke') && (fullMessage.includes('variable') || fullMessage.includes('unknown'))) ||
+            fullMessage.includes('featurenamespace') ||
+            fullMessage.includes('featureset') ||
+            fullMessage.includes('selector is not associated') ||
+            fullMessage.includes('place-a') ||
+            fullMessage.includes('place-labels') ||
+            fullMessage.includes('map container element should be empty')
+          );
+        };
+
+        // Aggressively filter ALL Mapbox-related warnings
+        console.warn = function () {
+          if (shouldFilter.apply(null, arguments)) return;
+          originalWarn.apply(console, arguments);
+        };
+
+        console.error = function () {
+          if (shouldFilter.apply(null, arguments)) return;
+          originalError.apply(console, arguments);
+        };
+
+        console.log = function () {
+          if (shouldFilter.apply(null, arguments)) return;
+          originalLog.apply(console, arguments);
+        };
+
+        // Continuously re-apply filter every 50ms to catch any console methods that might be restored
+        setInterval(function () {
+          if (console.warn !== originalWarn) {
+            const currentWarn = console.warn;
+            console.warn = function () {
+              if (shouldFilter.apply(null, arguments)) return;
+              currentWarn.apply(console, arguments);
+            };
+          }
+          if (console.error !== originalError) {
+            const currentError = console.error;
+            console.error = function () {
+              if (shouldFilter.apply(null, arguments)) return;
+              currentError.apply(console, arguments);
+            };
+          }
+          if (console.log !== originalLog) {
+            const currentLog = console.log;
+            console.log = function () {
+              if (shouldFilter.apply(null, arguments)) return;
+              currentLog.apply(console, arguments);
+            };
+          }
+        }, 50);
+
+        window.__mapboxWarnFiltered = true;
+      })();
+    </script>
     <script>
       // Fonction pour vérifier si un consentement valide existe
       function hasValidConsent() {

@@ -235,9 +235,14 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
                 WHEN commune ILIKE CONCAT(UPPER(:token2), '%') THEN 2
                 ELSE 3
             END),
+            (CASE
+                WHEN adresse_complete ILIKE CONCAT(UPPER(:token1), ' ', UPPER(:token2), '%') THEN 0
+                WHEN adresse_complete ILIKE CONCAT('%', UPPER(:token1), ' ', UPPER(:token2), '%') THEN 1
+                ELSE 2
+            END),
             LENGTH(adresse_complete),
             commune, nom_voie, numero
-        LIMIT 50
+        LIMIT 100
         """,
         nativeQuery = true
     )

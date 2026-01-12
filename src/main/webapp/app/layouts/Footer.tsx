@@ -11,7 +11,7 @@ const Footer: React.FC = () => {
       // { label: 'Recherche multi-sites', href: '/louer' },
     ],
     ressources: [
-      { label: 'À propos', href: '/TrouverAgent' },
+      { label: 'À propos', href: '/apropos' },
       // { label: 'Témoignages', href: '/temoignages' },
       { label: 'Blog & analyses', href: '/blog' },
     ],

@@ -121,7 +121,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
       style={{
         background: isMapHovered ? '#f0f9ff' : '#fff', // Light blue background when map hovered
         padding: 24,
-        fontFamily: `'Inter var', sans-serif`,
+        fontFamily: `'Inter', sans-serif`,
         borderRadius: 16,
         cursor: 'default', // Changé de 'pointer' à 'default'
         // 2. STYLING IS NOW DRIVEN BY THE `isHovered` PROP OR `isMapHovered`
@@ -183,21 +183,21 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
           <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>
             {hasValue(rooms) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Pièce </span>}
             {hasValue(rooms) && (
-              <span style={{ fontFamily: 'Inter var', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
+              <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
                 {rooms}
               </span>
             )}
             {hasValue(rooms) && (hasValue(surface) || hasValue(terrain)) && <span style={{ marginLeft: '12px' }}></span>}
             {hasValue(surface) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Surface </span>}
             {hasValue(surface) && (
-              <span style={{ fontFamily: 'Inter var', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
+              <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
                 {surface}
               </span>
             )}
             {hasValue(surface) && hasValue(terrain) && <span style={{ marginLeft: '12px' }}></span>}
             {hasValue(terrain) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Terrain </span>}
             {hasValue(terrain) && (
-              <span style={{ fontFamily: 'Inter var', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
+              <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
                 {terrain}
               </span>
             )}

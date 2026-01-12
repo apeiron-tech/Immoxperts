@@ -297,7 +297,16 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
             ) {
               // Find the first mutation with a valid type_bien (not null)
               const mutation = address.mutations.find(m => m.type_bien != null) || address.mutations[0];
-              const uniqueId = `${feature.properties.idparcelle || featureIndex}-${addressIndex}-0-${Date.now()}`;
+
+              // Generate a unique numeric ID - ensure it's always a valid number
+              const parcelIdValue = feature.properties?.idparcelle || featureIndex;
+              const timestamp = Date.now();
+              // Create a unique numeric ID by combining indices and timestamp
+              // Use modulo to keep it within safe integer range
+              const uniqueId =
+                Number(`${Math.abs(parcelIdValue)}${addressIndex}${timestamp % 1000000}`) ||
+                Number(`${featureIndex}${addressIndex}${timestamp % 1000000}`) ||
+                featureIndex * 1000 + addressIndex * 100 + (timestamp % 100);
 
               // Extract surface values using fallback for old/new field names
               const builtSurface = mutation.surface_batiment ?? mutation.sbati ?? 0;
@@ -309,10 +318,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                 : [0, 0];
 
               const property: Property = {
-                id:
-                  typeof uniqueId === 'string'
-                    ? Number(`${feature.properties.idparcelle || featureIndex}${addressIndex}0${Date.now()}`)
-                    : uniqueId, // Ensure absolutely unique numeric ID
+                id: isNaN(uniqueId) ? featureIndex * 10000 + addressIndex * 100 + (timestamp % 10000) : uniqueId, // Ensure absolutely unique numeric ID
                 address: address.adresse_complete || 'Adresse inconnue',
                 city: address.commune || '',
                 numericPrice: mutation.valeur || 0,
@@ -389,7 +395,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
           const propertyType = mutation.type_bien ?? mutation.type_groupe ?? 'Type inconnu';
 
           return {
-            id: Date.now() + index,
+            id: Date.now() + index + Math.floor(Math.random() * 1000), // Ensure unique ID
             address: address.address,
             city: address.city,
             numericPrice: mutation.valeur || 0,
@@ -482,7 +488,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                     color: '#666',
                     cursor: 'pointer',
                     fontSize: '12px',
-                    fontFamily: 'Inter var',
+                    fontFamily: 'Inter',
                     fontWeight: 600,
                   }}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
@@ -496,7 +502,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                     color: '#3b82f6',
                     fontWeight: 500,
                     padding: '0 12px',
-                    fontFamily: 'Inter var',
+                    fontFamily: 'Inter',
                   }}
                 >
                   {currentIndex + 1} / {similarProperties.length}
@@ -511,7 +517,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                     color: '#666',
                     cursor: 'pointer',
                     fontSize: '12px',
-                    fontFamily: 'Inter var',
+                    fontFamily: 'Inter',
                     fontWeight: 600,
                   }}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f9fafb')}
@@ -563,9 +569,9 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
 
             <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 pb-16 h-full">
               {sortedProperties.length > 0 ? (
-                sortedProperties.map(property => (
+                sortedProperties.map((property, index) => (
                   <PropertyCard
-                    key={property.id}
+                    key={property.id && !isNaN(property.id) ? property.id : `property-${index}-${property.address}`}
                     property={property}
                     onClick={() => {}} // Désactivé - pas de clic sur les cartes
                     isHovered={hoveredPropertyId === property.id}

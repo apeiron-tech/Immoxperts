@@ -60,6 +60,14 @@ public class CacheConfiguration {
             createCache(cm, com.apeiron.immoxperts.domain.Adresse.class.getName() + ".adresseDispoparcs");
             createCache(cm, "mutationSearchCache");
             createCache(cm, "streetCommuneCache");
+            // Cache for address suggestions - faster response for common searches
+            createCache(cm, "addressSuggestionsCache");
+            // Cache for mutations search by bounds and filters
+            createCache(cm, "mutationsSearchCache");
+            // Cache for parcel addresses
+            createCache(cm, "parcelAddressesCache");
+            // Cache for statistics by city
+            createCache(cm, "statsByCityCache");
         };
     }
 

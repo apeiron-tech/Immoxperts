@@ -337,7 +337,7 @@ const BlogArticle: React.FC = () => {
                 <button
                   className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-white text-xs sm:text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity w-full sm:w-auto"
                   style={{ backgroundColor: 'hsl(245 58% 62%)' }}
-                  onClick={() => navigate('/TrouverAgent')}
+                  onClick={() => navigate('/apropos')}
                 >
                   <span className="whitespace-normal sm:whitespace-nowrap">Être prévenu quand les statistiques seront disponibles</span>
                 </button>
@@ -363,7 +363,7 @@ const BlogArticle: React.FC = () => {
                 <button
                   className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-white text-xs sm:text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity w-full sm:w-auto"
                   style={{ backgroundColor: 'hsl(245 58% 62%)' }}
-                  onClick={() => navigate('/TrouverAgent')}
+                  onClick={() => navigate('/apropos')}
                 >
                   <span className="whitespace-normal sm:whitespace-nowrap">Être prévenu quand les modules seront disponibles</span>
                 </button>

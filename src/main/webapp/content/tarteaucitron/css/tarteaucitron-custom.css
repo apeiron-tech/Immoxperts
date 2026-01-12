@@ -28,7 +28,7 @@
 #tarteaucitronRoot *,
 #tarteaucitron,
 #tarteaucitron * {
-  font-family: 'Inter var', sans-serif !important;
+  font-family: 'Inter', sans-serif !important;
 }
 
 /* Forcer le scroll sur la page - Empêcher TarteAuCitron de bloquer */
