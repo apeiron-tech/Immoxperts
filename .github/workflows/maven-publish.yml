@@ -40,7 +40,7 @@ jobs:
       # ---------- Install frontend deps (FIXES rimraf error) ----------
       - name: Install frontend dependencies
         run: |
-          npm ci
+          npm i --force
 
       # ---------- Build ----------
       - name: Build JHipster app with Maven (skip tests)
