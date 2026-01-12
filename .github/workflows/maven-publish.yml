@@ -14,7 +14,7 @@ jobs:
       JAVA_VERSION: '17'
       APP_NAME: 'immoxperts'
       JAR_PATH: 'target/immoxperts-0.0.1-SNAPSHOT.jar'
-      REMOTE_APP_DIR: '/webapp'
+      REMOTE_APP_DIR: 'webapp'
       REMOTE_JAR_NAME: 'immoxperts.jar'
 
     steps:
