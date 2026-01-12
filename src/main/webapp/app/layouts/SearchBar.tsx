@@ -253,6 +253,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSelectionMade, setIsSelectionMade] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Track touch events to distinguish scroll from tap
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+
+  // Cache for address suggestions (frontend cache)
+  // Key: normalized query string, Value: { data: UnifiedSuggestion[], timestamp: number }
+  const suggestionsCacheRef = useRef<Map<string, { data: UnifiedSuggestion[]; timestamp: number }>>(new Map());
+  const CACHE_TTL = 30 * 60 * 1000; // 30 minutes in milliseconds
+  const MAX_CACHE_SIZE = 200; // Maximum number of cached entries
 
   // Notify parent when filter popup opens/closes
   useEffect(() => {
@@ -267,7 +275,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
     surfaceRange: [0, 400] as [number, number],
     terrainRange: [0, 50000] as [number, number],
     pricePerSqmRange: [0, 40000] as [number, number],
-    dateRange: [0, 140] as [number, number],
+    dateRange: [0, 139] as [number, number],
   };
 
   // Calculate active filter count
@@ -276,17 +284,23 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
     let count = 0;
 
-    // Type de bien: +1 if ANY checkbox is unchecked
+    // Type de bien: +1 if the selection is different from default (not all selected)
     const propertyTypeKeys = Object.keys(currentFilters.propertyTypes) as (keyof typeof currentFilters.propertyTypes)[];
-    const hasPropertyTypeFilter = propertyTypeKeys.some(key => !currentFilters.propertyTypes[key]);
-    if (hasPropertyTypeFilter) count += 1;
+    const selectedPropertyTypes = propertyTypeKeys.filter(key => currentFilters.propertyTypes[key]).length;
+    const defaultSelectedPropertyTypes = Object.keys(defaultFilters.propertyTypes).length;
+    if (selectedPropertyTypes !== defaultSelectedPropertyTypes) {
+      count += 1;
+    }
 
-    // Nombre de pièces: +1 if ANY checkbox is unchecked
+    // Nombre de pièces: +1 if the selection is different from default (not all selected)
     const roomCountKeys = Object.keys(currentFilters.roomCounts) as (keyof typeof currentFilters.roomCounts)[];
-    const hasRoomCountFilter = roomCountKeys.some(key => !currentFilters.roomCounts[key]);
-    if (hasRoomCountFilter) count += 1;
+    const selectedRoomCounts = roomCountKeys.filter(key => currentFilters.roomCounts[key]).length;
+    const defaultSelectedRoomCounts = Object.keys(defaultFilters.roomCounts).length;
+    if (selectedRoomCounts !== defaultSelectedRoomCounts) {
+      count += 1;
+    }
 
-    // Range bars: 5 bars, each can give 0-2 points
+    // Range bars: count as 1 filter if ANY range is modified from default
     const rangeFilters: Array<{ key: keyof typeof defaultFilters; range: [number, number] }> = [
       { key: 'priceRange', range: currentFilters.priceRange },
       { key: 'surfaceRange', range: currentFilters.surfaceRange },
@@ -295,18 +309,17 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       { key: 'dateRange', range: currentFilters.dateRange },
     ];
 
-    rangeFilters.forEach(({ key, range }) => {
+    // Check if any range is different from default (use tolerance for floating point)
+    const hasRangeFilter = rangeFilters.some(({ key, range }) => {
       const defaultRange = defaultFilters[key] as [number, number];
-      const minChanged = range[0] !== defaultRange[0];
-      const maxChanged = range[1] !== defaultRange[1];
-
-      if (minChanged && maxChanged) {
-        count += 2; // Both changed = 2 points
-      } else if (minChanged || maxChanged) {
-        count += 1; // One changed = 1 point
-      }
-      // Neither changed = 0 points (do nothing)
+      const minChanged = Math.abs(range[0] - defaultRange[0]) > 0.01;
+      const maxChanged = Math.abs(range[1] - defaultRange[1]) > 0.01;
+      return minChanged || maxChanged;
     });
+
+    if (hasRangeFilter) {
+      count += 1; // Count all ranges as 1 filter group
+    }
 
     return count;
   };
@@ -346,11 +359,48 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           const localCities = hasNumber ? [] : searchLocalCities(normalizedQueryForCities);
           const localOSMPlaces = localCities.map(convertLocalCityToOSMPlace);
 
-          // 2. Fetch backend addresses (always, for both address and city searches)
-          // Add AbortController signal to fetch
-          const backendResponse = await fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(searchQuery)}`, {
+          // 2. Check cache first for complete results
+          const cacheKey = searchQuery.trim().toLowerCase();
+          const cachedResult = suggestionsCacheRef.current.get(cacheKey);
+          const now = Date.now();
+
+          let backendResponse: LocalAddressFeature[] = [];
+          let backendSuggestions: UnifiedSuggestion[] = [];
+          let useCachedResult = false;
+
+          // Check if we have a valid cached result
+          if (cachedResult && now - cachedResult.timestamp < CACHE_TTL) {
+            // Use cached complete result
+            const cachedSuggestions = cachedResult.data;
+            useCachedResult = true;
+
+            // Final check: only update if request wasn't aborted
+            if (!signal.aborted) {
+              setSuggestions(cachedSuggestions);
+              setShowSuggestions(true);
+              setIsLoading(false);
+              // Close other popups when suggestions open
+              onCloseOtherPopups?.();
+              // Close stats popup if it exists
+              if ((window as any).closeStatsPopup) {
+                (window as any).closeStatsPopup();
+              }
+            }
+            return; // Use cached result, skip API call
+          }
+
+          // No valid cache, fetch from backend
+          backendResponse = await fetch(`${API_ENDPOINTS.adresses.suggestions}?q=${encodeURIComponent(searchQuery)}`, {
             signal,
           }).then(res => (res.ok ? res.json() : []));
+
+          // Check if this request is still valid (not aborted, still the latest)
+          if (signal.aborted) {
+            return; // Request was cancelled, ignore results
+          }
+
+          // Convert backend response to unified suggestions
+          backendSuggestions = backendResponse.map(convertBackendToUnified);
 
           // Check if this request is still valid (not aborted, still the latest)
           if (signal.aborted) {
@@ -360,8 +410,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           // 3. Use only LOCAL city search (no external OSM API calls needed)
           const osmPlaces = localOSMPlaces;
 
-          // Convert and merge results
-          const backendSuggestions: UnifiedSuggestion[] = (backendResponse as LocalAddressFeature[]).map(convertBackendToUnified);
+          // Convert OSM places to unified suggestions
           const osmSuggestions: UnifiedSuggestion[] = osmPlaces.map(convertOSMToUnified);
 
           // Deduplicate OSM suggestions based on name and coordinates
@@ -491,6 +540,22 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
           // Combine: Cities first (top 5), then addresses (top 15)
           const sortedSuggestions = [...scoredCities.slice(0, 5), ...scoredAddresses.slice(0, 15)];
+
+          // Cache the final combined results
+          // Store in cache (clean old entries if cache is too large)
+          if (suggestionsCacheRef.current.size >= MAX_CACHE_SIZE) {
+            // Remove oldest entries (simple FIFO - remove first entry)
+            const firstKey = suggestionsCacheRef.current.keys().next().value;
+            if (firstKey) {
+              suggestionsCacheRef.current.delete(firstKey);
+            }
+          }
+
+          // Cache the complete result (backend + OSM combined)
+          suggestionsCacheRef.current.set(cacheKey, {
+            data: sortedSuggestions,
+            timestamp: now,
+          });
 
           // Final check: only update if request wasn't aborted
           if (!signal.aborted) {
@@ -682,11 +747,43 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                           // Prevent input blur before click registers
                           e.preventDefault();
                         }}
-                        onTouchEnd={e => {
-                          e.preventDefault();
-                          handleSuggestionSelect(suggestion);
+                        onTouchStart={e => {
+                          const touch = e.touches[0];
+                          touchStartRef.current = {
+                            x: touch.clientX,
+                            y: touch.clientY,
+                            time: Date.now(),
+                          };
                         }}
-                        style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', cursor: 'pointer' }}
+                        onTouchMove={e => {
+                          // If user is scrolling, mark as moved
+                          if (touchStartRef.current) {
+                            const touch = e.touches[0];
+                            const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+                            const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+                            // If moved more than 10px, consider it a scroll
+                            if (deltaX > 10 || deltaY > 10) {
+                              touchStartRef.current = null;
+                            }
+                          }
+                        }}
+                        onTouchEnd={e => {
+                          // Only select if it was a tap (not a scroll)
+                          if (touchStartRef.current) {
+                            const touch = e.changedTouches[0];
+                            const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+                            const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+                            const deltaTime = Date.now() - touchStartRef.current.time;
+
+                            // Only select if movement was minimal (< 10px) and quick (< 300ms)
+                            if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+                              e.preventDefault();
+                              handleSuggestionSelect(suggestion);
+                            }
+                            touchStartRef.current = null;
+                          }
+                        }}
+                        style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'pan-y', cursor: 'pointer' }}
                       >
                         {/* Icon based on type */}
                         <div className="flex-shrink-0 mt-1">
@@ -903,11 +1000,43 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                         // Prevent input blur before click registers
                         e.preventDefault();
                       }}
-                      onTouchEnd={e => {
-                        e.preventDefault();
-                        handleSuggestionSelect(suggestion);
+                      onTouchStart={e => {
+                        const touch = e.touches[0];
+                        touchStartRef.current = {
+                          x: touch.clientX,
+                          y: touch.clientY,
+                          time: Date.now(),
+                        };
                       }}
-                      style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', cursor: 'pointer' }}
+                      onTouchMove={e => {
+                        // If user is scrolling, mark as moved
+                        if (touchStartRef.current) {
+                          const touch = e.touches[0];
+                          const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+                          const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+                          // If moved more than 10px, consider it a scroll
+                          if (deltaX > 10 || deltaY > 10) {
+                            touchStartRef.current = null;
+                          }
+                        }
+                      }}
+                      onTouchEnd={e => {
+                        // Only select if it was a tap (not a scroll)
+                        if (touchStartRef.current) {
+                          const touch = e.changedTouches[0];
+                          const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+                          const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+                          const deltaTime = Date.now() - touchStartRef.current.time;
+
+                          // Only select if movement was minimal (< 10px) and quick (< 300ms)
+                          if (deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+                            e.preventDefault();
+                            handleSuggestionSelect(suggestion);
+                          }
+                          touchStartRef.current = null;
+                        }
+                      }}
+                      style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'pan-y', cursor: 'pointer' }}
                     >
                       {/* Icon based on type */}
                       <div className="flex-shrink-0 mt-0.5">

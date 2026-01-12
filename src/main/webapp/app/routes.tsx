@@ -113,7 +113,7 @@ const AppRoutes = () => {
         />
 
         <Route path="/pack-pro" element={<PackPro />} />
-        <Route path="/TrouverAgent" element={<TrouveAgent />} />
+        <Route path="/apropos" element={<TrouveAgent />} />
         <Route path="/VoirLagence" element={<VoirLagence />} />
         <Route path="/temoignages" element={<Testimonials />} />
         <Route path="/blog" element={<Blog />} />

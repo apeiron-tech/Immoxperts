@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -250,12 +251,16 @@ public class AdresseServiceImpl implements AdresseService {
         return adresseMapper.toDto(adresse);
     }
 
+    @Cacheable(value = "addressSuggestionsCache", unless = "#result == null || #result.isEmpty()")
     public List<AddressSuggestionProjection> getSuggestions(String query) {
         if (query == null || query.trim().isEmpty()) {
             return List.of();
         }
 
-        // Split query into tokens and filter out very short ones
+        // Common French stop words (articles, prepositions) to filter out
+        java.util.Set<String> stopWords = java.util.Set.of("de", "du", "des", "le", "la", "les", "un", "une", "et", "ou", "a", "au", "aux");
+
+        // Split query into tokens and filter out very short ones and stop words
         String[] tokens = query.trim().split("\\s+");
         List<String> validTokens = new java.util.ArrayList<>();
 
@@ -268,16 +273,95 @@ public class AdresseServiceImpl implements AdresseService {
                 // Remove accents for DB matching (Résidence -> Residence)
                 // ILIKE is case-insensitive but NOT accent-insensitive
                 normalizedToken = removeAccents(normalizedToken);
-                validTokens.add(normalizedToken);
+                // Filter out stop words (case-insensitive)
+                String lowerToken = normalizedToken.toLowerCase();
+                if (!stopWords.contains(lowerToken)) {
+                    // Convert to uppercase for consistent matching (SQL uses UPPER())
+                    // This ensures tokens like "1ER", "ALBERT" match correctly
+                    validTokens.add(normalizedToken.toUpperCase());
+                }
             }
         }
 
-        LOG.debug("Search tokens (after normalization): {}", validTokens);
+        LOG.debug("Search tokens (after normalization and stop word filtering): {}", validTokens);
 
         List<AddressSuggestionProjection> results;
 
-        // If we have multiple tokens, use multi-token search
-        if (validTokens.size() >= 5) {
+        // If we have more than 5 tokens, prioritize first and last tokens (most significant)
+        // This handles cases like "42 AVENUE ALBERT 1ER DE BELGIQUE" -> use "42", "AVENUE", "ALBERT", "1ER", "BELGIQUE"
+        if (validTokens.size() > 5) {
+            // Use first 4 tokens + last token (most significant parts)
+            List<String> prioritizedTokens = new java.util.ArrayList<>();
+            prioritizedTokens.addAll(validTokens.subList(0, Math.min(4, validTokens.size())));
+            if (validTokens.size() > 4) {
+                prioritizedTokens.add(validTokens.get(validTokens.size() - 1)); // Last token (usually the most specific)
+            }
+            // Limit to 5 tokens
+            prioritizedTokens = prioritizedTokens.subList(0, Math.min(5, prioritizedTokens.size()));
+
+            // Initialize results as empty list
+            results = new java.util.ArrayList<>();
+
+            if (prioritizedTokens.size() == 5) {
+                results = adresseRepository.findSuggestionsByFiveTokens(
+                    prioritizedTokens.get(0),
+                    prioritizedTokens.get(1),
+                    prioritizedTokens.get(2),
+                    prioritizedTokens.get(3),
+                    prioritizedTokens.get(4)
+                );
+
+                // If no results, try with 4 tokens
+                if (results.isEmpty() && prioritizedTokens.size() >= 4) {
+                    results = adresseRepository.findSuggestionsByFourTokens(
+                        prioritizedTokens.get(0),
+                        prioritizedTokens.get(1),
+                        prioritizedTokens.get(2),
+                        prioritizedTokens.get(3)
+                    );
+                }
+
+                // If still no results, try with 3 tokens
+                if (results.isEmpty() && prioritizedTokens.size() >= 3) {
+                    results = adresseRepository.findSuggestionsByThreeTokens(
+                        prioritizedTokens.get(0),
+                        prioritizedTokens.get(1),
+                        prioritizedTokens.get(2)
+                    );
+                }
+            } else if (prioritizedTokens.size() == 4) {
+                results = adresseRepository.findSuggestionsByFourTokens(
+                    prioritizedTokens.get(0),
+                    prioritizedTokens.get(1),
+                    prioritizedTokens.get(2),
+                    prioritizedTokens.get(3)
+                );
+
+                // If no results, try with 3 tokens
+                if (results.isEmpty()) {
+                    results = adresseRepository.findSuggestionsByThreeTokens(
+                        prioritizedTokens.get(0),
+                        prioritizedTokens.get(1),
+                        prioritizedTokens.get(2)
+                    );
+                }
+            } else if (prioritizedTokens.size() == 3) {
+                results = adresseRepository.findSuggestionsByThreeTokens(
+                    prioritizedTokens.get(0),
+                    prioritizedTokens.get(1),
+                    prioritizedTokens.get(2)
+                );
+            } else if (prioritizedTokens.size() == 2) {
+                results = adresseRepository.findSuggestionsByTwoTokens(prioritizedTokens.get(0), prioritizedTokens.get(1));
+            } else if (prioritizedTokens.size() == 1) {
+                results = adresseRepository.findSuggestionsByToken(prioritizedTokens.get(0));
+            }
+
+            // Final fallback to original method if still no results
+            if (results == null || results.isEmpty()) {
+                results = adresseRepository.findSuggestions(query);
+            }
+        } else if (validTokens.size() == 5) {
             results = adresseRepository.findSuggestionsByFiveTokens(
                 validTokens.get(0),
                 validTokens.get(1),
@@ -286,8 +370,9 @@ public class AdresseServiceImpl implements AdresseService {
                 validTokens.get(4)
             );
 
-            // If no results with 5 tokens, try with 4
+            // If no results with 5 tokens, try with 4 (skip middle token, keep first 3 and last)
             if (results.isEmpty() && validTokens.size() >= 4) {
+                // Try first 4 tokens
                 results = adresseRepository.findSuggestionsByFourTokens(
                     validTokens.get(0),
                     validTokens.get(1),
@@ -296,9 +381,24 @@ public class AdresseServiceImpl implements AdresseService {
                 );
             }
 
+            // If still no results, try with first 3 + last token (skip middle tokens)
+            if (results.isEmpty() && validTokens.size() >= 4) {
+                results = adresseRepository.findSuggestionsByFourTokens(
+                    validTokens.get(0),
+                    validTokens.get(1),
+                    validTokens.get(2),
+                    validTokens.get(4) // Last token instead of 4th
+                );
+            }
+
             // If no results with 4 tokens, try with 3
             if (results.isEmpty() && validTokens.size() >= 3) {
                 results = adresseRepository.findSuggestionsByThreeTokens(validTokens.get(0), validTokens.get(1), validTokens.get(2));
+            }
+
+            // Final fallback: use original query method (more flexible)
+            if (results.isEmpty()) {
+                results = adresseRepository.findSuggestions(query);
             }
         } else if (validTokens.size() == 4) {
             results = adresseRepository.findSuggestionsByFourTokens(
@@ -333,13 +433,14 @@ public class AdresseServiceImpl implements AdresseService {
             results = adresseRepository.findSuggestions(query);
         }
 
-        // ✅ Éliminer les doublons par idadresse et limiter à 20 résultats
+        // ✅ Éliminer les doublons par idadresse et limiter à 50 résultats
+        // Increased limit to ensure all relevant addresses are returned
         return results
             .stream()
             .collect(Collectors.toMap(AddressSuggestionProjection::getIdadresse, result -> result, (existing, replacement) -> existing))
             .values()
             .stream()
-            .limit(20)
+            .limit(50)
             .collect(Collectors.toList());
     }
 

@@ -357,7 +357,7 @@ public class MutationResource {
         LOG.debug("REST request to get addresses for parcel: {}", parcelId);
 
         try {
-            String parcelData = mutationRepository.findParcelAddresses(parcelId);
+            String parcelData = mutationService.getParcelAddresses(parcelId);
 
             if (parcelData == null || parcelData.trim().isEmpty()) {
                 return ResponseEntity.notFound().build();

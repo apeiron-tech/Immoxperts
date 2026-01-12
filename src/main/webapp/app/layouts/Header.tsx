@@ -26,7 +26,7 @@ const Header: React.FC = () => {
       name: 'Ressources',
       path: '#',
       dropdown: [
-        { name: 'À propos', path: '/TrouverAgent' },
+        { name: 'À propos', path: '/apropos' },
         // { name: 'Témoignages', path: '/temoignages' },
         { name: 'Blog & analyses', path: '/blog' },
       ],

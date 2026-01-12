@@ -11,7 +11,7 @@ module.exports = {
         'map-panel': '0 2px 6px rgba(0,0,0,0.1)',
       },
       fontFamily: {
-        sans: ['Inter var', 'sans-serif'],
+        sans: ['Inter', 'sans-serif'],
       },
     },
   },

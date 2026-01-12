@@ -737,6 +737,16 @@ const PropertyMap: React.FC<MapPageProps> = ({
   const frenchReverseCacheRef = useRef<Map<string, any>>(new Map());
   const osmReverseCacheRef = useRef<Map<string, any>>(new Map());
 
+  // Cache for mutations search (frontend cache)
+  // Key: bounds + filters as string, Value: { data: any, timestamp: number }
+  const mutationsSearchCacheRef = useRef<Map<string, { data: any; timestamp: number }>>(new Map());
+  // Cache for parcel addresses
+  const parcelCacheRef = useRef<Map<string, { data: string; timestamp: number }>>(new Map());
+  // Cache for statistics by city
+  const statsByCityCacheRef = useRef<Map<string, { data: any; timestamp: number }>>(new Map());
+  const CACHE_TTL = 30 * 60 * 1000; // 30 minutes in milliseconds
+  const MAX_CACHE_SIZE = 200; // Maximum number of cached entries
+
   useEffect(() => {
     return () => {
       frenchReverseAbortRef.current?.abort();
@@ -1316,7 +1326,43 @@ const PropertyMap: React.FC<MapPageProps> = ({
       const apiUrl = `${API_ENDPOINTS.mutations.search}?${params.toString()}`;
       debugLog('Calling API:', apiUrl);
 
-      const { data } = await axios.get(apiUrl, { signal });
+      // Check cache first
+      const cacheKey = params.toString();
+      const cachedResult = mutationsSearchCacheRef.current.get(cacheKey);
+      const now = Date.now();
+
+      let data: any;
+
+      if (cachedResult && now - cachedResult.timestamp < CACHE_TTL) {
+        // Use cached data
+        debugLog('Using cached mutations search result');
+        data = cachedResult.data;
+      } else {
+        // Fetch from API
+        data = (await axios.get(apiUrl, { signal })).data;
+
+        // Check if request was cancelled
+        if (signal.aborted) {
+          debugLog('Search request was cancelled');
+          return;
+        }
+
+        // Store in cache (clean old entries if cache is too large)
+        if (mutationsSearchCacheRef.current.size >= MAX_CACHE_SIZE) {
+          // Remove oldest entries (simple FIFO - remove first entry)
+          const firstKey = mutationsSearchCacheRef.current.keys().next().value;
+          if (firstKey) {
+            mutationsSearchCacheRef.current.delete(firstKey);
+          }
+        }
+
+        // Cache the result
+        mutationsSearchCacheRef.current.set(cacheKey, {
+          data,
+          timestamp: now,
+        });
+      }
+
       debugLog('API response data:', data);
       debugLog('Number of features in response:', data.features?.length || 0);
 
@@ -1397,6 +1443,11 @@ const PropertyMap: React.FC<MapPageProps> = ({
       return;
     }
 
+    // Clear container to avoid Mapbox warning about non-empty container
+    if (mapContainer.current && mapContainer.current.innerHTML.trim() !== '') {
+      mapContainer.current.innerHTML = '';
+    }
+
     // Wait for location data unless we have search params
     if (!userLocation && !searchParams?.coordinates) {
       debugLog('Waiting for location data...');
@@ -1430,6 +1481,103 @@ const PropertyMap: React.FC<MapPageProps> = ({
         debugLog('Using default location (Paris):', initialCenter);
       }
 
+      // Filter out Mapbox warnings before creating the map - Make it permanent
+      if (!(window as any).__mapboxWarnFiltered) {
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        // eslint-disable-next-line no-console
+        const originalLog = console.log;
+
+        // Aggressively filter ALL Mapbox-related warnings
+        const filterMapboxWarnings = (...args: any[]) => {
+          const fullMessage = args
+            .map(arg => {
+              try {
+                return String(arg);
+              } catch (e) {
+                return '';
+              }
+            })
+            .join(' ')
+            .toLowerCase();
+
+          // Filter out ALL Mapbox warnings (very aggressive)
+          if (
+            fullMessage.includes('ignoring unknown image variable') ||
+            fullMessage.includes('image variable') ||
+            (fullMessage.includes('icon') && (fullMessage.includes('variable') || fullMessage.includes('unknown'))) ||
+            (fullMessage.includes('background') && (fullMessage.includes('variable') || fullMessage.includes('unknown'))) ||
+            (fullMessage.includes('stroke') && (fullMessage.includes('variable') || fullMessage.includes('unknown'))) ||
+            fullMessage.includes('featurenamespace') ||
+            fullMessage.includes('featureset') ||
+            fullMessage.includes('selector is not associated') ||
+            fullMessage.includes('place-a') ||
+            fullMessage.includes('place-labels') ||
+            fullMessage.includes('map container element should be empty') ||
+            (fullMessage.includes('map container') && fullMessage.includes('empty'))
+          ) {
+            return true; // Should be suppressed
+          }
+          return false;
+        };
+
+        console.warn = function (...args: any[]) {
+          if (filterMapboxWarnings(...args)) {
+            return; // Suppress
+          }
+          originalWarn.apply(console, args);
+        };
+
+        console.error = function (...args: any[]) {
+          if (filterMapboxWarnings(...args)) {
+            return; // Suppress
+          }
+          originalError.apply(console, args);
+        };
+
+        // eslint-disable-next-line no-console
+        console.log = function (...args: any[]) {
+          if (filterMapboxWarnings(...args)) {
+            return; // Suppress
+          }
+          originalLog.apply(console, args);
+        };
+
+        // Continuously re-apply filter to catch any console methods that might be restored
+        setInterval(() => {
+          if (console.warn !== originalWarn && !(console.warn as any).__mapboxFiltered) {
+            const currentWarn = console.warn;
+            console.warn = function (...args: any[]) {
+              if (filterMapboxWarnings(...args)) return;
+              currentWarn.apply(console, args);
+            };
+            (console.warn as any).__mapboxFiltered = true;
+          }
+          if (console.error !== originalError && !(console.error as any).__mapboxFiltered) {
+            const currentError = console.error;
+            console.error = function (...args: any[]) {
+              if (filterMapboxWarnings(...args)) return;
+              currentError.apply(console, args);
+            };
+            (console.error as any).__mapboxFiltered = true;
+          }
+          // eslint-disable-next-line no-console
+          if (console.log !== originalLog && !(console.log as any).__mapboxFiltered) {
+            // eslint-disable-next-line no-console
+            const currentLog = console.log;
+            // eslint-disable-next-line no-console
+            console.log = function (...args: any[]) {
+              if (filterMapboxWarnings(...args)) return;
+              currentLog.apply(console, args);
+            };
+            // eslint-disable-next-line no-console
+            (console.log as any).__mapboxFiltered = true;
+          }
+        }, 50);
+
+        (window as any).__mapboxWarnFiltered = true;
+      }
+
       mapRef.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/immoxpert/cmck83rh6001501r1dlt1fy8k',
@@ -1442,6 +1590,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
       });
 
       const map = mapRef.current;
+
       debugLog('Map instance created');
 
       // Enhanced error handling
@@ -1606,9 +1755,35 @@ const PropertyMap: React.FC<MapPageProps> = ({
               }
 
               try {
-                // Fetch parcel addresses from API
-                const response = await axios.get(`${API_BASE_URL}/api/mutations/parcel/${parcelId}`);
-                const parcelData = response.data;
+                // Check cache first for parcel addresses
+                const parcelCacheKey = parcelId;
+                const cachedParcel = parcelCacheRef.current.get(parcelCacheKey);
+                const now = Date.now();
+
+                let parcelData: any;
+
+                if (cachedParcel && now - cachedParcel.timestamp < CACHE_TTL) {
+                  // Use cached data
+                  parcelData = JSON.parse(cachedParcel.data);
+                } else {
+                  // Fetch parcel addresses from API
+                  const response = await axios.get(`${API_BASE_URL}/api/mutations/parcel/${parcelId}`);
+                  parcelData = response.data;
+
+                  // Store in cache (clean old entries if cache is too large)
+                  if (parcelCacheRef.current.size >= MAX_CACHE_SIZE) {
+                    const firstKey = parcelCacheRef.current.keys().next().value;
+                    if (firstKey) {
+                      parcelCacheRef.current.delete(firstKey);
+                    }
+                  }
+
+                  // Cache the result (store as JSON string)
+                  parcelCacheRef.current.set(parcelCacheKey, {
+                    data: JSON.stringify(parcelData),
+                    timestamp: now,
+                  });
+                }
 
                 if (!parcelData || !parcelData.adresses || parcelData.adresses.length === 0) {
                   console.warn('No addresses found for parcel:', parcelId, parcelData);
@@ -1945,15 +2120,15 @@ const PropertyMap: React.FC<MapPageProps> = ({
                           const details = [];
                           if (rooms > 0)
                             details.push(
-                              `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
+                              `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
                             );
                           if (surface > 0)
                             details.push(
-                              `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${surface.toLocaleString('fr-FR')} m²</span>`,
+                              `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${surface.toLocaleString('fr-FR')} m²</span>`,
                             );
                           if (terrain > 0)
                             details.push(
-                              `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Inter var; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${terrain.toLocaleString('fr-FR')} m²</span>`,
+                              `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${terrain.toLocaleString('fr-FR')} m²</span>`,
                             );
 
                           const detailsText = details.length > 0 ? details.join('<span style="margin-left: 12px;"></span>') : '';
@@ -1962,7 +2137,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
              <div style="
                background: #fff;
                padding: 1px;
-               font-family: 'Inter var', sans-serif;
+               font-family: 'Inter', sans-serif;
                max-width: 450px;
                width: 100%;
                min-height: 150px;
@@ -2441,7 +2616,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
             // Parcel popup style (when showMutations is false) - always use same style for 1 or multiple addresses
             if (!showMutations) {
               return `
-                <div style="padding: 8px 12px; font-family: 'Inter var', Arial, sans-serif;">
+                <div style="padding: 8px 12px; font-family: 'Inter', Arial, sans-serif;">
                   <div style="font-weight: bold; font-size: 14px; color: #333; margin-bottom: 8px;">
                     Choisissez une adresse
                   </div>
@@ -3107,12 +3282,41 @@ const PropertyMap: React.FC<MapPageProps> = ({
         debugLog('Loading statistics for INSEE code:', currentINSEE);
 
         // ✅ Appel à votre nouvelle API
-        const response = await axios.get(`${API_ENDPOINTS.mutations.statsByCity}`, {
-          params: { codeInsee: currentINSEE },
-        });
+        // Check cache first
+        const statsCacheKey = currentINSEE;
+        const cachedStats = statsByCityCacheRef.current.get(statsCacheKey);
+        const now = Date.now();
 
-        debugLog('Statistics loaded successfully:', response.data);
-        setPropertyStats(response.data);
+        let statsData: any;
+
+        if (cachedStats && now - cachedStats.timestamp < CACHE_TTL) {
+          // Use cached data
+          debugLog('Using cached statistics for INSEE:', currentINSEE);
+          statsData = cachedStats.data;
+        } else {
+          // Fetch from API
+          const response = await axios.get(`${API_ENDPOINTS.mutations.statsByCity}`, {
+            params: { codeInsee: currentINSEE },
+          });
+          statsData = response.data;
+
+          // Store in cache (clean old entries if cache is too large)
+          if (statsByCityCacheRef.current.size >= MAX_CACHE_SIZE) {
+            const firstKey = statsByCityCacheRef.current.keys().next().value;
+            if (firstKey) {
+              statsByCityCacheRef.current.delete(firstKey);
+            }
+          }
+
+          // Cache the result
+          statsByCityCacheRef.current.set(statsCacheKey, {
+            data: statsData,
+            timestamp: now,
+          });
+        }
+
+        debugLog('Statistics loaded successfully:', statsData);
+        setPropertyStats(statsData);
       } catch (err) {
         // Error fetching statistics
         setError('Erreur chargement statistiques');

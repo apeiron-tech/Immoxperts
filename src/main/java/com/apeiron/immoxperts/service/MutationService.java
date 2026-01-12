@@ -39,4 +39,12 @@ public interface MutationService {
      * @return the list of mutations matching the address criteria
      */
     List<MutationDTO> searchMutationsByAddress(Integer streetNumber, String streetName, String postalCode, String city);
+
+    /**
+     * Get parcel addresses by parcel ID.
+     *
+     * @param parcelId the parcel ID
+     * @return the parcel addresses as JSON string, or null if not found
+     */
+    String getParcelAddresses(String parcelId);
 }

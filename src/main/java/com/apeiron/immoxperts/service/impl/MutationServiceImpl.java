@@ -368,12 +368,20 @@ public class MutationServiceImpl implements MutationService {
             .collect(Collectors.toList());
     }
 
+    @Cacheable(value = "statsByCityCache", key = "#codeInsee", unless = "#result == null || #result.isEmpty()")
     public List<StatsByCityDTO> getStatsByCodeInsee(String codeInsee) {
         LOG.debug("Getting stats for code INSEE: {}", codeInsee);
 
         List<Object[]> rows = mutationRepository.findStatsByCodeInsee(codeInsee);
 
         return rows.stream().map(this::buildStatsByCityDTO).toList();
+    }
+
+    @Override
+    @Cacheable(value = "parcelAddressesCache", key = "#parcelId", unless = "#result == null || #result.isEmpty()")
+    public String getParcelAddresses(String parcelId) {
+        LOG.debug("Getting parcel addresses for parcel ID: {}", parcelId);
+        return mutationRepository.findParcelAddresses(parcelId);
     }
 
     private StatsByCityDTO buildStatsByCityDTO(Object[] row) {
