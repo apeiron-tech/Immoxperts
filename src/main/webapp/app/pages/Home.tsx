@@ -121,9 +121,11 @@ const HomePage: React.FC = () => {
       <section className="pt-6 md:pt-12 pb-12 md:pb-20 px-4 sm:px-6 md:px-8 bg-white">
         <div className="max-w-4xl mx-auto text-center">
           {/* Notification Bubble */}
-          <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700">
-            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            <span>Nouveau : Carte des prix immobiliers disponible (DVF) </span>
+          <div className="mb-6 inline-flex items-start sm:items-center gap-2 px-3 sm:px-4 py-2 bg-gray-100 rounded-full text-xs sm:text-sm text-gray-700 max-w-full">
+            <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0 mt-1 sm:mt-0"></div>
+            <span className="whitespace-normal sm:whitespace-nowrap leading-tight">
+              Nouveau : Carte des prix immobiliers disponible (DVF)
+            </span>
           </div>
 
           {/* Main Headline */}

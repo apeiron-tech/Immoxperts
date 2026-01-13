@@ -300,7 +300,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       count += 1;
     }
 
-    // Range bars: count as 1 filter if ANY range is modified from default
+    // Range bars: count each range separately if modified from default
     const rangeFilters: Array<{ key: keyof typeof defaultFilters; range: [number, number] }> = [
       { key: 'priceRange', range: currentFilters.priceRange },
       { key: 'surfaceRange', range: currentFilters.surfaceRange },
@@ -309,17 +309,15 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       { key: 'dateRange', range: currentFilters.dateRange },
     ];
 
-    // Check if any range is different from default (use tolerance for floating point)
-    const hasRangeFilter = rangeFilters.some(({ key, range }) => {
+    // Check each range individually and count if modified (use tolerance for floating point)
+    rangeFilters.forEach(({ key, range }) => {
       const defaultRange = defaultFilters[key] as [number, number];
       const minChanged = Math.abs(range[0] - defaultRange[0]) > 0.01;
       const maxChanged = Math.abs(range[1] - defaultRange[1]) > 0.01;
-      return minChanged || maxChanged;
+      if (minChanged || maxChanged) {
+        count += 1; // Count each modified range as a separate filter
+      }
     });
-
-    if (hasRangeFilter) {
-      count += 1; // Count all ranges as 1 filter group
-    }
 
     return count;
   };
