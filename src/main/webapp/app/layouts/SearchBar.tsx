@@ -161,8 +161,8 @@ interface UnifiedSuggestion {
   subtitle: string;
   coordinates: [number, number]; // [longitude, latitude]
   type: 'address' | 'city' | 'commune' | 'department';
-  source: 'backend' | 'osm';
-  originalData: LocalAddressFeature | OSMPlace;
+  source: 'backend' | 'osm' | 'local';
+  originalData: LocalAddressFeature | OSMPlace | LocalCity;
 }
 
 // Interface for local city data
@@ -172,22 +172,186 @@ interface LocalCity {
   department: string;
   lat: number;
   lon: number;
-  type: 'city' | 'arrondissement';
+  type: 'city' | 'arrondissement' | 'department';
 }
 
 // FAST local search in French cities (NO API call!)
 const searchLocalCities = (query: string): LocalCity[] => {
-  const normalized = normalizeAccents(query).toLowerCase();
+  const normalized = normalizeAccents(query).toLowerCase().trim();
+  const normalizedWords = normalized.split(/\s+/).filter(w => w.length > 0);
 
-  return (frenchCities as LocalCity[])
-    .filter(city => {
-      const cityName = normalizeAccents(city.name).toLowerCase();
-      return cityName.startsWith(normalized) || cityName.includes(' ' + normalized);
-    })
-    .slice(0, 10); // Top 10 results
+  // Main city codes (the primary postcode for each city)
+  const mainCityCodes: { [key: string]: string } = {
+    paris: '75000',
+    lyon: '69000',
+    marseille: '13000',
+  };
+
+  // Department codes for main cities (the department that contains the city)
+  const mainCityDepartments: { [key: string]: string } = {
+    paris: '75000', // Paris is both city and department
+    lyon: '69000', // Rhône department
+    marseille: '13000', // Bouches-du-Rhône department
+  };
+
+  // Find ALL matching cities - SIMPLE matching
+  const allMatches = (frenchCities as LocalCity[]).filter(city => {
+    const cityName = normalizeAccents(city.name).toLowerCase();
+
+    // Simple matching: starts with OR contains
+    if (cityName.startsWith(normalized) || cityName.includes(normalized)) {
+      return true;
+    }
+
+    // For multi-word queries, check if all words are present
+    if (normalizedWords.length > 1) {
+      return normalizedWords.every(word => cityName.includes(word));
+    }
+
+    return false;
+  });
+
+  // Separate arrondissements, departments, and regular cities
+  const arrondissements: LocalCity[] = [];
+  const departments: LocalCity[] = [];
+  const regularCities: LocalCity[] = [];
+
+  allMatches.forEach(city => {
+    if (city.type === 'arrondissement') {
+      arrondissements.push(city);
+    } else if (city.type === 'department') {
+      departments.push(city);
+    } else {
+      regularCities.push(city);
+    }
+  });
+
+  // Sort arrondissements by postcode
+  arrondissements.sort((a, b) => a.postcode.localeCompare(b.postcode));
+
+  // CASE 1: Query is just a city name (e.g., "Paris")
+  // Return: department (if found) + main city + ALL its arrondissements
+  if (normalizedWords.length === 1 && !normalized.includes('arrondissement')) {
+    const mainCityName = normalized;
+    const mainCode = mainCityCodes[mainCityName];
+
+    if (mainCode) {
+      // Find the department FIRST (it should appear first in results)
+      // First check in departments array (already filtered), then in all cities if not found
+      const departmentCode = mainCityDepartments[mainCityName];
+      let cityDepartment = departmentCode ? departments.find(city => city.postcode === departmentCode) : null;
+
+      // If not found in departments, search in all cities
+      if (!cityDepartment && departmentCode) {
+        cityDepartment = (frenchCities as LocalCity[]).find(city => city.type === 'department' && city.postcode === departmentCode) || null;
+      }
+
+      // Find main city with primary postcode
+      const mainCity = regularCities.find(
+        city => normalizeAccents(city.name).toLowerCase() === mainCityName && city.postcode === mainCode && city.type === 'city', // Make sure it's a city, not a department
+      );
+
+      // Find ALL arrondissements for this city
+      const cityPrefix = mainCode.substring(0, 2); // "75", "69", "13"
+      const cityArrondissements = (frenchCities as LocalCity[])
+        .filter(city => {
+          if (city.type !== 'arrondissement') return false;
+          const arrName = normalizeAccents(city.name).toLowerCase();
+          return arrName.startsWith(mainCityName) && city.postcode.startsWith(cityPrefix);
+        })
+        .sort((a, b) => a.postcode.localeCompare(b.postcode));
+
+      // Return: department (FIRST) + main city (if found) + ALL its arrondissements
+      const result = [];
+      if (cityDepartment) {
+        result.push(cityDepartment);
+      }
+      if (mainCity) {
+        result.push(mainCity);
+      }
+      result.push(...cityArrondissements);
+
+      // If we have at least the department or city, return the result
+      if (result.length > 0) {
+        return result;
+      }
+    }
+  }
+
+  // CASE 2: Query matches an arrondissement (e.g., "Paris 14e Arrondissement")
+  // Return: that arrondissement + main city
+  if (arrondissements.length > 0) {
+    // Find exact or best matching arrondissements
+    const matchedArrondissements = arrondissements.filter(arr => {
+      const arrName = normalizeAccents(arr.name).toLowerCase();
+      // Exact match (highest priority)
+      if (arrName === normalized) return true;
+      // Contains the full query
+      if (arrName.includes(normalized)) return true;
+      // All words match
+      if (normalizedWords.length > 1) {
+        return normalizedWords.every(word => arrName.includes(word));
+      }
+      return false;
+    });
+
+    if (matchedArrondissements.length > 0) {
+      // Find the main city for these arrondissements
+      const firstArr = matchedArrondissements[0];
+      const cityPrefix = firstArr.postcode.substring(0, 2);
+      const mainCode = `${cityPrefix}000`;
+
+      // Find main city by postcode from all cities
+      const mainCity = (frenchCities as LocalCity[]).find(city => city.postcode === mainCode && city.type === 'city');
+
+      // Return: main city (if found) + matched arrondissements
+      if (mainCity) {
+        return [mainCity, ...matchedArrondissements];
+      }
+      return matchedArrondissements;
+    }
+  }
+
+  // CASE 3: If query matches a department, prioritize it
+  if (departments.length > 0) {
+    // Find exact or best matching departments
+    const matchedDepartments = departments.filter(dept => {
+      const deptName = normalizeAccents(dept.name).toLowerCase();
+      // Exact match (highest priority)
+      if (deptName === normalized) return true;
+      // Contains the full query
+      if (deptName.includes(normalized)) return true;
+      // All words match
+      if (normalizedWords.length > 1) {
+        return normalizedWords.every(word => deptName.includes(word));
+      }
+      return false;
+    });
+
+    if (matchedDepartments.length > 0) {
+      // Return departments first, then cities, then arrondissements
+      return [...matchedDepartments, ...regularCities, ...arrondissements].slice(0, 30);
+    }
+  }
+
+  // CASE 4: Default - return all matches (cities first, then departments, then arrondissements)
+  // Limit to 30 results for performance
+  const result = [...regularCities, ...departments, ...arrondissements];
+  return result.slice(0, 30);
 };
 
-// Convert local city to OSMPlace format for compatibility
+// Convert local city to unified suggestion
+const convertLocalCityToUnified = (city: LocalCity): UnifiedSuggestion => ({
+  id: `local-${city.name}-${city.postcode}`,
+  displayName: city.name,
+  subtitle: city.type === 'department' ? `Département • ${city.postcode}` : `${city.department} • ${city.postcode}`,
+  coordinates: [city.lon, city.lat],
+  type: city.type === 'department' ? 'department' : city.type === 'arrondissement' ? 'city' : 'city',
+  source: 'local',
+  originalData: city,
+});
+
+// Convert local city to OSMPlace format for compatibility (kept for backward compatibility)
 const convertLocalCityToOSMPlace = (city: LocalCity): OSMPlace => ({
   place_id: Math.random() * 1000000, // Generate fake ID
   display_name: `${city.name}, ${city.department}, France`,
@@ -350,12 +514,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           // Only normalize accents for local city search
           const normalizedQueryForCities = normalizeAccents(searchQuery);
 
-          // Detect if query contains a number (address search vs city search)
-          const hasNumber = /\d/.test(searchQuery);
+          // Detect if query looks like an address (has number at the start, e.g., "42 rue")
+          // But allow numbers in city names (e.g., "Paris 14e Arrondissement")
+          const looksLikeAddress = /^\d+\s+/.test(searchQuery); // Number at the start suggests an address
 
-          // 1. INSTANT local search first (only for city searches, not addresses!)
-          const localCities = hasNumber ? [] : searchLocalCities(normalizedQueryForCities);
-          const localOSMPlaces = localCities.map(convertLocalCityToOSMPlace);
+          // 1. INSTANT local search first (for cities and arrondissements, not addresses!)
+          // Allow local search even with numbers if it doesn't look like an address
+          const localCities = looksLikeAddress ? [] : searchLocalCities(normalizedQueryForCities);
+          const localSuggestions = localCities.map(convertLocalCityToUnified);
 
           // 2. Check cache first for complete results
           const cacheKey = searchQuery.trim().toLowerCase();
@@ -406,13 +572,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           }
 
           // 3. Use only LOCAL city search (no external OSM API calls needed)
-          const osmPlaces = localOSMPlaces;
-
-          // Convert OSM places to unified suggestions
-          const osmSuggestions: UnifiedSuggestion[] = osmPlaces.map(convertOSMToUnified);
-
-          // Deduplicate OSM suggestions based on name and coordinates
-          const deduplicatedOSMSuggestions = osmSuggestions.filter((suggestion, index, array) => {
+          // Local suggestions are already in UnifiedSuggestion format
+          const deduplicatedLocalSuggestions = localSuggestions.filter((suggestion, index, array) => {
             return (
               array.findIndex(
                 s =>
@@ -424,7 +585,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           });
 
           // Separate cities and addresses for better organization
-          const cities = deduplicatedOSMSuggestions;
+          const cities = deduplicatedLocalSuggestions;
           const addresses = backendSuggestions;
 
           // Score and sort cities
@@ -621,6 +782,22 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
         context: [{ text: feature.commune }, { text: feature.codepostal }, { text: feature.typeVoie }],
         isCity: false, // This is a specific address, show red circle
       });
+    } else if (suggestion.source === 'local') {
+      // Handle local city/arrondissement/department from french-cities.json
+      const city = suggestion.originalData as LocalCity;
+      const cityName = suggestion.displayName;
+      const postcode = city.postcode;
+      const isDepartment = city.type === 'department';
+
+      // For departments, arrondissements, and cities, zoom to the area
+      // PropertyMap will automatically load mutations/addresses when zoomed to this area
+      onSearch({
+        numero: 0,
+        nomVoie: cityName,
+        coordinates: suggestion.coordinates,
+        context: [{ text: cityName }, { text: postcode }, { text: isDepartment ? 'Département' : city.department || '' }],
+        isCity: true, // This triggers map zoom, mutations will load automatically
+      });
     } else if (suggestion.source === 'osm') {
       // Handle OSM city/commune (no specific address) - just pan the map
       const place = suggestion.originalData as OSMPlace;
@@ -799,6 +976,36 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                               <circle cx="12" cy="10" r="3"></circle>
                             </svg>
+                          ) : suggestion.type === 'department' ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="text-purple-500"
+                            >
+                              <path d="M3 3h18v18H3z"></path>
+                              <path d="M3 9h18"></path>
+                              <path d="M9 3v18"></path>
+                            </svg>
+                          ) : suggestion.displayName.toLowerCase().includes('arrondissement') ||
+                            (suggestion.source === 'local' && (suggestion.originalData as LocalCity)?.type === 'arrondissement') ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="text-orange-500"
+                            >
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <path d="M12 2v20M2 12h20"></path>
+                            </svg>
                           ) : (
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -819,9 +1026,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                           <div className="text-base font-medium text-gray-900 mb-1 truncate">{suggestion.displayName}</div>
                           <div className="text-sm text-gray-500 flex items-center gap-2">
                             <span className="truncate">{suggestion.subtitle}</span>
-                            {suggestion.source === 'osm' && (
+                            {(suggestion.source === 'osm' || suggestion.source === 'local') && (
                               <span className="flex-shrink-0 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                                {suggestion.type === 'city' ? 'Ville' : suggestion.type === 'commune' ? 'Commune' : 'Département'}
+                                {suggestion.type === 'department'
+                                  ? 'Département'
+                                  : suggestion.displayName.toLowerCase().includes('arrondissement') ||
+                                      (suggestion.source === 'local' && (suggestion.originalData as LocalCity)?.type === 'arrondissement')
+                                    ? 'Arrondissement'
+                                    : suggestion.type === 'commune'
+                                      ? 'Commune'
+                                      : 'Ville'}
                               </span>
                             )}
                           </div>
@@ -832,7 +1046,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                 )}
 
                 {/* No results message - Mobile */}
-                {showSuggestions && searchQuery.length > 2 && suggestions.length === 0 && !isLoading && (
+                {showSuggestions && searchQuery.length > 2 && suggestions.length === 0 && !isLoading && !isSelectionMade && (
                   <div
                     className="absolute left-0 right-0 top-full z-[70] w-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl"
                     style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}
@@ -1052,6 +1266,36 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
                           </svg>
+                        ) : suggestion.type === 'department' ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-purple-500"
+                          >
+                            <path d="M3 3h18v18H3z"></path>
+                            <path d="M3 9h18"></path>
+                            <path d="M9 3v18"></path>
+                          </svg>
+                        ) : suggestion.displayName.toLowerCase().includes('arrondissement') ||
+                          (suggestion.source === 'local' && (suggestion.originalData as LocalCity)?.type === 'arrondissement') ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-orange-500"
+                          >
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 2v20M2 12h20"></path>
+                          </svg>
                         ) : (
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -1072,9 +1316,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                         <div className="text-sm font-medium text-gray-900 truncate">{suggestion.displayName}</div>
                         <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
                           <span className="truncate">{suggestion.subtitle}</span>
-                          {suggestion.source === 'osm' && (
+                          {(suggestion.source === 'osm' || suggestion.source === 'local') && (
                             <span className="flex-shrink-0 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                              {suggestion.type === 'city' ? 'Ville' : suggestion.type === 'commune' ? 'Commune' : 'Département'}
+                              {suggestion.type === 'department'
+                                ? 'Département'
+                                : suggestion.displayName.toLowerCase().includes('arrondissement') ||
+                                    (suggestion.source === 'local' && (suggestion.originalData as LocalCity)?.type === 'arrondissement')
+                                  ? 'Arrondissement'
+                                  : suggestion.type === 'commune'
+                                    ? 'Commune'
+                                    : 'Ville'}
                             </span>
                           )}
                         </div>
@@ -1085,7 +1336,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
               )}
 
               {/* No results message */}
-              {showSuggestions && searchQuery.length > 2 && suggestions.length === 0 && !isLoading && (
+              {showSuggestions && searchQuery.length > 2 && suggestions.length === 0 && !isLoading && !isSelectionMade && (
                 <div className="absolute z-40 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
                   <div className="px-4 py-3 text-sm text-gray-500 text-center">Aucune adresse trouvée</div>
                 </div>

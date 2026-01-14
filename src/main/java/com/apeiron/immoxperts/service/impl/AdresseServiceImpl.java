@@ -372,7 +372,7 @@ public class AdresseServiceImpl implements AdresseService {
 
             // If no results with 5 tokens, try with 4 (skip middle token, keep first 3 and last)
             if (results.isEmpty() && validTokens.size() >= 4) {
-                // Try first 4 tokens
+                // Try 2first 4 tokens
                 results = adresseRepository.findSuggestionsByFourTokens(
                     validTokens.get(0),
                     validTokens.get(1),
