@@ -1025,6 +1025,8 @@
                   var script = document.createElement('script');
                   script.async = true;
                   script.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA4_ID;
+                  // Set referrer policy to ensure proper loading on server
+                  script.referrerPolicy = 'no-referrer-when-downgrade';
 
                   script.onload = function () {
                     // Le consent est déjà défini à "granted" AVANT le chargement
@@ -1249,6 +1251,8 @@
               var script1 = document.createElement('script');
               script1.async = true;
               script1.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA4_ID;
+              // Set referrer policy to ensure proper loading on server
+              script1.referrerPolicy = 'no-referrer-when-downgrade';
 
               script1.onload = function () {
                 gtag('config', GA4_ID, {
@@ -1279,7 +1283,7 @@
 
           // Icône principale Google Analytics
           var icon = document.createElement('img');
-          icon.src = 'https://favicons.axept.io/favicons?domain=https://analytics.google.com/';
+          icon.src = '/content/assets/google-analytics.png';
           icon.alt = 'Google Analytics';
           icon.width = 24;
           icon.height = 24;
