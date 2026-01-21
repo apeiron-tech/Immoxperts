@@ -89,6 +89,8 @@ interface MapPageProps {
     coordinates?: [number, number];
     address?: string;
     isCity?: boolean; // Flag to indicate if this is a city/commune (no red circle)
+    hasMutations?: boolean;
+    isStreet?: boolean; // Street selection (no red point)
   };
   selectedProperty?: Property | null;
   hoveredProperty?: Property | null;
@@ -840,6 +842,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
   // Debug logging
   const debugLog = (message: string, data?: any) => {
     // Debug logging disabled
+  };
+
+  const bringSelectedAddressMarkerToFront = (map: mapboxgl.Map) => {
+    // Put selected marker layers above parcels so hover works
+    try {
+      if (map.getLayer('selected-address-hitbox')) {
+        map.moveLayer('selected-address-hitbox');
+      }
+      if (map.getLayer('selected-address-marker')) {
+        map.moveLayer('selected-address-marker');
+      }
+    } catch {
+      // ignore (style not ready / layers missing)
+    }
   };
 
   const fetchFrenchReverseData = useCallback(async (lng: number, lat: number) => {
@@ -1921,6 +1937,18 @@ const PropertyMap: React.FC<MapPageProps> = ({
             data: { type: 'FeatureCollection', features: [] },
           });
 
+          // Invisible hitbox to make hover/tap easier without changing visuals
+          map.addLayer({
+            id: 'selected-address-hitbox',
+            type: 'circle',
+            source: 'selected-address-marker',
+            paint: {
+              'circle-radius': 14,
+              'circle-color': '#ff0000',
+              'circle-opacity': 0.01,
+            },
+          });
+
           map.addLayer({
             id: 'selected-address-marker',
             type: 'circle',
@@ -1933,6 +1961,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
               'circle-stroke-opacity': 0.9,
             },
           });
+
+          bringSelectedAddressMarkerToFront(map);
 
           debugLog('Mutation layers added to map');
 
@@ -1999,13 +2029,21 @@ const PropertyMap: React.FC<MapPageProps> = ({
             }
 
             // Set a small delay to avoid too many queries
+            // eslint-disable-next-line complexity
             hoverTimeout = setTimeout(() => {
-              const features = map.queryRenderedFeatures(e.point, { layers: ['mutation-point'] });
+              const enableSelectedMarkerHover = searchParamsRef.current?.hasMutations === false;
+              const layersToQuery = enableSelectedMarkerHover
+                ? ['mutation-point', 'selected-address-marker', 'selected-address-hitbox']
+                : ['mutation-point'];
+
+              const features = map.queryRenderedFeatures(e.point, { layers: layersToQuery });
 
               debugLog('Mouse moved, features found:', features.length);
 
               if (features.length > 0) {
-                const feature = features[0];
+                // Prefer real mutation points when both the blue point and red selected marker overlap
+                const mutationFeature = features.find((f: any) => f.layer?.id === 'mutation-point');
+                const feature = mutationFeature ?? features[0];
                 debugLog('Feature found:', feature);
 
                 // Remove existing popup
@@ -2034,8 +2072,26 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         });
                       }
 
-                      const firstAddress = sortedAddresses[0];
-                      const mutations = firstAddress.mutations || [];
+                      const searchedNorm = searchParamsRef.current?.address
+                        ? normalizeAddress(searchParamsRef.current.address.toLowerCase().trim())
+                        : '';
+
+                      const matchingAddress = searchedNorm
+                        ? sortedAddresses.find(addr => normalizeAddress(addr.adresse_complete) === searchedNorm)
+                        : undefined;
+
+                      const addressWithMutations = sortedAddresses.find(
+                        addr => Array.isArray((addr as any).mutations) && (addr as any).mutations.length > 0,
+                      );
+
+                      const primaryAddress =
+                        matchingAddress &&
+                        Array.isArray((matchingAddress as any).mutations) &&
+                        (matchingAddress as any).mutations.length > 0
+                          ? matchingAddress
+                          : (addressWithMutations ?? matchingAddress ?? sortedAddresses[0]);
+
+                      const mutations = Array.isArray((primaryAddress as any).mutations) ? (primaryAddress as any).mutations : [];
 
                       // Helper functions for your styling - Nouvelles couleurs spécifiées
                       const getPropertyTypeColor = type => {
@@ -2106,7 +2162,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                         const renderMutation = index => {
                           const mutation = allMutations[index];
-                          const address = firstAddress.adresse_complete || '';
+                          const address = primaryAddress.adresse_complete || '';
                           const propertyTypeLabel = getMutationTypeLabel(mutation);
                           const rooms = mutation.nbpprinc ?? 0;
                           const surface = getBuiltSurfaceValue(mutation);
@@ -2364,29 +2420,33 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
                         debugLog('Mutation popup created with data');
                       } else {
-                        // Fallback if no mutations
+                        // No mutations for this address (e.g. selected address without sales)
                         const isMobile = window.innerWidth < 768;
+                        const addressLabel = (primaryAddress?.adresse_complete || '').toUpperCase();
 
                         if (!isMobile) {
-                          // Desktop: show fallback popup
                           hoverPopupRef.current = new mapboxgl.Popup({
                             closeButton: false,
                             closeOnClick: false,
-                            maxWidth: '200px',
+                            maxWidth: '360px',
                             offset: [0, -10],
                           })
                             .setLngLat(e.lngLat)
                             .setHTML(
                               `
-                              <div style="padding: 10px; background: #ffaa00; color: white; border-radius: 4px;">
-                                <strong>No Mutation Data</strong><br>
-                                Feature ID: ${feature.id || 'No ID'}
+                              <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
+                                <div style="font-weight: bold; font-size: 14px; color: #3b82f6;">
+                                  ${addressLabel || 'ADRESSE'}
+                                </div>
+                                <div style="font-size: 11px; margin-top: 6px; color: #6b7280;">
+                                  Aucune vente identifiée à cette adresse
+                                </div>
                               </div>
-                            `,
+                              `,
                             )
                             .addTo(map);
                         }
-                        // Mobile: don't show anything for addresses without mutations
+                        // Mobile: no hover popups (tap interactions handled elsewhere)
                       }
                     } else {
                       // Fallback if no addresses
@@ -2954,7 +3014,39 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
           // Add click handler for map (not on any feature) to clear popups
           map.on('click', e => {
-            const features = map.queryRenderedFeatures(e.point, { layers: ['mutation-point'] });
+            const enableSelectedMarkerHover = searchParamsRef.current?.hasMutations === false;
+            const layersToQuery = enableSelectedMarkerHover
+              ? ['mutation-point', 'selected-address-marker', 'selected-address-hitbox']
+              : ['mutation-point'];
+
+            const features = map.queryRenderedFeatures(e.point, { layers: layersToQuery });
+
+            // Mobile: if the selected address has NO mutations, tapping the red marker should open the bottom sheet
+            const isMobile = window.innerWidth < 768;
+            if (isMobile && enableSelectedMarkerHover) {
+              const markerFeatures = map.queryRenderedFeatures(e.point, { layers: ['selected-address-marker', 'selected-address-hitbox'] });
+              if (markerFeatures.length > 0) {
+                const addressLabel = (searchParamsRef.current?.address ?? '').toUpperCase().trim();
+                setMobileSheetMutations([]);
+                setMobileSheetIndex(0);
+                setMobileSheetProperty({
+                  address: addressLabel || 'ADRESSE',
+                  city: '',
+                  price: '',
+                  pricePerSqm: '',
+                  type: 'Aucune vente',
+                  rooms: '',
+                  surface: '',
+                  terrain: '',
+                  soldDate: '',
+                  noMutation: true,
+                  noMutationMessage: 'Aucune vente identifiée à cette adresse',
+                });
+                setShowMobileBottomSheet(true);
+                return;
+              }
+            }
+
             if (features.length === 0) {
               // Clicked on empty area, clear all popups
               clearAllPopups();
@@ -3559,7 +3651,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
   // Handle searchParams to show red marker for selected address
   useEffect(() => {
-    if (searchParams?.coordinates && !searchParams?.isCity) {
+    if (searchParams?.coordinates && !searchParams?.isCity && !searchParams?.isStreet) {
       // Only set selected address if it's NOT a city (i.e., it's a specific address)
       setSelectedAddress(searchParams.coordinates);
       debugLog('Selected address coordinates (showing red circle):', searchParams.coordinates);
@@ -3600,7 +3692,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           attemptLoad();
         }, 2300);
       }
-    } else if (searchParams?.coordinates && searchParams?.isCity) {
+    } else if (searchParams?.coordinates && (searchParams?.isCity || searchParams?.isStreet)) {
       // For cities/communes, just pan the map without red circle
       setSelectedAddress(null);
       debugLog('Panning to city coordinates (no red circle):', searchParams.coordinates);
@@ -3611,7 +3703,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
         map.flyTo({
           center: searchParams.coordinates,
-          zoom: 13, // Zoom level for cities
+          zoom: searchParams.isStreet ? 17 : 13, // Streets closer than cities
           duration: 2000,
         });
 
@@ -3678,6 +3770,18 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
           // Ensure the layer exists, create it if it doesn't
           if (!map.getLayer('selected-address-marker')) {
+            if (!map.getLayer('selected-address-hitbox')) {
+              map.addLayer({
+                id: 'selected-address-hitbox',
+                type: 'circle',
+                source: 'selected-address-marker',
+                paint: {
+                  'circle-radius': 14,
+                  'circle-color': '#ff0000',
+                  'circle-opacity': 0.01,
+                },
+              });
+            }
             map.addLayer({
               id: 'selected-address-marker',
               type: 'circle',
@@ -3691,6 +3795,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
               },
             });
           }
+
+          bringSelectedAddressMarkerToFront(map);
         } catch (err) {
           // If source already exists or style not loaded, retry
           if (!map.isStyleLoaded() && retryCount < maxRetries) {
@@ -3707,6 +3813,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
       if (source && source.type === 'geojson') {
         if (selectedAddress) {
+          const selectedAddressLabel = (searchParamsRef.current?.address ?? '').trim();
           const feature: GeoJSON.Feature<GeoJSON.Point> = {
             type: 'Feature',
             geometry: {
@@ -3715,6 +3822,16 @@ const PropertyMap: React.FC<MapPageProps> = ({
             },
             properties: {
               id: 'selected-address',
+              // Make this marker behave like a mutation point for hover popup logic
+              adresses: JSON.stringify([
+                {
+                  idadresse: null,
+                  adresse_complete: selectedAddressLabel,
+                  commune: null,
+                  codepostal: null,
+                  mutations: [],
+                },
+              ]),
             },
           };
 
@@ -3731,6 +3848,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           });
 
           debugLog('Red marker added at:', selectedAddress);
+          bringSelectedAddressMarkerToFront(map);
         } else {
           // Clear the marker
           source.setData({

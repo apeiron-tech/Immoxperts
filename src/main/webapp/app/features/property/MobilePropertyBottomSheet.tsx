@@ -10,6 +10,8 @@ interface PropertyData {
   surface: string;
   terrain: string;
   soldDate: string;
+  noMutation?: boolean;
+  noMutationMessage?: string;
 }
 
 interface MobilePropertyBottomSheetProps {
@@ -72,51 +74,54 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
               </div>
 
               {/* Property Type */}
-              <div style={{ color: '#241c83', fontWeight: '900', fontSize: '16px' }}>{property.type}</div>
+              {!property.noMutation && <div style={{ color: '#241c83', fontWeight: '900', fontSize: '16px' }}>{property.type}</div>}
             </div>
 
-            {/* Price Box - Desktop Style */}
-            <div
-              style={{
-                border: '1px solid #e5e7eb',
-                padding: '6px 10px',
-                borderRadius: '12px',
-                textAlign: 'right',
-                minWidth: '110px',
-                flexShrink: 0,
-                backgroundColor: 'rgba(112, 105, 249, 0.04)',
-              }}
-            >
-              <div style={{ color: '#241c83', fontWeight: '800', fontSize: '18px' }}>{property.price}</div>
-              <div style={{ color: '#888', fontSize: '14px' }}>{property.pricePerSqm}</div>
-            </div>
+            {/* Price Box - Desktop Style (hide for no-mutation addresses) */}
+            {!property.noMutation && (
+              <div
+                style={{
+                  border: '1px solid #e5e7eb',
+                  padding: '6px 10px',
+                  borderRadius: '12px',
+                  textAlign: 'right',
+                  minWidth: '110px',
+                  flexShrink: 0,
+                  backgroundColor: 'rgba(112, 105, 249, 0.04)',
+                }}
+              >
+                <div style={{ color: '#241c83', fontWeight: '800', fontSize: '18px' }}>{property.price}</div>
+                <div style={{ color: '#888', fontSize: '14px' }}>{property.pricePerSqm}</div>
+              </div>
+            )}
           </div>
 
           {/* Characteristics and Sold Date */}
           <div style={{ padding: '0px 16px 16px 16px' }}>
             {/* Characteristics: pieces, terrain, surface */}
-            {(() => {
-              const details = [];
-              if (property.rooms && property.rooms !== '' && property.rooms !== '0') {
-                details.push(
-                  `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.rooms}</span>`,
-                );
-              }
-              if (property.surface && property.surface !== '' && property.surface !== '0 m²') {
-                details.push(
-                  `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.surface}</span>`,
-                );
-              }
-              if (property.terrain && property.terrain !== '' && property.terrain !== '0 m²') {
-                details.push(
-                  `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.terrain}</span>`,
-                );
-              }
-              const detailsText = details.length > 0 ? details.join('<span style="margin-left: 12px;"></span>') : '';
-              return detailsText ? (
-                <div style={{ fontSize: '16px', color: '#333', marginBottom: '8px' }} dangerouslySetInnerHTML={{ __html: detailsText }} />
-              ) : null;
-            })()}
+            {!property.noMutation &&
+              (() => {
+                const details = [];
+                if (property.rooms && property.rooms !== '' && property.rooms !== '0') {
+                  details.push(
+                    `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.rooms}</span>`,
+                  );
+                }
+                if (property.surface && property.surface !== '' && property.surface !== '0 m²') {
+                  details.push(
+                    `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.surface}</span>`,
+                  );
+                }
+                if (property.terrain && property.terrain !== '' && property.terrain !== '0 m²') {
+                  details.push(
+                    `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.terrain}</span>`,
+                  );
+                }
+                const detailsText = details.length > 0 ? details.join('<span style="margin-left: 12px;"></span>') : '';
+                return detailsText ? (
+                  <div style={{ fontSize: '16px', color: '#333', marginBottom: '8px' }} dangerouslySetInnerHTML={{ __html: detailsText }} />
+                ) : null;
+              })()}
 
             {/* Sold Date - Desktop Style */}
             <div
@@ -131,7 +136,15 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
                 backgroundColor: 'rgba(0, 0, 0, 0.04)',
               }}
             >
-              Vendu le <strong style={{ color: '#000' }}>{property.soldDate}</strong>
+              {property.noMutation ? (
+                <span style={{ color: '#6b7280', fontWeight: 600 }}>
+                  {property.noMutationMessage || 'Aucune vente identifiée à cette adresse'}
+                </span>
+              ) : (
+                <>
+                  Vendu le <strong style={{ color: '#000' }}>{property.soldDate}</strong>
+                </>
+              )}
             </div>
           </div>
         </div>

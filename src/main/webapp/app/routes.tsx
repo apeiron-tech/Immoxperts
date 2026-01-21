@@ -63,6 +63,8 @@ const AppRoutes = () => {
       coordinates: params.coordinates,
       address: params.fullAddress || (params.nomVoie ? `${params.numero || ''} ${params.nomVoie}`.trim() : null),
       isCity: params.isCity || false,
+      hasMutations: params.hasMutations,
+      isStreet: params.isStreet || false,
     };
 
     setSearchParams(mappedParams);

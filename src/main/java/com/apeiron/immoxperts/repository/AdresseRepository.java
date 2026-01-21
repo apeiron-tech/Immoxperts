@@ -39,7 +39,8 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             codepostal,
             commune,
             MIN(latitude) as latitude,
-            MIN(longitude) as longitude
+            MIN(longitude) as longitude,
+            BOOL_OR(has_mutations) as hasMutations
         FROM dvf_plus_2025_2.adresse_complete_geom_mv
         WHERE adresse_complete ILIKE CONCAT('%', UPPER(:q), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
@@ -61,7 +62,8 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             codepostal,
             commune,
             MIN(latitude) as latitude,
-            MIN(longitude) as longitude
+            MIN(longitude) as longitude,
+            BOOL_OR(has_mutations) as hasMutations
         FROM dvf_plus_2025_2.adresse_complete_geom_mv
         WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
         GROUP BY idadresse, adresse_complete, numero, nom_voie, type_voie, codepostal, commune
@@ -91,7 +93,8 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             codepostal,
             commune,
             MIN(latitude) as latitude,
-            MIN(longitude) as longitude
+            MIN(longitude) as longitude,
+            BOOL_OR(has_mutations) as hasMutations
         FROM dvf_plus_2025_2.adresse_complete_geom_mv
         WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token2), '%')
@@ -128,7 +131,8 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             codepostal,
             commune,
             MIN(latitude) as latitude,
-            MIN(longitude) as longitude
+            MIN(longitude) as longitude,
+            BOOL_OR(has_mutations) as hasMutations
         FROM dvf_plus_2025_2.adresse_complete_geom_mv
         WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token2), '%')
@@ -170,7 +174,8 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             codepostal,
             commune,
             MIN(latitude) as latitude,
-            MIN(longitude) as longitude
+            MIN(longitude) as longitude,
+            BOOL_OR(has_mutations) as hasMutations
         FROM dvf_plus_2025_2.adresse_complete_geom_mv
         WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token2), '%')
@@ -214,7 +219,8 @@ public interface AdresseRepository extends JpaRepository<Adresse, Integer>, JpaS
             codepostal,
             commune,
             MIN(latitude) as latitude,
-            MIN(longitude) as longitude
+            MIN(longitude) as longitude,
+            BOOL_OR(has_mutations) as hasMutations
         FROM dvf_plus_2025_2.adresse_complete_geom_mv
         WHERE adresse_complete ILIKE CONCAT('%', UPPER(:token1), '%')
           AND adresse_complete ILIKE CONCAT('%', UPPER(:token2), '%')

@@ -111,9 +111,11 @@ interface SearchBarProps {
     numero: number;
     nomVoie: string;
     fullAddress?: string; // Full address extracted from displayName
+    hasMutations?: boolean;
     coordinates: [number, number];
     context?: Array<{ text: string }>;
     isCity?: boolean; // Flag to indicate if this is a city/commune (OSM) vs specific address
+    isStreet?: boolean; // Street selection (no red point)
   }) => void;
   onFilterApply?: (filters: FilterState) => void;
   currentFilters?: FilterState;
@@ -125,6 +127,7 @@ interface LocalAddressFeature {
   commune: string;
   codepostal: string;
   idadresse: number;
+  hasMutations?: boolean;
   numero: string;
   nomVoie: string;
   longitude: number;
@@ -160,9 +163,9 @@ interface UnifiedSuggestion {
   displayName: string;
   subtitle: string;
   coordinates: [number, number]; // [longitude, latitude]
-  type: 'address' | 'city' | 'commune' | 'department';
+  type: 'address' | 'street' | 'city' | 'commune' | 'department';
   source: 'backend' | 'osm' | 'local';
-  originalData: LocalAddressFeature | OSMPlace | LocalCity;
+  originalData: LocalAddressFeature | OSMPlace | LocalCity | { streetKey: string; hasMutations: boolean };
 }
 
 // Interface for local city data
@@ -378,6 +381,26 @@ const convertBackendToUnified = (feature: LocalAddressFeature): UnifiedSuggestio
   originalData: feature,
 });
 
+const buildStreetKey = (feature: LocalAddressFeature): string => {
+  const type = (feature.typeVoie || '').trim();
+  const voie = (feature.nomVoie || '').trim();
+  const cp = (feature.codepostal || '').trim();
+  const commune = (feature.commune || '').trim();
+  return `${type} ${voie}`.trim() + `|${cp}|${commune}`; // stable key
+};
+
+const buildStreetDisplay = (feature: LocalAddressFeature): { displayName: string; subtitle: string } => {
+  const type = (feature.typeVoie || '').trim();
+  const voie = (feature.nomVoie || '').trim();
+  const cp = (feature.codepostal || '').trim();
+  const commune = (feature.commune || '').trim();
+  const street = `${type} ${voie}`.trim();
+  return {
+    displayName: `${street} ${cp} ${commune}`.trim(),
+    subtitle: `Rue • ${commune} • ${cp}`.trim(),
+  };
+};
+
 // Convert OSM place to unified suggestion
 const convertOSMToUnified = (place: OSMPlace): UnifiedSuggestion => {
   const cityName =
@@ -566,6 +589,46 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           // Convert backend response to unified suggestions
           backendSuggestions = backendResponse.map(convertBackendToUnified);
 
+          // Build street (rue) suggestions by grouping addresses (deduplicated)
+          const streetGroups = new Map<
+            string,
+            { sample: LocalAddressFeature; count: number; sumLon: number; sumLat: number; hasMutations: boolean }
+          >();
+
+          for (const f of backendResponse) {
+            const key = buildStreetKey(f);
+            const existing = streetGroups.get(key);
+            if (!existing) {
+              streetGroups.set(key, {
+                sample: f,
+                count: 1,
+                sumLon: f.longitude,
+                sumLat: f.latitude,
+                hasMutations: !!f.hasMutations,
+              });
+            } else {
+              existing.count += 1;
+              existing.sumLon += f.longitude;
+              existing.sumLat += f.latitude;
+              existing.hasMutations = existing.hasMutations || !!f.hasMutations;
+            }
+          }
+
+          const streetSuggestions: UnifiedSuggestion[] = Array.from(streetGroups.entries()).map(([key, g]) => {
+            const { displayName, subtitle } = buildStreetDisplay(g.sample);
+            const avgLon = g.sumLon / g.count;
+            const avgLat = g.sumLat / g.count;
+            return {
+              id: `street-${key}`,
+              displayName,
+              subtitle,
+              coordinates: [avgLon, avgLat],
+              type: 'street',
+              source: 'backend',
+              originalData: { streetKey: key, hasMutations: g.hasMutations },
+            };
+          });
+
           // Check if this request is still valid (not aborted, still the latest)
           if (signal.aborted) {
             return; // Request was cancelled, ignore results
@@ -584,8 +647,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
             );
           });
 
-          // Separate cities and addresses for better organization
+          // Separate cities, streets, and addresses for better organization
           const cities = deduplicatedLocalSuggestions;
+          const streets = streetSuggestions;
           const addresses = backendSuggestions;
 
           // Score and sort cities
@@ -697,8 +761,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
             .sort((a, b) => b.score - a.score)
             .map(item => item.suggestion);
 
-          // Combine: Cities first (top 5), then addresses (top 15)
-          const sortedSuggestions = [...scoredCities.slice(0, 5), ...scoredAddresses.slice(0, 15)];
+          // Combine: Cities first (top 5), then streets (top 10), then addresses (top 15)
+          const sortedSuggestions = [...scoredCities.slice(0, 5), ...streets.slice(0, 10), ...scoredAddresses.slice(0, 15)];
 
           // Cache the final combined results
           // Store in cache (clean old entries if cache is too large)
@@ -771,16 +835,28 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
       const numero = parseInt(feature.numero, 10);
       const nomVoie = feature.nomVoie;
 
-      // Extract the full address from displayName (remove city and postal code)
-      const fullAddress = suggestion.displayName.replace(/\s+\d{5}\s+.*$/, '').trim();
+      // Keep the full adresse_complete string so it matches MV content on the map (and for popup)
+      const fullAddress = suggestion.displayName.trim();
 
       onSearch({
         numero,
         nomVoie,
         fullAddress, // Add the full address
+        hasMutations: feature.hasMutations ?? true,
         coordinates: suggestion.coordinates,
         context: [{ text: feature.commune }, { text: feature.codepostal }, { text: feature.typeVoie }],
         isCity: false, // This is a specific address, show red circle
+      });
+    } else if (suggestion.source === 'backend' && suggestion.type === 'street') {
+      // Street selection: behave like city (pan/zoom, no red point)
+      onSearch({
+        numero: 0,
+        nomVoie: suggestion.displayName,
+        fullAddress: suggestion.displayName,
+        hasMutations: (suggestion.originalData as any)?.hasMutations ?? false,
+        coordinates: suggestion.coordinates,
+        isCity: true,
+        isStreet: true,
       });
     } else if (suggestion.source === 'local') {
       // Handle local city/arrondissement/department from french-cities.json
@@ -975,6 +1051,23 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                             >
                               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                               <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                          ) : suggestion.type === 'street' ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="text-indigo-600"
+                            >
+                              <path d="M4 19V5" />
+                              <path d="M20 19V5" />
+                              <path d="M9 5v14" />
+                              <path d="M15 5v14" />
+                              <path d="M9 12h6" />
                             </svg>
                           ) : suggestion.type === 'department' ? (
                             <svg
@@ -1265,6 +1358,23 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                           >
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
+                          </svg>
+                        ) : suggestion.type === 'street' ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-indigo-600"
+                          >
+                            <path d="M4 19V5" />
+                            <path d="M20 19V5" />
+                            <path d="M9 5v14" />
+                            <path d="M15 5v14" />
+                            <path d="M9 12h6" />
                           </svg>
                         ) : suggestion.type === 'department' ? (
                           <svg

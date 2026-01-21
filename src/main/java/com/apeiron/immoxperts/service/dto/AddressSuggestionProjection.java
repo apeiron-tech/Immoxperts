@@ -10,4 +10,5 @@ public interface AddressSuggestionProjection {
     String getCommune();
     Double getLatitude();
     Double getLongitude();
+    Boolean getHasMutations();
 }
