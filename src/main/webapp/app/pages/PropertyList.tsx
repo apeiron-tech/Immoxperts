@@ -527,22 +527,6 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                 </button>
               </div>
             )}
-
-            {/* Transaction count or no data message */}
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Détails supplémentaires</h3>
-              <ul className="list-disc pl-4 space-y-1 text-xs text-gray-600">
-                <li>Tendances de marché</li>
-                <li>Analyse cadastrale</li>
-                <li>Services proximité</li>
-              </ul>
-            </div>
-
-            <div className="bg-gray-50 p-2 rounded-md text-sm">
-              <p className="text-gray-600 mb-1">Estimation gratuite</p>
-              <button className="bg-blue-600 text-white px-3 py-1 rounded-md text-xs hover:bg-blue-700">Évaluer mon bien</button>
-            </div>
           </motion.div>
         ) : (
           // --- List View ---

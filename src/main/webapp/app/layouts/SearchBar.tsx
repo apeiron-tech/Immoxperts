@@ -541,6 +541,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           // But allow numbers in city names (e.g., "Paris 14e Arrondissement")
           const looksLikeAddress = /^\d+\s+/.test(searchQuery); // Number at the start suggests an address
 
+          // Check if query starts with a number (with or without space) - used to skip street suggestions
+          const startsWithNumber = /^\d+/.test(searchQuery.trim());
+
           // 1. INSTANT local search first (for cities and arrondissements, not addresses!)
           // Allow local search even with numbers if it doesn't look like an address
           const localCities = looksLikeAddress ? [] : searchLocalCities(normalizedQueryForCities);
@@ -590,27 +593,31 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
           backendSuggestions = backendResponse.map(convertBackendToUnified);
 
           // Build street (rue) suggestions by grouping addresses (deduplicated)
+          // Don't create street suggestions if query starts with a number (user is searching for specific address)
           const streetGroups = new Map<
             string,
             { sample: LocalAddressFeature; count: number; sumLon: number; sumLat: number; hasMutations: boolean }
           >();
 
-          for (const f of backendResponse) {
-            const key = buildStreetKey(f);
-            const existing = streetGroups.get(key);
-            if (!existing) {
-              streetGroups.set(key, {
-                sample: f,
-                count: 1,
-                sumLon: f.longitude,
-                sumLat: f.latitude,
-                hasMutations: !!f.hasMutations,
-              });
-            } else {
-              existing.count += 1;
-              existing.sumLon += f.longitude;
-              existing.sumLat += f.latitude;
-              existing.hasMutations = existing.hasMutations || !!f.hasMutations;
+          // Only group into streets if query doesn't start with a number
+          if (!startsWithNumber) {
+            for (const f of backendResponse) {
+              const key = buildStreetKey(f);
+              const existing = streetGroups.get(key);
+              if (!existing) {
+                streetGroups.set(key, {
+                  sample: f,
+                  count: 1,
+                  sumLon: f.longitude,
+                  sumLat: f.latitude,
+                  hasMutations: !!f.hasMutations,
+                });
+              } else {
+                existing.count += 1;
+                existing.sumLon += f.longitude;
+                existing.sumLat += f.latitude;
+                existing.hasMutations = existing.hasMutations || !!f.hasMutations;
+              }
             }
           }
 
@@ -755,14 +762,34 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                 score += 200; // Close match in length
               }
 
+              // When query doesn't start with a number, give bonus to addresses that match street name
+              // (addresses like "1 STRADA..." when searching "Strada...")
+              if (!looksLikeAddress) {
+                const feature = suggestion.originalData as LocalAddressFeature;
+                const streetName = (feature.nomVoie || '').toLowerCase();
+                const queryWithoutNumber = queryNormalized.replace(/^\d+\s+/, '').trim();
+                if (streetName.includes(queryWithoutNumber) || queryWithoutNumber.includes(streetName)) {
+                  score += 500; // Bonus for addresses matching street name in street search
+                }
+              }
+
               return { suggestion, score };
             })
             .filter(item => item.score > 0)
             .sort((a, b) => b.score - a.score)
             .map(item => item.suggestion);
 
-          // Combine: Cities first (top 5), then streets (top 10), then addresses (top 15)
-          const sortedSuggestions = [...scoredCities.slice(0, 5), ...streets.slice(0, 10), ...scoredAddresses.slice(0, 15)];
+          // Determine order based on whether query starts with a number
+          // If query starts with number: cities, addresses, streets
+          // If query doesn't start with number: cities, streets, addresses (street search)
+          let sortedSuggestions: UnifiedSuggestion[];
+          if (looksLikeAddress) {
+            // Query starts with number: prioritize specific addresses
+            sortedSuggestions = [...scoredCities.slice(0, 5), ...scoredAddresses.slice(0, 15), ...streets.slice(0, 10)];
+          } else {
+            // Query doesn't start with number: prioritize street suggestions
+            sortedSuggestions = [...scoredCities.slice(0, 5), ...streets.slice(0, 10), ...scoredAddresses.slice(0, 15)];
+          }
 
           // Cache the final combined results
           // Store in cache (clean old entries if cache is too large)
