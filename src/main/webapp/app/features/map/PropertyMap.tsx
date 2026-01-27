@@ -533,13 +533,16 @@ const PropertyMap: React.FC<MapPageProps> = ({
   // Normalize addresses to improve matching across variants (AV vs Avenue, accents, punctuation)
   const normalizeAddress = (value: string | undefined | null): string => {
     if (!value) return '';
-    const lower = value
+    let lower = value
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // strip accents
       .toLowerCase()
       .replace(/[.-]/g, ' ') // dots and hyphens to space
       .replace(/\s+/g, ' ') // collapse spaces
       .trim();
+    // Unify "45T" / "45t" with "45 T" so "45t cours" matches "45 t cours"
+    lower = lower.replace(/(\d)([a-z\u00e0-\u024f])/gi, '$1 $2');
+    lower = lower.replace(/\s+/g, ' ').trim();
     // Normalize street-type codes and words to a single canonical form
     const codeToCanonical: Record<string, string> = {
       fg: 'faubourg',
@@ -2042,8 +2045,8 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
               if (features.length > 0) {
                 // Prefer real mutation points when both the blue point and red selected marker overlap
-                const mutationFeature = features.find((f: any) => f.layer?.id === 'mutation-point');
-                const feature = mutationFeature ?? features[0];
+                const mutationFeatures = features.filter((f: any) => f.layer?.id === 'mutation-point');
+                const feature = mutationFeatures[0] ?? features[0];
                 debugLog('Feature found:', feature);
 
                 // Remove existing popup
@@ -2053,143 +2056,177 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   isHoveringPopup.current = false; // Reset hover flag
                 }
 
-                // Create mutation data popup
-                if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
-                  try {
-                    const addresses = parseAddresses(feature.properties.adresses);
+                // Merge addresses from all mutation-point features at this pixel so the searched address
+                // is shown even when it comes from the "second" point at the same location
+                const seenKeys = new Set<string>();
+                let addresses: AddressDetails[] = [];
+                for (const mf of mutationFeatures) {
+                  if (mf.properties?.adresses && isPointGeometry(mf.geometry)) {
+                    const addrs = parseAddresses(mf.properties.adresses);
+                    for (const a of addrs) {
+                      const key = String((a as any).idadresse ?? a.adresse_complete ?? '');
+                      if (!seenKeys.has(key)) {
+                        seenKeys.add(key);
+                        addresses.push(a);
+                      }
+                    }
+                  }
+                }
+                // If no mutation features had adresses, fall back to single-feature parse (e.g. selected-address-marker)
+                if (addresses.length === 0 && feature.properties?.adresses && isPointGeometry(feature.geometry)) {
+                  addresses = parseAddresses(feature.properties.adresses);
+                }
 
-                    if (addresses.length > 0) {
-                      // Sort addresses to prioritize searched address if available
-                      let sortedAddresses = addresses;
-                      if (searchParamsRef.current?.address) {
-                        const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
-                        sortedAddresses = [...addresses].sort((a, b) => {
-                          const aMatchesAddress = normalizeAddress(a.adresse_complete) === normalizeAddress(searchedAddress);
-                          const bMatchesAddress = normalizeAddress(b.adresse_complete) === normalizeAddress(searchedAddress);
-                          if (aMatchesAddress && !bMatchesAddress) return -1;
-                          if (!aMatchesAddress && bMatchesAddress) return 1;
-                          return 0;
+                // Create mutation data popup
+                if (addresses.length > 0) {
+                  try {
+                    // Sort addresses to prioritize searched address (exact or partial match)
+                    let sortedAddresses = addresses;
+                    if (searchParamsRef.current?.address) {
+                      const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
+                      const searchedN = normalizeAddress(searchedAddress);
+                      const matchesSearch = (addr: AddressDetails) => {
+                        const n = normalizeAddress(addr.adresse_complete);
+                        return n === searchedN || n.includes(searchedN) || searchedN.includes(n);
+                      };
+                      sortedAddresses = [...addresses].sort((a, b) => {
+                        const aMatch = matchesSearch(a);
+                        const bMatch = matchesSearch(b);
+                        if (aMatch && !bMatch) return -1;
+                        if (!aMatch && bMatch) return 1;
+                        // both match or neither: exact match first
+                        const aExact = normalizeAddress(a.adresse_complete) === searchedN;
+                        const bExact = normalizeAddress(b.adresse_complete) === searchedN;
+                        if (aExact && !bExact) return -1;
+                        if (!aExact && bExact) return 1;
+                        return 0;
+                      });
+                    }
+
+                    const searchedNorm = searchParamsRef.current?.address
+                      ? normalizeAddress(searchParamsRef.current.address.toLowerCase().trim())
+                      : '';
+
+                    // Prefer address that matches the searched one: exact match, or one contains the other (e.g. "45 t cours napoleon" vs "45 t cours napoleon 20000 ajaccio")
+                    const addrMatchesSearch = (addr: AddressDetails) => {
+                      if (!searchedNorm) return false;
+                      const n = normalizeAddress(addr.adresse_complete);
+                      return n === searchedNorm || n.includes(searchedNorm) || searchedNorm.includes(n);
+                    };
+                    const matchingAddress = searchedNorm
+                      ? (sortedAddresses.find(addr => normalizeAddress(addr.adresse_complete) === searchedNorm) ??
+                        sortedAddresses.find(addrMatchesSearch))
+                      : undefined;
+
+                    const addressWithMutations = sortedAddresses.find(
+                      addr => Array.isArray((addr as any).mutations) && (addr as any).mutations.length > 0,
+                    );
+
+                    // Strongly prefer the searched address when it has mutations; otherwise any match to search, then any with mutations
+                    const primaryAddress =
+                      matchingAddress && Array.isArray((matchingAddress as any).mutations) && (matchingAddress as any).mutations.length > 0
+                        ? matchingAddress
+                        : (matchingAddress ?? addressWithMutations ?? sortedAddresses[0]);
+
+                    const mutations = Array.isArray((primaryAddress as any).mutations) ? (primaryAddress as any).mutations : [];
+
+                    // Helper functions for your styling - Nouvelles couleurs spécifiées
+                    const getPropertyTypeColor = type => {
+                      const colors = {
+                        Appartement: '#504CC5', // #504CC5 - Violet
+                        Maison: '#7A72D5', // #7A72D5 - Violet clair
+                        Terrain: '#4F96D6', // #4F96D6 - Bleu
+                        Local: '#205F9D', // #205F9D - Bleu foncé
+                        'Bien Multiple': '#022060', // #022060 - Bleu très foncé
+                      };
+                      const shortType = getShortTypeName(type);
+                      return colors[shortType] || '#9CA3AF';
+                    };
+
+                    const getShortTypeName = type => {
+                      const shortNames = {
+                        Appartement: 'Appartement',
+                        Maison: 'Maison',
+                        Terrain: 'Terrain',
+                        'Local Commercial': 'Local',
+                        'Bien Multiple': 'Bien Multiple',
+                      };
+                      return shortNames[type] || type || 'Type inconnu';
+                    };
+
+                    const formatFrenchDate = dateString => {
+                      if (!dateString) return 'N/A';
+                      const date = new Date(dateString);
+                      return date.toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      });
+                    };
+
+                    const formatPrice = price => {
+                      return `${Math.round(price).toLocaleString('fr-FR')} €`;
+                    };
+
+                    // Get the first mutation for display
+                    const firstMutation = mutations.length > 0 ? mutations[0] : null;
+
+                    if (firstMutation) {
+                      // Create a function to render mutation data - show ALL mutations, not just 5
+                      // Sort mutations to prioritize searched address if available
+                      let allMutations = mutations;
+                      if (searchParams?.address && searchParams?.coordinates) {
+                        const searchedCoords = searchParams.coordinates;
+                        allMutations = [...mutations].sort((a, b) => {
+                          const aMatchesCoords =
+                            Math.abs(a.longitude - searchedCoords[0]) < 0.0001 && Math.abs(a.latitude - searchedCoords[1]) < 0.0001;
+                          const bMatchesCoords =
+                            Math.abs(b.longitude - searchedCoords[0]) < 0.0001 && Math.abs(b.latitude - searchedCoords[1]) < 0.0001;
+                          if (aMatchesCoords && !bMatchesCoords) return -1;
+                          if (!aMatchesCoords && bMatchesCoords) return 1;
+                          const aDate = new Date(a.date || 0);
+                          const bDate = new Date(b.date || 0);
+                          return bDate.getTime() - aDate.getTime();
+                        });
+                      } else {
+                        allMutations = [...mutations].sort((a, b) => {
+                          const aDate = new Date(a.date || 0);
+                          const bDate = new Date(b.date || 0);
+                          return bDate.getTime() - aDate.getTime();
                         });
                       }
+                      let currentIndex = 0;
 
-                      const searchedNorm = searchParamsRef.current?.address
-                        ? normalizeAddress(searchParamsRef.current.address.toLowerCase().trim())
-                        : '';
+                      const renderMutation = index => {
+                        const mutation = allMutations[index];
+                        const address = primaryAddress.adresse_complete || '';
+                        const propertyTypeLabel = getMutationTypeLabel(mutation);
+                        const rooms = mutation.nbpprinc ?? 0;
+                        const surface = getBuiltSurfaceValue(mutation);
+                        const terrain = getLandSurfaceValue(mutation);
+                        const price = mutation.valeur ?? 0;
+                        const soldDate = mutation.date || '';
+                        const priceFormatted = formatPrice(price);
+                        const pricePerSqm = formatPricePerSqm(price, surface, terrain, propertyTypeLabel);
 
-                      const matchingAddress = searchedNorm
-                        ? sortedAddresses.find(addr => normalizeAddress(addr.adresse_complete) === searchedNorm)
-                        : undefined;
+                        // Build the details string, only showing non-zero values
+                        const details = [];
+                        if (rooms > 0)
+                          details.push(
+                            `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
+                          );
+                        if (surface > 0)
+                          details.push(
+                            `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${surface.toLocaleString('fr-FR')} m²</span>`,
+                          );
+                        if (terrain > 0)
+                          details.push(
+                            `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${terrain.toLocaleString('fr-FR')} m²</span>`,
+                          );
 
-                      const addressWithMutations = sortedAddresses.find(
-                        addr => Array.isArray((addr as any).mutations) && (addr as any).mutations.length > 0,
-                      );
+                        const detailsText = details.length > 0 ? details.join('<span style="margin-left: 12px;"></span>') : '';
 
-                      const primaryAddress =
-                        matchingAddress &&
-                        Array.isArray((matchingAddress as any).mutations) &&
-                        (matchingAddress as any).mutations.length > 0
-                          ? matchingAddress
-                          : (addressWithMutations ?? matchingAddress ?? sortedAddresses[0]);
-
-                      const mutations = Array.isArray((primaryAddress as any).mutations) ? (primaryAddress as any).mutations : [];
-
-                      // Helper functions for your styling - Nouvelles couleurs spécifiées
-                      const getPropertyTypeColor = type => {
-                        const colors = {
-                          Appartement: '#504CC5', // #504CC5 - Violet
-                          Maison: '#7A72D5', // #7A72D5 - Violet clair
-                          Terrain: '#4F96D6', // #4F96D6 - Bleu
-                          Local: '#205F9D', // #205F9D - Bleu foncé
-                          'Bien Multiple': '#022060', // #022060 - Bleu très foncé
-                        };
-                        const shortType = getShortTypeName(type);
-                        return colors[shortType] || '#9CA3AF';
-                      };
-
-                      const getShortTypeName = type => {
-                        const shortNames = {
-                          Appartement: 'Appartement',
-                          Maison: 'Maison',
-                          Terrain: 'Terrain',
-                          'Local Commercial': 'Local',
-                          'Bien Multiple': 'Bien Multiple',
-                        };
-                        return shortNames[type] || type || 'Type inconnu';
-                      };
-
-                      const formatFrenchDate = dateString => {
-                        if (!dateString) return 'N/A';
-                        const date = new Date(dateString);
-                        return date.toLocaleDateString('fr-FR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                        });
-                      };
-
-                      const formatPrice = price => {
-                        return `${Math.round(price).toLocaleString('fr-FR')} €`;
-                      };
-
-                      // Get the first mutation for display
-                      const firstMutation = mutations.length > 0 ? mutations[0] : null;
-
-                      if (firstMutation) {
-                        // Create a function to render mutation data - show ALL mutations, not just 5
-                        // Sort mutations to prioritize searched address if available
-                        let allMutations = mutations;
-                        if (searchParams?.address && searchParams?.coordinates) {
-                          const searchedCoords = searchParams.coordinates;
-                          allMutations = [...mutations].sort((a, b) => {
-                            const aMatchesCoords =
-                              Math.abs(a.longitude - searchedCoords[0]) < 0.0001 && Math.abs(a.latitude - searchedCoords[1]) < 0.0001;
-                            const bMatchesCoords =
-                              Math.abs(b.longitude - searchedCoords[0]) < 0.0001 && Math.abs(b.latitude - searchedCoords[1]) < 0.0001;
-                            if (aMatchesCoords && !bMatchesCoords) return -1;
-                            if (!aMatchesCoords && bMatchesCoords) return 1;
-                            const aDate = new Date(a.date || 0);
-                            const bDate = new Date(b.date || 0);
-                            return bDate.getTime() - aDate.getTime();
-                          });
-                        } else {
-                          allMutations = [...mutations].sort((a, b) => {
-                            const aDate = new Date(a.date || 0);
-                            const bDate = new Date(b.date || 0);
-                            return bDate.getTime() - aDate.getTime();
-                          });
-                        }
-                        let currentIndex = 0;
-
-                        const renderMutation = index => {
-                          const mutation = allMutations[index];
-                          const address = primaryAddress.adresse_complete || '';
-                          const propertyTypeLabel = getMutationTypeLabel(mutation);
-                          const rooms = mutation.nbpprinc ?? 0;
-                          const surface = getBuiltSurfaceValue(mutation);
-                          const terrain = getLandSurfaceValue(mutation);
-                          const price = mutation.valeur ?? 0;
-                          const soldDate = mutation.date || '';
-                          const priceFormatted = formatPrice(price);
-                          const pricePerSqm = formatPricePerSqm(price, surface, terrain, propertyTypeLabel);
-
-                          // Build the details string, only showing non-zero values
-                          const details = [];
-                          if (rooms > 0)
-                            details.push(
-                              `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
-                            );
-                          if (surface > 0)
-                            details.push(
-                              `<span style="color: rgba(12, 12, 12, 0.75);">Surface </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${surface.toLocaleString('fr-FR')} m²</span>`,
-                            );
-                          if (terrain > 0)
-                            details.push(
-                              `<span style="color: rgba(12, 12, 12, 0.75);">Terrain </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${terrain.toLocaleString('fr-FR')} m²</span>`,
-                            );
-
-                          const detailsText = details.length > 0 ? details.join('<span style="margin-left: 12px;"></span>') : '';
-
-                          return `
+                        return `
              <div style="
                background: #fff;
                padding: 1px;
@@ -2289,70 +2326,116 @@ const PropertyMap: React.FC<MapPageProps> = ({
                }
              </div>
            `;
+                      };
+
+                      // Check if mobile device for hover popup
+                      const isMobile = window.innerWidth < 768;
+
+                      if (isMobile) {
+                        // Use mobile bottom sheet for hover on mobile
+                        setMobileSheetMutations(allMutations);
+                        setMobileSheetIndex(currentIndex);
+
+                        // Convert current mutation to property format
+                        const currentMutation = allMutations[currentIndex];
+                        // Get the address from the sorted addresses (first one is the searched address)
+                        const parentAddress = sortedAddresses && sortedAddresses.length > 0 ? sortedAddresses[0] : null;
+                        const currentMutationTypeLabel = getMutationTypeLabel(currentMutation);
+                        const currentBuiltSurface = getBuiltSurfaceValue(currentMutation);
+                        const currentLandSurface = getLandSurfaceValue(currentMutation);
+                        const currentPriceValue = typeof currentMutation.valeur === 'number' ? currentMutation.valeur : 0;
+                        const currentPricePerSqm = formatPricePerSqm(
+                          currentPriceValue,
+                          currentBuiltSurface,
+                          currentLandSurface,
+                          currentMutationTypeLabel,
+                        );
+                        setMobileSheetProperty({
+                          address: parentAddress?.adresse_complete || 'Adresse non disponible',
+                          city: parentAddress?.commune || 'Ville non disponible',
+                          price: `${Math.round(currentPriceValue).toLocaleString('fr-FR')} €`,
+                          pricePerSqm: currentPricePerSqm,
+                          type: currentMutationTypeLabel,
+                          rooms: currentMutation.nbpprinc ?? '',
+                          surface: formatSurfaceValue(currentBuiltSurface),
+                          terrain: formatSurfaceValue(currentLandSurface),
+                          soldDate: currentMutation.date ? new Date(currentMutation.date).toLocaleDateString('fr-FR') : '',
+                        });
+
+                        setShowMobileBottomSheet(true);
+                      } else {
+                        // Desktop: use original popup
+                        const popupContent = renderMutation(currentIndex);
+
+                        hoverPopupRef.current = new mapboxgl.Popup({
+                          closeButton: false,
+                          closeOnClick: false,
+                          maxWidth: '450px',
+                          offset: [0, -5],
+                          className: 'mutation-hover-popup',
+                        })
+                          .setLngLat(isPointGeometry(feature.geometry) ? feature.geometry.coordinates : e.lngLat.toArray())
+                          .setHTML(popupContent)
+                          .addTo(map);
+                      }
+
+                      // Function to add navigation event listeners (only for desktop)
+                      if (!isMobile) {
+                        const addNavigationListeners = () => {
+                          setTimeout(() => {
+                            const popupElement = hoverPopupRef.current?.getElement();
+                            if (!popupElement) {
+                              console.warn('Popup element not found, skipping navigation listeners');
+                              return;
+                            }
+
+                            // Add hover tracking to prevent popup from closing when mouse is over it
+                            popupElement.addEventListener('mouseenter', () => {
+                              isHoveringPopup.current = true;
+                            });
+
+                            popupElement.addEventListener('mouseleave', () => {
+                              isHoveringPopup.current = false;
+                              // Remove popup when mouse leaves it
+                              setTimeout(() => {
+                                if (!isHoveringPopup.current && hoverPopupRef.current) {
+                                  hoverPopupRef.current.remove();
+                                  hoverPopupRef.current = null;
+                                }
+                              }, 100);
+                            });
+
+                            const prevBtn = popupElement.querySelector('.prev-btn');
+                            const nextBtn = popupElement.querySelector('.next-btn');
+
+                            if (prevBtn) {
+                              prevBtn.addEventListener('click', event => {
+                                event.stopPropagation();
+                                currentIndex = currentIndex > 0 ? currentIndex - 1 : allMutations.length - 1;
+                                hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
+                                addNavigationListeners(); // Re-add listeners after HTML update
+                              });
+                            }
+
+                            if (nextBtn) {
+                              nextBtn.addEventListener('click', event => {
+                                event.stopPropagation();
+                                currentIndex = currentIndex < allMutations.length - 1 ? currentIndex + 1 : 0;
+                                hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
+                                addNavigationListeners(); // Re-add listeners after HTML update
+                              });
+                            }
+                          }, 100);
                         };
 
-                        // Check if mobile device for hover popup
-                        const isMobile = window.innerWidth < 768;
-
-                        if (isMobile) {
-                          // Use mobile bottom sheet for hover on mobile
-                          setMobileSheetMutations(allMutations);
-                          setMobileSheetIndex(currentIndex);
-
-                          // Convert current mutation to property format
-                          const currentMutation = allMutations[currentIndex];
-                          // Get the address from the sorted addresses (first one is the searched address)
-                          const parentAddress = sortedAddresses && sortedAddresses.length > 0 ? sortedAddresses[0] : null;
-                          const currentMutationTypeLabel = getMutationTypeLabel(currentMutation);
-                          const currentBuiltSurface = getBuiltSurfaceValue(currentMutation);
-                          const currentLandSurface = getLandSurfaceValue(currentMutation);
-                          const currentPriceValue = typeof currentMutation.valeur === 'number' ? currentMutation.valeur : 0;
-                          const currentPricePerSqm = formatPricePerSqm(
-                            currentPriceValue,
-                            currentBuiltSurface,
-                            currentLandSurface,
-                            currentMutationTypeLabel,
-                          );
-                          setMobileSheetProperty({
-                            address: parentAddress?.adresse_complete || 'Adresse non disponible',
-                            city: parentAddress?.commune || 'Ville non disponible',
-                            price: `${Math.round(currentPriceValue).toLocaleString('fr-FR')} €`,
-                            pricePerSqm: currentPricePerSqm,
-                            type: currentMutationTypeLabel,
-                            rooms: currentMutation.nbpprinc ?? '',
-                            surface: formatSurfaceValue(currentBuiltSurface),
-                            terrain: formatSurfaceValue(currentLandSurface),
-                            soldDate: currentMutation.date ? new Date(currentMutation.date).toLocaleDateString('fr-FR') : '',
-                          });
-
-                          setShowMobileBottomSheet(true);
+                        // Add navigation event listeners if multiple mutations
+                        if (allMutations.length > 1) {
+                          addNavigationListeners();
                         } else {
-                          // Desktop: use original popup
-                          const popupContent = renderMutation(currentIndex);
-
-                          hoverPopupRef.current = new mapboxgl.Popup({
-                            closeButton: false,
-                            closeOnClick: false,
-                            maxWidth: '450px',
-                            offset: [0, -5],
-                            className: 'mutation-hover-popup',
-                          })
-                            .setLngLat(feature.geometry.coordinates)
-                            .setHTML(popupContent)
-                            .addTo(map);
-                        }
-
-                        // Function to add navigation event listeners (only for desktop)
-                        if (!isMobile) {
-                          const addNavigationListeners = () => {
-                            setTimeout(() => {
-                              const popupElement = hoverPopupRef.current?.getElement();
-                              if (!popupElement) {
-                                console.warn('Popup element not found, skipping navigation listeners');
-                                return;
-                              }
-
-                              // Add hover tracking to prevent popup from closing when mouse is over it
+                          // Even if no navigation buttons, add hover tracking
+                          setTimeout(() => {
+                            const popupElement = hoverPopupRef.current?.getElement();
+                            if (popupElement) {
                               popupElement.addEventListener('mouseenter', () => {
                                 isHoveringPopup.current = true;
                               });
@@ -2367,73 +2450,27 @@ const PropertyMap: React.FC<MapPageProps> = ({
                                   }
                                 }, 100);
                               });
-
-                              const prevBtn = popupElement.querySelector('.prev-btn');
-                              const nextBtn = popupElement.querySelector('.next-btn');
-
-                              if (prevBtn) {
-                                prevBtn.addEventListener('click', event => {
-                                  event.stopPropagation();
-                                  currentIndex = currentIndex > 0 ? currentIndex - 1 : allMutations.length - 1;
-                                  hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
-                                  addNavigationListeners(); // Re-add listeners after HTML update
-                                });
-                              }
-
-                              if (nextBtn) {
-                                nextBtn.addEventListener('click', event => {
-                                  event.stopPropagation();
-                                  currentIndex = currentIndex < allMutations.length - 1 ? currentIndex + 1 : 0;
-                                  hoverPopupRef.current?.setHTML(renderMutation(currentIndex));
-                                  addNavigationListeners(); // Re-add listeners after HTML update
-                                });
-                              }
-                            }, 100);
-                          };
-
-                          // Add navigation event listeners if multiple mutations
-                          if (allMutations.length > 1) {
-                            addNavigationListeners();
-                          } else {
-                            // Even if no navigation buttons, add hover tracking
-                            setTimeout(() => {
-                              const popupElement = hoverPopupRef.current?.getElement();
-                              if (popupElement) {
-                                popupElement.addEventListener('mouseenter', () => {
-                                  isHoveringPopup.current = true;
-                                });
-
-                                popupElement.addEventListener('mouseleave', () => {
-                                  isHoveringPopup.current = false;
-                                  // Remove popup when mouse leaves it
-                                  setTimeout(() => {
-                                    if (!isHoveringPopup.current && hoverPopupRef.current) {
-                                      hoverPopupRef.current.remove();
-                                      hoverPopupRef.current = null;
-                                    }
-                                  }, 100);
-                                });
-                              }
-                            }, 100);
-                          }
+                            }
+                          }, 100);
                         }
+                      }
 
-                        debugLog('Mutation popup created with data');
-                      } else {
-                        // No mutations for this address (e.g. selected address without sales)
-                        const isMobile = window.innerWidth < 768;
-                        const addressLabel = (primaryAddress?.adresse_complete || '').toUpperCase();
+                      debugLog('Mutation popup created with data');
+                    } else {
+                      // No mutations for this address (e.g. selected address without sales)
+                      const isMobile = window.innerWidth < 768;
+                      const addressLabel = (primaryAddress?.adresse_complete || '').toUpperCase();
 
-                        if (!isMobile) {
-                          hoverPopupRef.current = new mapboxgl.Popup({
-                            closeButton: false,
-                            closeOnClick: false,
-                            maxWidth: '360px',
-                            offset: [0, -10],
-                          })
-                            .setLngLat(e.lngLat)
-                            .setHTML(
-                              `
+                      if (!isMobile) {
+                        hoverPopupRef.current = new mapboxgl.Popup({
+                          closeButton: false,
+                          closeOnClick: false,
+                          maxWidth: '360px',
+                          offset: [0, -10],
+                        })
+                          .setLngLat(e.lngLat)
+                          .setHTML(
+                            `
                               <div style="padding: 12px; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
                                 <div style="font-weight: bold; font-size: 14px; color: #3b82f6;">
                                   ${addressLabel || 'ADRESSE'}
@@ -2443,35 +2480,10 @@ const PropertyMap: React.FC<MapPageProps> = ({
                                 </div>
                               </div>
                               `,
-                            )
-                            .addTo(map);
-                        }
-                        // Mobile: no hover popups (tap interactions handled elsewhere)
-                      }
-                    } else {
-                      // Fallback if no addresses
-                      const isMobile = window.innerWidth < 768;
-
-                      if (!isMobile) {
-                        // Desktop: show fallback popup
-                        hoverPopupRef.current = new mapboxgl.Popup({
-                          closeButton: false,
-                          closeOnClick: false,
-                          maxWidth: '200px',
-                          offset: [0, -10],
-                        })
-                          .setLngLat(e.lngLat)
-                          .setHTML(
-                            `
-                            <div style="padding: 10px; background: #ffaa00; color: white; border-radius: 4px;">
-                              <strong>No Address Data</strong><br>
-                              Feature ID: ${feature.id || 'No ID'}
-                            </div>
-                          `,
                           )
                           .addTo(map);
                       }
-                      // Mobile: don't show anything for features without addresses
+                      // Mobile: no hover popups (tap interactions handled elsewhere)
                     }
                   } catch (err) {
                     debugLog('Error parsing addresses JSON:', err);
@@ -2556,13 +2568,20 @@ const PropertyMap: React.FC<MapPageProps> = ({
             let sortedAddresses = addresses;
             if (searchParamsRef.current?.address) {
               const searchedAddress = searchParamsRef.current.address.toLowerCase().trim();
-
+              const searchedN = normalizeAddress(searchedAddress);
+              const matchesSearch = (addr: any) => {
+                const n = normalizeAddress(addr?.adresse_complete);
+                return n === searchedN || (searchedN && (n.includes(searchedN) || searchedN.includes(n)));
+              };
               sortedAddresses = [...addresses].sort((a, b) => {
-                const aMatchesAddress = normalizeAddress(a.adresse_complete) === normalizeAddress(searchedAddress);
-                const bMatchesAddress = normalizeAddress(b.adresse_complete) === normalizeAddress(searchedAddress);
-
-                if (aMatchesAddress && !bMatchesAddress) return -1;
-                if (!aMatchesAddress && bMatchesAddress) return 1;
+                const aMatch = matchesSearch(a);
+                const bMatch = matchesSearch(b);
+                if (aMatch && !bMatch) return -1;
+                if (!aMatch && bMatch) return 1;
+                const aExact = normalizeAddress(a?.adresse_complete) === searchedN;
+                const bExact = normalizeAddress(b?.adresse_complete) === searchedN;
+                if (aExact && !bExact) return -1;
+                if (!aExact && bExact) return 1;
                 return 0;
               });
             }
@@ -2594,13 +2613,28 @@ const PropertyMap: React.FC<MapPageProps> = ({
               (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
             }
 
-            if (feature.properties && feature.properties.adresses && isPointGeometry(feature.geometry)) {
-              try {
-                const addresses = parseAddresses(feature.properties.adresses);
-                if (addresses.length === 0) {
-                  return;
+            // Merge addresses from all mutation-point features under the click so the searched address
+            // is shown even when it comes from the "second" point at the same location
+            const seenKeys = new Set<string>();
+            let addresses: AddressDetails[] = [];
+            for (const mf of features) {
+              if (mf.properties?.adresses && isPointGeometry(mf.geometry)) {
+                const addrs = parseAddresses(mf.properties.adresses);
+                for (const a of addrs) {
+                  const key = String((a as any).idadresse ?? a.adresse_complete ?? '');
+                  if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    addresses.push(a);
+                  }
                 }
+              }
+            }
+            if (addresses.length === 0 && feature.properties?.adresses && isPointGeometry(feature.geometry)) {
+              addresses = parseAddresses(feature.properties.adresses);
+            }
 
+            if (addresses.length > 0) {
+              try {
                 const sortedAddresses = sortAddressesForDisplay(addresses);
 
                 if (sortedAddresses.length > 1) {
