@@ -47,8 +47,10 @@ const GeatMap: React.FC<GeatMapProps> = ({ onCommuneSelect, className = '' }) =>
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [level, setLevel] = useState<DrillLevel>('regions');
+  const [zoom, setZoom] = useState(FRANCE_ZOOM);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const setLevelRef = useRef(setLevel);
+  const setZoomRef = useRef(setZoom);
   const clickedRegionCodeRef = useRef<string | null>(null);
   const clickedDepartementCodeRef = useRef<string | null>(null);
   const clickedCommuneCodeRef = useRef<string | null>(null);
@@ -56,6 +58,7 @@ const GeatMap: React.FC<GeatMapProps> = ({ onCommuneSelect, className = '' }) =>
   const deptSourceLayerRef = useRef<string>('departements');
   const communeSourceLayerRef = useRef<string>('communes');
   setLevelRef.current = setLevel;
+  setZoomRef.current = setZoom;
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -68,7 +71,7 @@ const GeatMap: React.FC<GeatMapProps> = ({ onCommuneSelect, className = '' }) =>
       center: FRANCE_CENTER,
       zoom: FRANCE_ZOOM,
       minZoom: 4,
-      maxZoom: 14,
+      maxZoom: 10,
     });
 
     map.showTileBoundaries = false;
@@ -86,6 +89,18 @@ const GeatMap: React.FC<GeatMapProps> = ({ onCommuneSelect, className = '' }) =>
     map.on('load', async () => {
       setMapLoaded(true);
       setMapError(null);
+
+      // Update zoom and level state on zoom changes
+      map.on('zoom', () => {
+        const z = map.getZoom();
+        setZoomRef.current(z);
+        // Update level based on zoom
+        if (z < 6) {
+          setLevelRef.current('regions');
+        } else {
+          setLevelRef.current('departements');
+        }
+      });
 
       // Fetch metadata to get correct source-layer names (mbtiles often use "regions", "departements", "communes" not "default")
       type TileJSON = { vector_layers?: Array<{ id: string }> };
@@ -129,14 +144,14 @@ const GeatMap: React.FC<GeatMapProps> = ({ onCommuneSelect, className = '' }) =>
         maxzoom: 14,
         promoteId: 'code',
       });
-      // Région reste visible au zoom (maxzoom 10) : quand on zoome sur les départements, le contour de la région ne disparaît pas
+      // Région reste visible au zoom (maxzoom 13) : quand on zoome sur les départements, le contour de la région ne disparaît pas
       map.addLayer({
         id: GEATMAP_REGIONS_LAYER,
         type: 'fill',
         source: GEATMAP_REGIONS_SOURCE,
         'source-layer': regionsSourceLayer,
         minzoom: 0,
-        maxzoom: 10,
+        maxzoom: 13,
         paint: {
           // Quand cliqué : seulement le contour (bordure) en bleu, le remplissage reste discret
           'fill-color': ['case', ['boolean', ['feature-state', 'clicked'], false], REGION_DEFAULT_COLOR, REGION_DEFAULT_COLOR],
@@ -144,6 +159,54 @@ const GeatMap: React.FC<GeatMapProps> = ({ onCommuneSelect, className = '' }) =>
           'fill-outline-color': ['case', ['boolean', ['feature-state', 'clicked'], false], REGION_CLICKED_COLOR, 'rgba(0,0,0,0.5)'],
         },
       });
+
+      // Region labels (visible from zoom 0 to 6) - only at region level
+      map.addLayer({
+        id: 'geatmap-regions-labels',
+        type: 'symbol',
+        source: GEATMAP_REGIONS_SOURCE,
+        'source-layer': regionsSourceLayer,
+        minzoom: 0,
+        maxzoom: 6,
+        layout: {
+          'text-field': ['coalesce', ['get', 'nom'], ['get', 'name'], ['get', 'code']],
+          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+          'text-size': 14,
+          'text-anchor': 'center',
+          'text-justify': 'center',
+        },
+        paint: {
+          'text-color': '#ffffff',
+          'text-halo-color': '#000000',
+          'text-halo-width': 1,
+        },
+      });
+
+      // Fallback for region labels if source-layer is wrong
+      try {
+        map.addLayer({
+          id: 'geatmap-regions-labels-fallback',
+          type: 'symbol',
+          source: GEATMAP_REGIONS_SOURCE,
+          'source-layer': 'regions',
+          minzoom: 0,
+          maxzoom: 6,
+          layout: {
+            'text-field': ['coalesce', ['get', 'nom'], ['get', 'name'], ['get', 'code']],
+            'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+            'text-size': 14,
+            'text-anchor': 'center',
+            'text-justify': 'center',
+          },
+          paint: {
+            'text-color': '#ffffff',
+            'text-halo-color': '#000000',
+            'text-halo-width': 1,
+          },
+        });
+      } catch {
+        // ignore if layer already exists
+      }
 
       // Communes SOUS les départements (ajoutée en premier = dessinée en dessous)
       // promoteId pour setFeatureState, même concept que régions/départements
@@ -162,7 +225,7 @@ const GeatMap: React.FC<GeatMapProps> = ({ onCommuneSelect, className = '' }) =>
           source: GEATMAP_COMMUNES_SOURCE,
           'source-layer': communesLayerName,
           minzoom: 6,
-          maxzoom: 14,
+          maxzoom: 13,
           paint: {
             'fill-color': ['case', ['boolean', ['feature-state', 'clicked'], false], COMMUNE_CLICKED_COLOR, COMMUNE_DEFAULT_COLOR],
             'fill-opacity': 0.55,
@@ -222,17 +285,89 @@ const GeatMap: React.FC<GeatMapProps> = ({ onCommuneSelect, className = '' }) =>
         maxzoom: 14,
         promoteId: 'code',
       });
+
+      // Departments layer (visible from zoom 6)
       map.addLayer({
         id: GEATMAP_DEPARTEMENTS_LAYER,
         type: 'fill',
         source: GEATMAP_DEPARTEMENTS_SOURCE,
         'source-layer': deptsSourceLayer,
         minzoom: 6,
-        maxzoom: 14,
+        maxzoom: 13,
         paint: {
           'fill-color': ['case', ['boolean', ['feature-state', 'clicked'], false], DEPARTEMENT_CLICKED_COLOR, DEPARTEMENT_DEFAULT_COLOR],
           'fill-opacity': ['case', ['boolean', ['feature-state', 'clicked'], false], 0.25, 0.6],
           'fill-outline-color': ['case', ['boolean', ['feature-state', 'clicked'], false], REGION_CLICKED_COLOR, 'rgba(0,0,0,0.5)'],
+        },
+      });
+
+      // Department labels (visible from zoom 6 to 10) - only at department level
+      map.addLayer({
+        id: 'geatmap-departements-labels',
+        type: 'symbol',
+        source: GEATMAP_DEPARTEMENTS_SOURCE,
+        'source-layer': deptsSourceLayer,
+        minzoom: 6,
+        maxzoom: 10,
+        layout: {
+          'text-field': ['coalesce', ['get', 'nom'], ['get', 'name'], ['get', 'code']],
+          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+          'text-size': 12,
+          'text-anchor': 'center',
+          'text-justify': 'center',
+        },
+        paint: {
+          'text-color': '#ffffff',
+          'text-halo-color': '#000000',
+          'text-halo-width': 1,
+        },
+      });
+
+      // Fallback for department labels if source-layer is wrong
+      try {
+        map.addLayer({
+          id: 'geatmap-departements-labels-fallback',
+          type: 'symbol',
+          source: GEATMAP_DEPARTEMENTS_SOURCE,
+          'source-layer': 'departements',
+          minzoom: 6,
+          maxzoom: 10,
+          layout: {
+            'text-field': ['coalesce', ['get', 'nom'], ['get', 'name'], ['get', 'code']],
+            'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+            'text-size': 12,
+            'text-anchor': 'center',
+            'text-justify': 'center',
+          },
+          paint: {
+            'text-color': '#ffffff',
+            'text-halo-color': '#000000',
+            'text-halo-width': 1,
+          },
+        });
+      } catch {
+        // ignore if layer already exists
+      }
+
+      // Commune labels (visible from zoom 8)
+      map.addLayer({
+        id: 'geatmap-communes-labels',
+        type: 'symbol',
+        source: GEATMAP_COMMUNES_SOURCE,
+        'source-layer': communeSourceLayerRef.current,
+        minzoom: 8,
+        maxzoom: 13,
+        layout: {
+          'text-field': ['get', 'nom'],
+          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+          'text-size': 10,
+          'text-anchor': 'center',
+          'text-justify': 'center',
+        },
+        paint: {
+          'text-color': '#ffffff',
+          'text-halo-color': '#000000',
+          'text-halo-width': 1,
         },
       });
 
@@ -732,6 +867,9 @@ const GeatMap: React.FC<GeatMapProps> = ({ onCommuneSelect, className = '' }) =>
         <div className="absolute top-2 right-2 flex flex-col gap-2">
           <div className="bg-white/95 shadow rounded px-3 py-2 text-sm">
             Niveau : <strong>{level === 'regions' ? 'Régions' : level === 'departements' ? 'Départements' : 'Communes'}</strong>
+          </div>
+          <div className="bg-white/95 shadow rounded px-3 py-2 text-sm">
+            Zoom : <strong>{zoom.toFixed(1)}</strong>
           </div>
           <button type="button" onClick={handleReset} className="bg-white/95 shadow rounded px-3 py-2 text-sm hover:bg-gray-100">
             Voir toute la France
