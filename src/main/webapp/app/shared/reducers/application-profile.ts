@@ -27,6 +27,9 @@ export const ApplicationProfileSlice = createSlice({
       state.inProduction = data.activeProfiles.includes('prod');
       state.isOpenAPIEnabled = data.activeProfiles.includes('api-docs');
     });
+    builder.addCase(getProfile.rejected, () => {
+      // Backend unreachable (e.g. not running, CORS) — keep initial state; app still works
+    });
   },
 });
 

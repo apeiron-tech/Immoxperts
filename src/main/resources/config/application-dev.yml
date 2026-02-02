@@ -126,4 +126,8 @@ jhipster:
 # https://www.jhipster.tech/common-application-properties/
 # ===================================================================
 
+# GeatMap: folder with regions.mbtiles, departements.mbtiles, communes.mbtiles (relative to CWD when running the app)
+geatmap:
+  tiles:
+    path: ./tiles
 # application:

@@ -17,10 +17,14 @@ export default () => next => action => {
   if (DEVELOPMENT) {
     const { error } = action;
     if (error) {
-      console.error(`${action.type} caught at middleware with reason: ${JSON.stringify(error.message)}.`);
-      if (error.response && error.response.data) {
-        const message = getErrorMessage(error.response.data);
-        console.error(`Actual cause: ${message}`);
+      // Profile fetch often fails with "Network Error" when backend is not running — skip noisy log
+      const isProfileNetworkError = action.type === 'applicationProfile/get_profile/rejected' && error.message === 'Network Error';
+      if (!isProfileNetworkError) {
+        console.error(`${action.type} caught at middleware with reason: ${JSON.stringify(error.message)}.`);
+        if (error.response && error.response.data) {
+          const message = getErrorMessage(error.response.data);
+          console.error(`Actual cause: ${message}`);
+        }
       }
     }
   }

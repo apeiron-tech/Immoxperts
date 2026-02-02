@@ -31,6 +31,7 @@ import Louer from 'app/pages/Louer';
 import Estimation from 'app/features/estimation/Estimation';
 import StreetStats from 'app/features/property/StreetStats';
 import PropertyList from 'app/pages/PropertyList';
+import GeatMapPage from 'app/pages/GeatMapPage';
 import SearchBar from 'app/layouts/SearchBar';
 import { FilterState } from './types/filters';
 import RecherchLouer from './features/property/PropertySearch';
@@ -128,6 +129,7 @@ const AppRoutes = () => {
         <Route path="/RecherchLouer" element={<RecherchLouer />} />
         <Route path="/estimation" element={<Estimation />} />
         <Route path="/streetStats" element={<StreetStats />} />
+        <Route path="/geatmap" element={<GeatMapPage />} />
         <Route path="/EstimationRechercher" element={<EstimationRechercher />} />
 
         <Route path="*" element={<PageNotFound />} />

@@ -53,6 +53,7 @@ export const API_ENDPOINTS = {
     subscribe: `${API_BASE_URL}/api/contact/subscribe`,
   },
   authorities: `${API_BASE_URL}/api/authorities`,
+  geatmapTiles: `${API_BASE_URL}/api/tiles/geatmap`,
   entities: {
     mutations: `${API_BASE_URL}/api/mutations`,
     lots: `${API_BASE_URL}/api/lots`,
