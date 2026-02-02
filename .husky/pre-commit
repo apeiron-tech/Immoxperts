@@ -1,1 +1,12 @@
-lint-staged
+#!/bin/sh
+
+# Add Node.js to PATH for NVM installations
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# Fallback for direct Node.js path if NVM doesn't work
+export PATH="$PATH:/Users/sofienesalem/.nvm/versions/node/v22.22.0/bin"
+
+# Use npx to run lint-staged from local node_modules
+npx lint-staged
