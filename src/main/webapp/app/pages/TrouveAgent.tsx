@@ -202,21 +202,31 @@ const TrouveAgent: React.FC = () => {
             <div className="bg-white rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl border border-gray-200">
               {/* Mobile: Stack vertically, Desktop: 3 columns */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-2 md:gap-3">
-                {stats.map((stat, index) => (
-                  <div key={index} className="text-center flex flex-col items-center sm:items-center">
-                    <p
-                      className="text-2xl sm:text-lg md:text-xl lg:text-2xl font-bold leading-tight mb-2 sm:mb-3"
-                      style={{
-                        color: 'hsl(245 58% 62%)',
-                      }}
-                    >
-                      {stat.value}
-                    </p>
-                    <p className="text-xs sm:text-xs md:text-sm text-gray-600 leading-tight text-center px-2 sm:px-0 sm:whitespace-nowrap">
-                      {stat.label}
-                    </p>
-                  </div>
-                ))}
+                {stats.map((stat, index) => {
+                  const twoLineLabels: Array<[string, string]> = [
+                    ['Transactions DVF', 'depuis 2014'],
+                    ['Annonces immobilières', 'agrégées'],
+                    ['Estimation & Scoring', 'intelligent'],
+                  ];
+                  const lines = twoLineLabels[index] ?? [stat.label, ''];
+                  return (
+                    <div key={index} className="text-center flex flex-col items-center sm:items-center">
+                      <p
+                        className="text-2xl sm:text-lg md:text-xl lg:text-2xl font-bold leading-tight mb-2 sm:mb-3"
+                        style={{
+                          color: 'hsl(245 58% 62%)',
+                        }}
+                      >
+                        {stat.value}
+                      </p>
+                      <p className="text-xs sm:text-xs md:text-sm text-gray-600 leading-tight text-center px-2 sm:px-0">
+                        <span>{lines[0]}</span>
+                        <br />
+                        <span>{lines[1]}</span>
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

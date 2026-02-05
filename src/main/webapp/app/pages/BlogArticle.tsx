@@ -1,12 +1,18 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Clock, Calendar, ArrowRight, MapPin } from 'lucide-react';
+import { ArrowLeft, Clock, Calendar, ArrowRight } from 'lucide-react';
+import NegotiationArticlePage from './NegotiationArticlePage';
 
 const BlogArticle: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // Article data - pour l'instant, on utilise l'article DVF
+  // Article "Pourquoi vous payez trop..." → page dédiée
+  if (id === 'negociation-immobiliere-vrais-chiffres') {
+    return <NegotiationArticlePage />;
+  }
+
+  // Article DVF (par défaut)
   const article = {
     id: 'carte-prix-immobiliers-dvf-guide',
     title: 'Carte des prix immobiliers : guide complet pour comprendre les ventes réelles (DVF) et analyser un quartier',
@@ -35,29 +41,24 @@ const BlogArticle: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <style>{`
-        @media (min-width: 1024px) {
-          article h1 {
-            font-size: 1.875rem !important;
-            line-height: 2.25rem !important;
-            color: #000000 !important;
-          }
-          article h2 {
-            font-size: 1.5rem !important;
-            line-height: 2rem !important;
-            color: #000000 !important;
-          }
-        }
-        article h1 {
-          color: #000000 !important;
-        }
-        article h2 {
-          color: #000000 !important;
-        }
-        article p {
-          font-size: 1rem;
-          line-height: 1.5rem;
-          color: #000000;
-        }
+        article h1, article h2, article h3, article h4 { color: #000000 !important; }
+        article p { font-size: 1rem; line-height: 1.5rem; color: #000000; }
+        article .dvf-article-content p,
+        article .dvf-article-content ul li,
+        article .dvf-article-content ol li,
+        article .dvf-article-content td { font-size: 1rem !important; line-height: 1.5rem !important; color: #000000 !important; }
+        article .dvf-article-content h2,
+        article .dvf-article-content h3 { margin-bottom: 1rem !important; }
+        .dvf-article-content.prose ul li::marker,
+        .dvf-article-content .prose ul li::marker,
+        article .dvf-article-content ul li::marker { color: #000000 !important; }
+        .dvf-article-content.prose ul li,
+        .dvf-article-content .prose ul li,
+        article .dvf-article-content ul li { margin-top: 0 !important; margin-bottom: 0 !important; color: #000000 !important; }
+        .dvf-article-content.prose ul li + li,
+        .dvf-article-content .prose ul li + li,
+        article .dvf-article-content ul li + li { margin-top: 0.25rem !important; }
+        article .dvf-article-content ul.list-none li + li { margin-top: 0.5rem !important; }
       `}</style>
       {/* Header with back button */}
       <div className="bg-gray-50 sticky top-[76px] z-30">
@@ -77,33 +78,21 @@ const BlogArticle: React.FC = () => {
       <article className="py-2 md:py-3 bg-gray-50">
         <div className="container mx-auto px-2 max-w-4xl">
           {/* Article Header */}
-          <header className="mb-2 bg-gray-50 rounded-2xl pt-0 pb-0 px-2 sm:px-3">
-            <div className="flex items-center gap-3 md:gap-4 mb-1 flex-wrap">
-              <span
-                className="px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{ backgroundColor: 'hsl(245 58% 62% / 0.1)', color: 'hsl(245 58% 62%)' }}
-              >
-                {article.category}
-              </span>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500">
-                <Clock className="h-4 w-4" />
-                {article.readTime} min de lecture
-              </div>
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500">
-                <Calendar className="h-4 w-4" />
-                {new Date(article.date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
-              </div>
+          <header className="mb-6 bg-gray-50 rounded-2xl pt-0 pb-0 px-2 sm:px-3">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 leading-tight text-black">{article.title}</h1>
+            <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+              <span className="font-medium text-gray-900">Propsight</span>
+              <span>·</span>
+              <span>{article.readTime} min read</span>
+              <span>·</span>
+              <span>{new Date(article.date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-1 leading-tight">{article.title}</h1>
             <div className="flex flex-wrap gap-2">
               {article.tags.map(tag => (
                 <span
                   key={tag}
                   className="px-3 py-1.5 rounded-full text-xs font-medium"
-                  style={{
-                    backgroundColor: 'hsl(245 58% 62% / 0.05)',
-                    color: 'hsl(245 58% 62%)',
-                  }}
+                  style={{ backgroundColor: 'hsl(245 58% 62% / 0.05)', color: 'hsl(245 58% 62%)' }}
                 >
                   #{tag}
                 </span>
@@ -112,21 +101,21 @@ const BlogArticle: React.FC = () => {
           </header>
 
           {/* Article Body */}
-          <div className="prose prose-lg max-w-none">
+          <div className="dvf-article-content prose prose-lg max-w-none space-y-6">
             <div
               className="bg-gray-50 rounded-xl px-2 sm:px-3 mb-2"
               style={{
                 background: 'linear-gradient(to bottom right, hsl(245 58% 62% / 0.02), white)',
               }}
             >
-              <p className="text-lg sm:text-xl text-gray-800 leading-relaxed mb-0 font-medium">
+              <p className="text-gray-800 leading-relaxed mb-0 font-medium">
                 Quand on parle de "prix immobilier", on confond souvent deux choses :
               </p>
-              <ul className="list-disc list-inside space-y-0 text-base sm:text-lg text-gray-700 mb-0 ml-2 sm:ml-4">
+              <ul className="list-disc list-inside text-gray-700 mb-0 ml-2 sm:ml-4">
                 <li>le prix affiché dans les annonces (prix demandé),</li>
                 <li>et le prix réellement payé lors d'une vente (prix de vente final).</li>
               </ul>
-              <p className="text-base sm:text-lg text-gray-700 leading-relaxed">
+              <p className="text-gray-700 leading-relaxed">
                 Pour prendre une bonne décision (acheter, vendre, investir), le plus fiable est de partir des ventes réelles. C'est
                 exactement ce que permet une carte DVF bien conçue : visualiser les transactions et filtrer pour comparer des biens vraiment
                 comparables.
@@ -136,7 +125,7 @@ const BlogArticle: React.FC = () => {
             {/* CTA Section */}
             <div className="bg-gray-100 rounded-xl px-2 sm:px-3 py-2 sm:py-3 mb-2 text-center">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0 text-black">Explorer la carte dès maintenant</h2>
-              <p className="mb-0 text-sm sm:text-base text-black max-w-2xl mx-auto">
+              <p className="mb-0 text-black max-w-2xl mx-auto">
                 Entrez une adresse, une rue ou zoomez sur un quartier pour consulter les ventes réelles disponibles.
               </p>
               <Link
@@ -154,17 +143,17 @@ const BlogArticle: React.FC = () => {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0">
                 1) Carte des prix immobiliers : comment consulter les ventes réelles DVF
               </h2>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-0">
+              <p className="text-gray-700 leading-relaxed mb-0">
                 Une carte des prix immobiliers utile n'est pas une estimation : c'est une carte qui affiche des ventes réelles, avec la
                 possibilité de :
               </p>
-              <ul className="list-disc list-inside space-y-1 text-sm sm:text-base text-gray-700  ml-2 sm:ml-4">
+              <ul className="list-disc list-inside text-gray-700 ml-2 sm:ml-4">
                 <li>rechercher une adresse, une rue, un quartier ou une ville,</li>
                 <li>filtrer par type de bien, surface, pièces, période, prix,</li>
                 <li>cliquer sur une vente pour consulter les informations disponibles.</li>
               </ul>
               <div className="bg-gray-50 rounded-lg px-2 sm:px-3">
-                <p className="text-sm sm:text-base text-gray-800 font-medium">
+                <p className="text-gray-800 font-medium">
                   <strong>Objectif :</strong> obtenir des références concrètes pour se positionner au juste prix.
                 </p>
               </div>
@@ -175,20 +164,20 @@ const BlogArticle: React.FC = () => {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">
                 2) DVF (Demandes de valeurs foncières) : explication et source officielle
               </h2>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed ">
+              <p className="text-gray-700 leading-relaxed ">
                 DVF signifie "Demandes de valeurs foncières". Il s'agit de données publiques issues de l'administration fiscale, permettant
                 de consulter des transactions immobilières déjà réalisées.
               </p>
               <div className="rounded-lg px-2 sm:px-3">
-                <p className="text-sm sm:text-base font-semibold " style={{ color: 'hsl(245 58% 62%)' }}>
+                <p className="font-semibold " style={{ color: 'hsl(245 58% 62%)' }}>
                   À retenir :
                 </p>
-                <ul className="list-disc list-inside space-y-0 text-sm sm:text-base text-gray-700 mb-0 ml-2 sm:ml-4">
+                <ul className="list-disc list-inside text-gray-700 mb-0 ml-2 sm:ml-4">
                   <li>DVF = prix réellement vendus (transactions enregistrées),</li>
                   <li>annonces = prix affichés aujourd'hui (souvent négociables).</li>
                 </ul>
               </div>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
+              <p className="text-gray-700 leading-relaxed">
                 <strong>Source officielle :</strong> data.gouv.fr – "Demandes de valeurs foncières (DVF)".
               </p>
             </section>
@@ -196,11 +185,11 @@ const BlogArticle: React.FC = () => {
             {/* Section 3 */}
             <section className="mb-2 bg-gray-50 rounded-xl pt-0 pb-0 px-2 sm:px-3">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0">3) Pourquoi les ventes DVF ne sont pas en temps réel ?</h2>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-0">
+              <p className="text-gray-700 leading-relaxed mb-0">
                 Les données DVF font l'objet d'une mise à jour semestrielle : fin avril et fin octobre. La mise à jour d'avril ajoute des
                 données jusqu'à fin décembre de l'année précédente, et celle d'octobre jusqu'à fin juin de l'année en cours.
               </p>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
+              <p className="text-gray-700 leading-relaxed">
                 C'est ce calendrier qui explique le décalage entre la date réelle d'une vente et sa disponibilité dans les fichiers.
               </p>
             </section>
@@ -208,7 +197,7 @@ const BlogArticle: React.FC = () => {
             {/* Section 4 */}
             <section className="mb-2 bg-gray-50 rounded-xl pt-0 pb-0 px-2 sm:px-3">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0">4) DVF couvre-t-il toute la France ?</h2>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
+              <p className="text-gray-700 leading-relaxed">
                 Non. À ce jour, "Demande de valeurs foncières" ne couvre pas les ventes situées dans certains départements : Bas-Rhin,
                 Haut-Rhin, Moselle, Mayotte.
               </p>
@@ -219,23 +208,23 @@ const BlogArticle: React.FC = () => {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0">
                 5) Comment fonctionne la carte des ventes immobilières Propsight ?
               </h2>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-0">
+              <p className="text-gray-700 leading-relaxed mb-0">
                 Propsight transforme DVF en un outil simple à utiliser pour l'immobilier.
               </p>
               <div className="rounded-lg px-2 sm:px-3 mb-0">
-                <h3 className="text-sm sm:text-base font-semibold mb-0" style={{ color: 'hsl(245 58% 62%)' }}>
+                <h3 className="text-base font-semibold mb-0" style={{ color: 'hsl(245 58% 62%)' }}>
                   Recherche
                 </h3>
-                <ul className="list-disc list-inside space-y-0 text-sm sm:text-base text-gray-700 ml-2 sm:ml-4">
+                <ul className="list-disc list-inside text-gray-700 ml-2 sm:ml-4">
                   <li>Recherche par adresse / rue / ville</li>
                   <li>Navigation sur la carte (zoom sur un micro-quartier)</li>
                 </ul>
               </div>
               <div className="rounded-lg px-2 sm:px-3 mb-0">
-                <h3 className="text-sm sm:text-base font-semibold mb-0" style={{ color: 'hsl(245 58% 62%)' }}>
+                <h3 className="text-base font-semibold mb-0" style={{ color: 'hsl(245 58% 62%)' }}>
                   Filtres (pour comparer des biens comparables)
                 </h3>
-                <ul className="list-disc list-inside space-y-0 text-sm sm:text-base text-gray-700 ml-2 sm:ml-4">
+                <ul className="list-disc list-inside text-gray-700 ml-2 sm:ml-4">
                   <li>Type de bien (appartement, maison, terrain, local)</li>
                   <li>Nombre de pièces</li>
                   <li>Surface</li>
@@ -244,16 +233,16 @@ const BlogArticle: React.FC = () => {
                 </ul>
               </div>
               <div className="rounded-lg px-2 sm:px-3 mb-0">
-                <h3 className="text-sm sm:text-base font-semibold mb-0" style={{ color: 'hsl(245 58% 62%)' }}>
+                <h3 className="text-base font-semibold mb-0" style={{ color: 'hsl(245 58% 62%)' }}>
                   Lecture
                 </h3>
-                <p className="text-sm sm:text-base text-gray-700">
+                <p className="text-gray-700">
                   Chaque vente affichée sert de référence : vous pouvez construire une fourchette réaliste de prix à partir de ventes
                   comparables.
                 </p>
               </div>
               <div className="bg-gray-50 rounded-lg px-2 sm:px-3">
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                <p className="text-gray-600 leading-relaxed text-sm">
                   <strong>Historique :</strong> la base DVF+ open data (Cerema) couvre notamment une période à partir du 1er janvier 2014
                   selon ses versions publiées.
                 </p>
@@ -265,18 +254,18 @@ const BlogArticle: React.FC = () => {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0">
                 6) Carte DVF de l'État vs carte Propsight : quelle différence ?
               </h2>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-0">
+              <p className="text-gray-700 leading-relaxed mb-0">
                 La carte DVF officielle est une porte d'entrée utile, mais elle est souvent plus "administrative", avec une navigation
                 structurée par département, commune, section cadastrale et parcelle cadastrale.
               </p>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-0 font-medium">Propsight se différencie par :</p>
-              <ul className="list-disc list-inside space-y-0 text-sm sm:text-base text-gray-700 mb-0 ml-2 sm:ml-4">
+              <p className="text-gray-700 leading-relaxed mb-0 font-medium">Propsight se différencie par :</p>
+              <ul className="list-disc list-inside text-gray-700 mb-0 ml-2 sm:ml-4">
                 <li>une recherche plus directe par adresse / zone,</li>
                 <li>des filtres orientés décision (type de bien, pièces, surface, période),</li>
                 <li>une lecture plus rapide pour analyser un micro-marché.</li>
               </ul>
               <div className="bg-gray-50 rounded-lg px-2 sm:px-3">
-                <p className="text-sm sm:text-base text-gray-800 font-medium">
+                <p className="text-gray-800 font-medium">
                   <strong>En résumé :</strong> la carte officielle donne accès à la donnée, Propsight vise à la rendre actionnable dans un
                   usage immobilier quotidien.
                 </p>
@@ -290,28 +279,20 @@ const BlogArticle: React.FC = () => {
               </h2>
               <div className="space-y-0">
                 <div className="rounded-lg  px-2 sm:px-3">
-                  <h3 className="text-sm sm:text-base font-semibold mb-0 text-black">Étape 1 : partir d'une zone précise</h3>
-                  <p className="text-sm sm:text-base text-black">
-                    Adresse, rue, quartier : plus la zone est précise, plus l'analyse est utile.
-                  </p>
+                  <h3 className="text-base font-semibold mb-0 text-black">Étape 1 : partir d'une zone précise</h3>
+                  <p className="text-black">Adresse, rue, quartier : plus la zone est précise, plus l'analyse est utile.</p>
                 </div>
                 <div className="rounded-lg  px-2 sm:px-3">
-                  <h3 className="text-sm sm:text-base font-semibold mb-0 text-black">
-                    Étape 2 : filtrer pour comparer des biens comparables
-                  </h3>
-                  <p className="text-sm sm:text-base text-black">
-                    Ne comparez pas une maison avec un appartement, ni un studio avec un T4.
-                  </p>
+                  <h3 className="text-base font-semibold mb-0 text-black">Étape 2 : filtrer pour comparer des biens comparables</h3>
+                  <p className="text-black">Ne comparez pas une maison avec un appartement, ni un studio avec un T4.</p>
                 </div>
                 <div className="rounded-lg   px-2 sm:px-3">
-                  <h3 className="text-sm sm:text-base font-semibold mb-0 text-black">Étape 3 : choisir une période cohérente</h3>
-                  <p className="text-sm sm:text-base text-black">Si la zone a peu de ventes, élargissez progressivement la période.</p>
+                  <h3 className="text-base font-semibold mb-0 text-black">Étape 3 : choisir une période cohérente</h3>
+                  <p className="text-black">Si la zone a peu de ventes, élargissez progressivement la période.</p>
                 </div>
                 <div className="rounded-lg  px-2 sm:px-3">
-                  <h3 className="text-sm sm:text-base font-semibold mb-0 text-black">Étape 4 : construire une fourchette de références</h3>
-                  <p className="text-sm sm:text-base text-black">
-                    L'objectif n'est pas un prix unique, mais une fourchette basée sur des ventes comparables.
-                  </p>
+                  <h3 className="text-base font-semibold mb-0 text-black">Étape 4 : construire une fourchette de références</h3>
+                  <p className="text-black">L'objectif n'est pas un prix unique, mais une fourchette basée sur des ventes comparables.</p>
                 </div>
               </div>
             </section>
@@ -321,16 +302,16 @@ const BlogArticle: React.FC = () => {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0">
                 8) Pourquoi les statistiques de marché sont masquées au lancement ?
               </h2>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-0">
+              <p className="text-gray-700 leading-relaxed mb-0">
                 Les statistiques (prix moyen, tendances, variations, indicateurs) demandent un algorithme robuste pour éviter :
               </p>
-              <ul className="list-disc list-inside space-y-0 text-sm sm:text-base text-gray-700 mb-0 ml-2 sm:ml-4">
+              <ul className="list-disc list-inside text-gray-700 mb-0 ml-2 sm:ml-4">
                 <li>les biais liés aux faibles volumes,</li>
                 <li>les biens atypiques,</li>
                 <li>les comparaisons incohérentes,</li>
                 <li>les effets de composition (ex : une période avec surtout des studios, puis surtout des T3).</li>
               </ul>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-10">
+              <p className="text-gray-700 leading-relaxed mb-10">
                 Propsight lance d'abord la carte (ventes + filtres) et activera les statistiques quand l'algorithme sera finalisé et validé.
               </p>
               <div className="rounded-lg px-2 sm:px-3 text-center">
@@ -347,13 +328,11 @@ const BlogArticle: React.FC = () => {
             {/* Section 9 */}
             <section className="mb-2 bg-gray-50 rounded-xl pt-0 pb-0 px-2 sm:px-3">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0">9) Modules Propsight : ce qui arrive ensuite</h2>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-0">
-                Propsight est conçu comme une plateforme modulaire autour de la carte.
-              </p>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-0 font-medium">
+              <p className="text-gray-700 leading-relaxed mb-0">Propsight est conçu comme une plateforme modulaire autour de la carte.</p>
+              <p className="text-gray-700 leading-relaxed mb-0 font-medium">
                 <strong>À venir (progressivement) :</strong>
               </p>
-              <ul className="list-disc list-inside space-y-0 text-sm sm:text-base text-gray-700 mb-10 ml-2 sm:ml-4">
+              <ul className="list-disc list-inside text-gray-700 mb-10 ml-2 sm:ml-4">
                 <li>Statistiques locales de marché (quand l'algorithme est validé)</li>
                 <li>Estimation (fourchette + indice de confiance)</li>
                 <li>Simulateur d'investissement (rendement, cash-flow, fiscalité)</li>
@@ -373,7 +352,7 @@ const BlogArticle: React.FC = () => {
             {/* Section 10 */}
             <section className="mb-2 bg-gray-50 rounded-xl pt-0 pb-0 px-2 sm:px-3">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0">10) Checklist anti-erreurs</h2>
-              <ul className="list-disc list-inside space-y-0 text-sm sm:text-base text-gray-700 mb-0 ml-2 sm:ml-4">
+              <ul className="list-disc list-inside text-gray-700 mb-0 ml-2 sm:ml-4">
                 <li>Ne confondez pas prix affiché (annonce) et prix vendu (DVF).</li>
                 <li>Comparez des biens comparables (type, surface, pièces).</li>
                 <li>Évitez de conclure sur une zone avec trop peu de ventes.</li>
@@ -386,35 +365,29 @@ const BlogArticle: React.FC = () => {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0">Mini-FAQ</h2>
               <div className="space-y-0">
                 <div>
-                  <h3 className="text-sm sm:text-base font-semibold mb-0 text-black">DVF, c'est quoi ?</h3>
-                  <p className="text-sm sm:text-base text-gray-700">
+                  <h3 className="text-base font-semibold mb-0 text-black">DVF, c'est quoi ?</h3>
+                  <p className="text-gray-700">
                     DVF signifie "Demandes de valeurs foncières". Ce sont des données publiques permettant de consulter des transactions
                     immobilières déjà réalisées.
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-semibold mb-0 text-black">
-                    Pourquoi certaines ventes récentes n'apparaissent pas ?
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-700">
-                    Parce que DVF est publié selon un calendrier semestriel (fin avril / fin octobre).
-                  </p>
+                  <h3 className="text-base font-semibold mb-0 text-black">Pourquoi certaines ventes récentes n'apparaissent pas ?</h3>
+                  <p className="text-gray-700">Parce que DVF est publié selon un calendrier semestriel (fin avril / fin octobre).</p>
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-semibold mb-0 text-black">DVF couvre-t-il toute la France ?</h3>
-                  <p className="text-sm sm:text-base text-gray-700">Non. Bas-Rhin, Haut-Rhin, Moselle et Mayotte ne sont pas couverts.</p>
+                  <h3 className="text-base font-semibold mb-0 text-black">DVF couvre-t-il toute la France ?</h3>
+                  <p className="text-gray-700">Non. Bas-Rhin, Haut-Rhin, Moselle et Mayotte ne sont pas couverts.</p>
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-semibold mb-0 text-black">Propsight remplace-t-il la carte officielle ?</h3>
-                  <p className="text-sm sm:text-base text-gray-700">
+                  <h3 className="text-base font-semibold mb-0 text-black">Propsight remplace-t-il la carte officielle ?</h3>
+                  <p className="text-gray-700">
                     Non. Propsight s'appuie sur la donnée publique DVF et propose une expérience plus orientée analyse et décision.
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-semibold mb-0 text-black">
-                    Est-ce que je peux utiliser la carte Propsight sans frais ?
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-700">
+                  <h3 className="text-base font-semibold mb-0 text-black">Est-ce que je peux utiliser la carte Propsight sans frais ?</h3>
+                  <p className="text-gray-700">
                     Oui. La carte des ventes immobilières DVF est accessible gratuitement. Les modules avancés (statistiques, estimation,
                     simulateur, agrégateur d'annonces) arriveront progressivement.
                   </p>
@@ -438,25 +411,25 @@ const BlogArticle: React.FC = () => {
             {/* References */}
             <section className="mb-2 bg-gray-50 rounded-xl pt-0 pb-0 px-2 sm:px-3">
               <h2 className="text-lg sm:text-xl font-bold mb-0">Références (sources officielles)</h2>
-              <ul className="space-y-0 text-sm sm:text-base text-gray-700 mb-0">
+              <ul className="space-y-0 text-gray-700 mb-0 list-none">
                 <li className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-1">•</span>
+                  <span className="text-black mt-1">•</span>
                   <span>Demandes de valeurs foncières (DVF) – data.gouv.fr</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-1">•</span>
+                  <span className="text-black mt-1">•</span>
                   <span>FAQ DVF (calendrier de mise à jour) – app.dvf.etalab.gouv.fr</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-1">•</span>
+                  <span className="text-black mt-1">•</span>
                   <span>Départements non couverts – economie.gouv.fr</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-1">•</span>
+                  <span className="text-black mt-1">•</span>
                   <span>Application DVF (navigation cadastrale) – app.dvf.etalab.gouv.fr</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-1">•</span>
+                  <span className="text-black mt-1">•</span>
                   <span>DVF+ open data – Cerema</span>
                 </li>
               </ul>
@@ -464,7 +437,7 @@ const BlogArticle: React.FC = () => {
 
             {/* Note importante */}
             <div className="rounded-lg px-2 sm:px-3">
-              <p className="text-sm sm:text-base text-gray-700">
+              <p className="text-gray-700">
                 <strong style={{ color: 'hsl(245 58% 62%)' }}>Note importante :</strong> Les fichiers DVF contiennent des données à
                 caractère personnel. La DGFiP rappelle des obligations de réutilisation, notamment sur l'indexation par des moteurs de
                 recherche externes.

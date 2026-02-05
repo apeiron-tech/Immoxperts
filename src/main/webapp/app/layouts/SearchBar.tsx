@@ -1209,11 +1209,17 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   />
                 </svg>
 
-                {/* Active Filter Counter Badge - Mobile: no click action */}
+                {/* Active Filter Counter Badge - Mobile: tap number to reset all filters */}
                 {activeFilterCount > 0 && (
                   <span
-                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md"
-                    title="Filtres actifs"
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md cursor-pointer active:bg-red-600 touch-manipulation"
+                    title="Réinitialiser les filtres"
+                    onClick={e => {
+                      e.stopPropagation();
+                      resetFilters();
+                    }}
+                    role="button"
+                    aria-label="Réinitialiser les filtres"
                   >
                     <span className="text-xs">{activeFilterCount}</span>
                   </span>

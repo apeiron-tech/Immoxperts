@@ -45,6 +45,17 @@ const Blog: React.FC = () => {
       featured: true,
       date: '2026-01-02',
     },
+    {
+      id: 'negociation-immobiliere-vrais-chiffres',
+      title: 'Pourquoi vous payez trop (ou vendez trop bas) : les vrais chiffres de la négociation immobilière',
+      excerpt: 'Un article sur les données réelles de l’immobilier français — et pourquoi presque personne ne les consulte.',
+      category: 'achat-vente',
+      categoryLabel: 'Acheter & vendre',
+      readTime: 7,
+      tags: ['Négociation', 'Prix réels', 'Marché'],
+      featured: true,
+      date: '2026-02-04',
+    },
   ];
 
   const filteredArticles = articles.filter(article => {
@@ -286,17 +297,14 @@ const Blog: React.FC = () => {
                       </span>
                     ))}
                   </div>
-
-                  {article.id === 'carte-prix-immobiliers-dvf-guide' && (
-                    <button
-                      onClick={() => navigate(`/blog/${article.id}`)}
-                      className="inline-flex items-center gap-2 text-sm font-medium transition-all duration-200 hover:opacity-80 group/btn"
-                      style={{ color: 'hsl(245 58% 62%)' }}
-                    >
-                      Lire l'analyse
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => navigate(`/blog/${article.id}`)}
+                    className="inline-flex items-center gap-2 text-sm font-medium transition-all duration-200 hover:opacity-80 group/btn"
+                    style={{ color: 'hsl(245 58% 62%)' }}
+                  >
+                    Lire l'analyse
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+                  </button>
                 </article>
               ))}
             </div>

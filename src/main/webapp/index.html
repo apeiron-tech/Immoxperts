@@ -7,10 +7,11 @@
     <meta name="description" content="La data au service de vos décisions immobilières. Accédez aux prix réels du marché." />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="theme-color" content="#000000" />
-    <link rel="icon" href="content/images/logo.png" />
-    <link rel="manifest" href="manifest.webapp" />
+    <!-- Favicons / App Icons -->
+    <link rel="icon" type="image/png" href="/content/images/logo.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/content/images/logo.png" />
+    <link rel="manifest" href="/manifest.webapp" />
     <link rel="stylesheet" href="content/css/loading.css" />
-    <link rel="apple-touch-icon" href="../../main/webapp/content/assets/logo.png" />
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css" rel="stylesheet" />
 
     <!-- TarteAuCitron - Gestion des cookies RGPD/CNIL -->
@@ -24,6 +25,23 @@
     <script src="/content/tarteaucitron/lang/tarteaucitron.fr.js"></script>
     <!-- Global filter for Mapbox warnings - Must be before any Mapbox code loads -->
     <script>
+      // Structured data to help Google use the correct brand logo
+      (function () {
+        try {
+          var orgLdJson = {
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            url: 'https://www.propsight.fr',
+            name: 'Propsight',
+            logo: 'https://www.propsight.fr/content/images/logo.png',
+          };
+          var s = document.createElement('script');
+          s.type = 'application/ld+json';
+          s.text = JSON.stringify(orgLdJson);
+          document.head.appendChild(s);
+        } catch (e) {}
+      })();
+
       // Filter Mapbox warnings globally - intercepts all console.warn including from web workers
       (function () {
         'use strict';
