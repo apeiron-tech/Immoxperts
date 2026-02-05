@@ -1945,6 +1945,108 @@
           }
         }, 100);
 
+        // FIX CRITIQUE: Forcer l'initialisation de GA4 si le consentement existe déjà
+        // Ce code s'exécute immédiatement après le chargement de la page
+        function forceGA4Initialization() {
+          try {
+            // Vérifier le consentement via localStorage (méthode principale)
+            var consent = localStorage.getItem('ga4_consent') === 'true';
+
+            // Vérifier aussi via le cookie TarteAuCitron (méthode de secours)
+            if (!consent) {
+              function getTarteaucitronCookie() {
+                try {
+                  var cookies = document.cookie.split(';');
+                  for (var i = 0; i < cookies.length; i++) {
+                    var cookie = cookies[i].trim();
+                    if (cookie.indexOf('tarteaucitron=') === 0) {
+                      return cookie.substring('tarteaucitron='.length);
+                    }
+                  }
+                } catch (e) {}
+                return null;
+              }
+
+              var tarteaucitronCookie = getTarteaucitronCookie();
+              if (tarteaucitronCookie !== null && tarteaucitronCookie !== '') {
+                try {
+                  var cookieData = JSON.parse(decodeURIComponent(tarteaucitronCookie));
+                  if (cookieData && cookieData.gtag === true) {
+                    consent = true;
+                    // Synchroniser localStorage
+                    localStorage.setItem('ga4_consent', 'true');
+                  }
+                } catch (e) {}
+              }
+            }
+
+            // Si consentement trouvé, initialiser GA4 immédiatement
+            if (consent) {
+              console.log('Propsight: Consentement GA4 détecté, initialisation...');
+
+              // S'assurer que dataLayer existe
+              window.dataLayer = window.dataLayer || [];
+
+              // Créer gtag si nécessaire
+              if (typeof gtag === 'undefined') {
+                function gtag() {
+                  window.dataLayer.push(arguments);
+                }
+                window.gtag = gtag;
+              }
+
+              // Définir le consentement
+              gtag('consent', 'default', {
+                analytics_storage: 'granted',
+                ad_storage: 'denied',
+                ad_user_data: 'denied',
+                ad_personalization: 'denied',
+                wait_for_update: 0,
+              });
+
+              gtag('js', new Date());
+
+              // Vérifier si le script GA4 est déjà chargé
+              var ga4Script = document.querySelector('script[src*="gtag/js"]');
+              if (!ga4Script) {
+                // Charger le script GA4
+                var script = document.createElement('script');
+                script.async = true;
+                script.src = 'https://www.googletagmanager.com/gtag/js?id=G-DPX4BNV725';
+                script.referrerPolicy = 'no-referrer-when-downgrade';
+
+                script.onload = function () {
+                  gtag('config', 'G-DPX4BNV725', {
+                    anonymize_ip: true,
+                    cookie_flags: 'SameSite=None;Secure',
+                    send_page_view: true,
+                  });
+                  console.log('Propsight: Google Analytics initialisé avec succès');
+                };
+
+                script.onerror = function () {
+                  console.error('Propsight: Erreur lors du chargement du script GA4');
+                };
+
+                document.head.appendChild(script);
+              } else {
+                // Script déjà chargé, configurer GA4
+                gtag('config', 'G-DPX4BNV725', {
+                  anonymize_ip: true,
+                  cookie_flags: 'SameSite=None;Secure',
+                  send_page_view: true,
+                });
+                console.log('Propsight: Google Analytics reconfiguré avec succès');
+              }
+            }
+          } catch (error) {
+            console.error("Propsight: Erreur lors de l'initialisation forcée de GA4:", error);
+          }
+        }
+
+        // Exécuter l'initialisation forcée immédiatement et aussi après le chargement du DOM
+        forceGA4Initialization();
+
         // Essayer immédiatement
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', function () {
@@ -1952,6 +2054,8 @@
             setTimeout(waitForPopup, 100);
             setTimeout(waitForPopup, 500);
             setTimeout(waitForPopup, 1000);
+            // Réessayer l'initialisation forcée après le chargement du DOM
+            setTimeout(forceGA4Initialization, 500);
           });
         } else {
           initConsentOnLoad();
