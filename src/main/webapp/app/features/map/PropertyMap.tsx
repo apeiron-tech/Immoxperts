@@ -736,7 +736,17 @@ const PropertyMap: React.FC<MapPageProps> = ({
   // Save filter parameters locally so they persist between map moves
   const [savedFilterParams, setSavedFilterParams] = useState<any>(null);
   // Use a ref to store current active filters to prevent state reset issues
+  // (e.g. moveend/zoomend callbacks can run with stale closure where filterState is null)
   const currentActiveFiltersRef = useRef<FilterState | null>(null);
+
+  // Keep ref in sync with filterState from parent so map move/zoom always use latest filters
+  useEffect(() => {
+    if (filterState != null) {
+      currentActiveFiltersRef.current = filterState;
+      setCurrentActiveFilters(filterState);
+    }
+  }, [filterState]);
+
   const frenchReverseAbortRef = useRef<AbortController | null>(null);
   const osmReverseAbortRef = useRef<AbortController | null>(null);
   const frenchReverseCacheRef = useRef<Map<string, any>>(new Map());

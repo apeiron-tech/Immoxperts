@@ -511,11 +511,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
   const activeFilterCount = calculateActiveFilters();
 
-  // Reset all filters to default values
+  // Reset all filters to initial/default values and close the filter popup
   const resetFilters = () => {
     if (onFilterApply) {
       onFilterApply(defaultFilters);
     }
+    onFilterOpenChange?.(false);
   };
 
   // Debounce search input - Fetch from both backend and OSM
