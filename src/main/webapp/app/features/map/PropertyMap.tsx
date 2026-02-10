@@ -1186,7 +1186,9 @@ const PropertyMap: React.FC<MapPageProps> = ({
     });
 
     const sortedRoomValues = Array.from(selectedRoomValues).sort((a, b) => Number(a) - Number(b));
-    const selectedRoomCounts = sortedRoomValues.join(',');
+    // None selected = all rooms (same as all selected)
+    const selectedRoomCounts =
+      sortedRoomValues.length > 0 ? sortedRoomValues.join(',') : ALL_ROOM_COUNTS.join(',');
     const isRoomFilterActive = sortedRoomValues.length > 0 && sortedRoomValues.length < ALL_ROOM_COUNTS.length;
     const shouldIncludeRoomCount = hasMaisonOrAppartement && isRoomFilterActive;
 
@@ -1208,7 +1210,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
     return {
       propertyType: propertyTypeParam,
-      roomCount: selectedRoomCounts || '0',
+      roomCount: selectedRoomCounts,
       minSellPrice: currentFilterState.priceRange[0].toString(),
       maxSellPrice: currentFilterState.priceRange[1].toString(),
       minSurface: surfaceMin.toString(),

@@ -437,21 +437,21 @@ interface FilterPopupProps {
 }
 
 const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, currentFilters }) => {
-  // Default filter state
+  // Default filter state: Type de bien & Nombre de pièces = nothing selected (means "all" for API)
   const defaultFilters: FilterState = {
     propertyTypes: {
-      maison: true,
-      terrain: true,
-      appartement: true,
-      biensMultiples: true,
-      localCommercial: true,
+      maison: false,
+      terrain: false,
+      appartement: false,
+      biensMultiples: false,
+      localCommercial: false,
     },
     roomCounts: {
-      studio: true,
-      deuxPieces: true,
-      troisPieces: true,
-      quatrePieces: true,
-      cinqPiecesPlus: true,
+      studio: false,
+      deuxPieces: false,
+      troisPieces: false,
+      quatrePieces: false,
+      cinqPiecesPlus: false,
     },
     priceRange: [0, 20000000], // 0 to 20M €
     surfaceRange: [0, 400], // 0 to 400m²
@@ -1020,6 +1020,15 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium"
           >
             Annuler
+          </button>
+          <button
+            onClick={() => {
+              setFilters(defaultFilters);
+              onApply(defaultFilters);
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium"
+          >
+            Réinitialiser
           </button>
           <button
             onClick={() => onApply(filters)}

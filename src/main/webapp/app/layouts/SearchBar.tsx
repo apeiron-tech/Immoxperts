@@ -454,10 +454,10 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
     onFilterOpenChange?.(isFilterOpen);
   }, [isFilterOpen, onFilterOpenChange]);
 
-  // Default filter values for comparison
+  // Default filter values: Type de bien & Nombre de pièces = nothing selected (means "all" for API)
   const defaultFilters = {
-    propertyTypes: { maison: true, terrain: true, appartement: true, biensMultiples: true, localCommercial: true },
-    roomCounts: { studio: true, deuxPieces: true, troisPieces: true, quatrePieces: true, cinqPiecesPlus: true },
+    propertyTypes: { maison: false, terrain: false, appartement: false, biensMultiples: false, localCommercial: false },
+    roomCounts: { studio: false, deuxPieces: false, troisPieces: false, quatrePieces: false, cinqPiecesPlus: false },
     priceRange: [0, 20000000] as [number, number],
     surfaceRange: [0, 400] as [number, number],
     terrainRange: [0, 50000] as [number, number],
@@ -465,25 +465,23 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
     dateRange: [0, 139] as [number, number],
   };
 
-  // Calculate active filter count
+  // Calculate active filter count (nothing selected = default = 0)
   const calculateActiveFilters = (): number => {
     if (!currentFilters) return 0;
 
     let count = 0;
 
-    // Type de bien: +1 if the selection is different from default (not all selected)
+    // Type de bien: +1 if at least one is selected (default = none selected)
     const propertyTypeKeys = Object.keys(currentFilters.propertyTypes) as (keyof typeof currentFilters.propertyTypes)[];
     const selectedPropertyTypes = propertyTypeKeys.filter(key => currentFilters.propertyTypes[key]).length;
-    const defaultSelectedPropertyTypes = Object.keys(defaultFilters.propertyTypes).length;
-    if (selectedPropertyTypes !== defaultSelectedPropertyTypes) {
+    if (selectedPropertyTypes > 0) {
       count += 1;
     }
 
-    // Nombre de pièces: +1 if the selection is different from default (not all selected)
+    // Nombre de pièces: +1 if at least one is selected (default = none selected)
     const roomCountKeys = Object.keys(currentFilters.roomCounts) as (keyof typeof currentFilters.roomCounts)[];
     const selectedRoomCounts = roomCountKeys.filter(key => currentFilters.roomCounts[key]).length;
-    const defaultSelectedRoomCounts = Object.keys(defaultFilters.roomCounts).length;
-    if (selectedRoomCounts !== defaultSelectedRoomCounts) {
+    if (selectedRoomCounts > 0) {
       count += 1;
     }
 
@@ -518,6 +516,105 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
     }
     onFilterOpenChange?.(false);
   };
+
+  // Build filter chips for display (selected types, rooms, and modified ranges)
+  const filterChips = React.useMemo(() => {
+    if (!currentFilters || !onFilterApply) return [];
+    const chips: { id: string; label: string; onClear: () => void }[] = [];
+    const fmtPrice = (n: number) => (n >= 1000000 ? `${n / 1000000}M` : n >= 1000 ? `${n / 1000}k` : String(n));
+
+    Object.entries(currentFilters.propertyTypes).forEach(([key, selected]) => {
+      if (!selected) return;
+      const labels: Record<string, string> = {
+        appartement: 'Appartement',
+        maison: 'Maison',
+        terrain: 'Terrain',
+        biensMultiples: 'Bien multiple',
+        localCommercial: 'Local commercial',
+      };
+      chips.push({
+        id: `type-${key}`,
+        label: labels[key] || key,
+        onClear: () =>
+          onFilterApply({
+            ...currentFilters,
+            propertyTypes: { ...currentFilters.propertyTypes, [key]: false },
+          }),
+      });
+    });
+
+    Object.entries(currentFilters.roomCounts).forEach(([key, selected]) => {
+      if (!selected) return;
+      const labels: Record<string, string> = {
+        studio: 'Studio',
+        deuxPieces: '2 pièces',
+        troisPieces: '3 pièces',
+        quatrePieces: '4 pièces',
+        cinqPiecesPlus: '5+ pièces',
+      };
+      chips.push({
+        id: `room-${key}`,
+        label: labels[key] || key,
+        onClear: () =>
+          onFilterApply({
+            ...currentFilters,
+            roomCounts: { ...currentFilters.roomCounts, [key]: false },
+          }),
+      });
+    });
+
+    const [priceMin, priceMax] = currentFilters.priceRange;
+    if (priceMin > 0 || priceMax < 20000000) {
+      chips.push({
+        id: 'price',
+        label: `Prix ${fmtPrice(priceMin)}-${fmtPrice(priceMax)}`,
+        onClear: () => onFilterApply({ ...currentFilters, priceRange: defaultFilters.priceRange }),
+      });
+    }
+    const [surfMin, surfMax] = currentFilters.surfaceRange;
+    if (surfMin > 0 || surfMax < 400) {
+      chips.push({
+        id: 'surface',
+        label: `Surface ${surfMin}-${surfMax} m²`,
+        onClear: () => onFilterApply({ ...currentFilters, surfaceRange: defaultFilters.surfaceRange }),
+      });
+    }
+    const [terrMin, terrMax] = currentFilters.terrainRange;
+    if (terrMin > 0 || terrMax < 50000) {
+      chips.push({
+        id: 'terrain',
+        label: `Terrain ${terrMin}-${terrMax} m²`,
+        onClear: () => onFilterApply({ ...currentFilters, terrainRange: defaultFilters.terrainRange }),
+      });
+    }
+    const [ppmMin, ppmMax] = currentFilters.pricePerSqmRange;
+    if (ppmMin > 0 || ppmMax < 40000) {
+      chips.push({
+        id: 'pricePerSqm',
+        label: `Prix/m² ${fmtPrice(ppmMin)}-${fmtPrice(ppmMax)}`,
+        onClear: () => onFilterApply({ ...currentFilters, pricePerSqmRange: defaultFilters.pricePerSqmRange }),
+      });
+    }
+    const [dateMin, dateMax] = currentFilters.dateRange;
+    if (dateMin > 0 || dateMax < 139) {
+      chips.push({
+        id: 'date',
+        label: 'Période',
+        onClear: () => onFilterApply({ ...currentFilters, dateRange: defaultFilters.dateRange }),
+      });
+    }
+    return chips;
+  }, [currentFilters, onFilterApply]);
+
+  // Limit to max 3 chips visible + "Autres (N)" to avoid wrapping to new line
+  const visibleChips = React.useMemo(() => {
+    if (filterChips.length <= 3) {
+      return filterChips;
+    }
+    return filterChips.slice(0, 3);
+  }, [filterChips]);
+
+  const hiddenChipsCount = filterChips.length > 3 ? filterChips.length - 3 : 0;
 
   // Debounce search input - Fetch from both backend and OSM
   useEffect(() => {
@@ -929,9 +1026,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
         {/* z-index must be lower than Header (z-[100]) to prevent overlap on iOS Safari */}
         <div className="block md:hidden sticky top-0 z-[50] bg-white shadow-sm mobile-search-bar">
           <div className="px-4 py-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
               {/* Search Input Container */}
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-0">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -1228,6 +1325,41 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
               </button>
             </div>
 
+            {/* Mobile filter chips - separate row below search bar, single line with scroll */}
+            {(visibleChips.length > 0 || hiddenChipsCount > 0) && (
+              <div className="flex items-center gap-2 flex-nowrap overflow-x-auto overflow-y-hidden px-1 mt-3 pb-1"
+                style={{ WebkitOverflowScrolling: 'touch' }}>
+                {visibleChips.map(chip => (
+                  <span
+                    key={chip.id}
+                    className="inline-flex items-center gap-1 flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-800 border border-indigo-100"
+                  >
+                    <span className="whitespace-nowrap">{chip.label}</span>
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation();
+                        chip.onClear();
+                      }}
+                      className="flex-shrink-0 w-4 h-4 rounded-full hover:bg-indigo-200 active:bg-indigo-300 flex items-center justify-center text-indigo-600 touch-manipulation text-sm leading-none"
+                      aria-label={`Retirer ${chip.label}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {hiddenChipsCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterOpen(true)}
+                    className="inline-flex items-center gap-1 flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-800 border border-indigo-100 active:bg-indigo-100 transition-colors touch-manipulation"
+                  >
+                    <span className="whitespace-nowrap">Autres ({hiddenChipsCount})</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Filter Popup for Mobile */}
             {isFilterOpen && (
               <FilterPopup
@@ -1245,10 +1377,10 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
 
         {/* Desktop Search Bar - Keep existing design for larger screens */}
         {/* z-index must be lower than Header (z-[100]) to prevent overlap on iOS Safari */}
-        <div className="hidden md:block px-4 py-3 sticky top-0 z-[50] bg-white shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 max-w-2xl mx-auto w-full">
-            {/* Search Input */}
-            <div className="relative w-full">
+        <div className="hidden md:block px-4 pt-4 pb-3 sticky top-0 z-[50] bg-white shadow-sm overflow-visible">
+          <div className="flex flex-nowrap items-center justify-start gap-3 w-full px-4 overflow-visible min-w-0">
+            {/* Search Input - responsive width, can shrink to keep one line */}
+            <div className="relative flex-1 min-w-[200px] max-w-lg lg:max-w-xl shrink">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1487,14 +1619,15 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
               )}
             </div>
 
-            {/* Filter Button - Only on desktop */}
-            <button
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white hover:bg-opacity-90 transition-colors duration-200 font-medium relative"
-              style={{ backgroundColor: '#7069F9' }}
-              onClick={() => setIsFilterOpen(true)}
-            >
-              {/* Filter icon */}
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Filter Button - Only on desktop (wrapper so badge circle is not clipped) */}
+            <div className="relative flex-shrink-0 overflow-visible">
+              <button
+                className="flex items-center justify-center gap-2 px-4 lg:px-6 py-3 rounded-lg text-white hover:bg-opacity-90 transition-colors duration-200 font-medium relative"
+                style={{ backgroundColor: '#7069F9' }}
+                onClick={() => setIsFilterOpen(true)}
+              >
+                {/* Filter icon */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
                   fillRule="evenodd"
                   clipRule="evenodd"
@@ -1520,9 +1653,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   fill="white"
                 />
               </svg>
-              <span>Filtres</span>
+              <span>Filtres{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}</span>
 
-              {/* Active Filter Counter Badge */}
+              {/* Active Filter Counter Badge - click to reset all */}
               {activeFilterCount > 0 && (
                 <span
                   className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md cursor-pointer hover:bg-red-600 transition-colors duration-200 group"
@@ -1537,6 +1670,39 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                 </span>
               )}
             </button>
+            </div>
+
+            {/* Filter chips - max 3 visible + "Autres" - all on same line */}
+            <div className="flex flex-nowrap items-center gap-2 flex-shrink-0 min-w-0">
+              {visibleChips.map(chip => (
+                <span
+                  key={chip.id}
+                  className="inline-flex items-center gap-1.5 flex-shrink-0 px-2.5 lg:px-3 py-1.5 rounded-full text-xs lg:text-sm font-medium bg-indigo-50 text-indigo-800 border border-indigo-100"
+                >
+                  <span className="whitespace-nowrap">{chip.label}</span>
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      chip.onClear();
+                    }}
+                    className="flex-shrink-0 w-5 h-5 rounded-full hover:bg-indigo-200 flex items-center justify-center text-indigo-600"
+                    aria-label={`Retirer ${chip.label}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {hiddenChipsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsFilterOpen(true)}
+                  className="inline-flex items-center gap-1.5 flex-shrink-0 px-2.5 lg:px-3 py-1.5 rounded-full text-xs lg:text-sm font-medium bg-indigo-50 text-indigo-800 border border-indigo-100 hover:bg-indigo-100 transition-colors cursor-pointer"
+                >
+                  <span className="whitespace-nowrap">Autres ({hiddenChipsCount})</span>
+                </button>
+              )}
+            </div>
 
             {isFilterOpen && (
               <FilterPopup

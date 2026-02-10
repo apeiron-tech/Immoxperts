@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -271,6 +272,7 @@ public class AdresseResource {
 
     /**
      * {@code GET  /adresses/french-address-reverse} : Proxy for French Address API reverse geocoding to avoid CORS issues.
+     * Returns 200 with empty JSON on external API errors or network issues so the frontend does not break.
      *
      * @param lat the latitude.
      * @param lon the longitude.
@@ -282,23 +284,31 @@ public class AdresseResource {
 
         try {
             String url = String.format("https://api-adresse.data.gouv.fr/reverse/?lon=%s&lat=%s", lon, lat);
-            LOG.info("Calling French Address API: {}", url);
+            LOG.debug("Calling French Address API: {}", url);
 
-            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+            java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
             java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
                 .uri(java.net.URI.create(url))
                 .header("Accept", "application/json")
+                .timeout(Duration.ofSeconds(10))
                 .GET()
                 .build();
 
             java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
 
-            LOG.info("French Address API response status: {}", response.statusCode());
+            int status = response.statusCode();
+            LOG.debug("French Address API response status: {}", status);
 
-            return ResponseEntity.ok().header("Content-Type", "application/json").body(response.body());
+            if (status >= 200 && status < 300) {
+                return ResponseEntity.ok().header("Content-Type", "application/json").body(response.body());
+            }
+            LOG.warn("French Address API returned non-OK status {} for lon={}, lat={}", status, lon, lat);
+            return ResponseEntity.ok().header("Content-Type", "application/json").body("{}");
         } catch (Exception e) {
-            LOG.error("Error fetching French Address reverse geocoding", e);
-            return ResponseEntity.status(500).body("{\"error\":\"" + e.getMessage() + "\"}");
+            LOG.error("Error fetching French Address reverse geocoding for lon={}, lat={}: {}", lon, lat, e.getMessage());
+            return ResponseEntity.ok().header("Content-Type", "application/json").body("{}");
         }
     }
 }
