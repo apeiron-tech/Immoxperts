@@ -24,7 +24,7 @@ interface Testimonial {
 interface LocationSuggestion {
   value: string;
   adresse: string;
-  type: 'commune' | 'postal_code' | 'department';
+  type: 'commune' | 'postal_code' | 'search_postal_code' | 'department' | 'adresse';
   count: number;
 }
 
@@ -77,49 +77,60 @@ const Louer: React.FC = () => {
     }
   };
 
-  // API function to search properties with filters
+  // API function to search properties with pagination (30 per page)
   const searchPropertiesWithFilters = async (
     value: string,
     type: string,
-    budget: string,
     propType: string,
-  ): Promise<PropertySearchResult[]> => {
+    budget: string,
+    page: number = 0,
+  ): Promise<{ content: PropertySearchResult[]; totalPages: number; totalElements: number }> => {
     try {
       const params = new URLSearchParams();
       params.append('value', value);
       params.append('type', type);
       if (budget) params.append('maxBudget', budget);
       params.append('propertyType', propType === 'maison' ? 'Maison' : 'Appartement');
+      params.append('page', String(page));
+      params.append('size', '30');
 
       const response = await fetch(`${API_ENDPOINTS.louer.search}?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to search properties');
       }
-      const data: PropertySearchResult[] = await response.json();
-      return data;
+      const data = await response.json();
+      return {
+        content: data.content || [],
+        totalPages: data.totalPages ?? 0,
+        totalElements: data.totalElements ?? 0,
+      };
     } catch (error) {
       console.warn('Error searching properties:', error);
-      return [];
+      return { content: [], totalPages: 0, totalElements: 0 };
     }
   };
 
-  // Debounced search effect
+  // Debounced search effect (skip when value is from a just-selected suggestion so dropdown does not reopen)
   useEffect(() => {
     const timeoutId = setTimeout(async () => {
-      if (location.trim()) {
-        setIsLoading(true);
-        const results = await fetchLocationSuggestions(location.trim());
-        setSuggestions(results);
-        setShowSuggestions(true);
-        setIsLoading(false);
-      } else {
+      if (!location.trim()) {
         setSuggestions([]);
         setShowSuggestions(false);
+        return;
       }
-    }, 300); // 300ms debounce
+      if (selectedSuggestion && location.trim() === selectedSuggestion.adresse.trim()) {
+        setShowSuggestions(false);
+        return;
+      }
+      setIsLoading(true);
+      const results = await fetchLocationSuggestions(location.trim());
+      setSuggestions(results);
+      setShowSuggestions(true);
+      setIsLoading(false);
+    }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [location]);
+  }, [location, selectedSuggestion]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -171,19 +182,30 @@ const Louer: React.FC = () => {
 
     try {
       setIsLoading(true);
-      const searchResults = await searchPropertiesWithFilters(selectedSuggestion.value, selectedSuggestion.type, maxBudget, propertyType);
+      const { content, totalPages, totalElements } = await searchPropertiesWithFilters(
+        selectedSuggestion.value,
+        selectedSuggestion.type,
+        propertyType,
+        maxBudget,
+        0,
+      );
 
-      // Navigate to results page with search data
+      // Normalize type for API (postal_code -> search_postal_code)
+      const apiType = selectedSuggestion.type === 'postal_code' ? 'search_postal_code' : selectedSuggestion.type;
+
+      // Navigate to results page with search params and first page
       navigate('/RecherchLouer', {
         state: {
-          searchResults,
+          searchResults: content,
           searchParams: {
             location: selectedSuggestion.adresse,
             value: selectedSuggestion.value,
-            type: selectedSuggestion.type,
+            type: apiType,
             maxBudget,
             propertyType,
           },
+          totalPages,
+          totalElements,
         },
       });
     } catch (error) {
@@ -320,8 +342,9 @@ const Louer: React.FC = () => {
                                     <div className="text-sm font-medium text-gray-900">{suggestion.adresse}</div>
                                     <div className="text-xs text-gray-500 capitalize">
                                       {suggestion.type === 'commune' && 'Commune'}
-                                      {suggestion.type === 'postal_code' && 'Code postal'}
+                                      {(suggestion.type === 'postal_code' || suggestion.type === 'search_postal_code') && 'Code postal'}
                                       {suggestion.type === 'department' && 'Département'}
+                                      {suggestion.type === 'adresse' && 'Adresse'}
                                     </div>
                                   </div>
                                 </div>
@@ -344,6 +367,7 @@ const Louer: React.FC = () => {
                       </div>
                       <input
                         type="number"
+                        placeholder="Ex: 1500"
                         value={maxBudget}
                         onChange={e => setMaxBudget(e.target.value)}
                         className="w-full py-2.5 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"

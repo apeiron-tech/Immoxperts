@@ -8,6 +8,8 @@ import com.apeiron.immoxperts.service.dto.SuggestionDto;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,28 +22,26 @@ public class DvfLouerServiceImpl implements DvfLouerService {
     }
 
     @Override
-    public List<DvfLouerDto> getLouersByLocationAndFilters(String value, String type, BigDecimal maxBudget, String propertyType) {
+    public Page<DvfLouerDto> getLouersByLocationAndFiltersPaginated(
+        String value,
+        String type,
+        BigDecimal maxBudget,
+        String propertyType,
+        Pageable pageable
+    ) {
         if (value == null || value.trim().isEmpty() || type == null || type.trim().isEmpty()) {
-            return List.of();
+            return Page.empty(pageable);
         }
 
-        List<DvfLouer> results = repository.findByLocationAndFilters(
-            value.trim(),
-            type.trim(),
-            maxBudget,
-            propertyType != null ? propertyType.trim() : null
-        );
-        return results.stream().map(this::toDto).collect(Collectors.toList());
-    }
-
-    @Override
-    public List<DvfLouerDto> getLouersByLocation(String value, String type) {
-        if (value == null || value.trim().isEmpty() || type == null || type.trim().isEmpty()) {
-            return List.of();
-        }
-
-        List<DvfLouer> results = repository.findByLocationAndType(value.trim(), type.trim());
-        return results.stream().map(this::toDto).collect(Collectors.toList());
+        return repository
+            .findByLocationAndFiltersPaginated(
+                value.trim(),
+                type.trim(),
+                maxBudget,
+                propertyType != null ? propertyType.trim() : null,
+                pageable
+            )
+            .map(this::toDto);
     }
 
     private DvfLouerDto toDto(DvfLouer entity) {
@@ -58,6 +58,8 @@ public class DvfLouerServiceImpl implements DvfLouerService {
         dto.setPrice(entity.getPrice());
         dto.setAddress(entity.getAddress());
         dto.setDetails(entity.getDetails());
+        dto.setDescription(entity.getDescription());
+        dto.setPropertyUrl(entity.getPropertyUrl());
         dto.setImages(entity.getImages());
         return dto;
     }

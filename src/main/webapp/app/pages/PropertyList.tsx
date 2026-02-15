@@ -182,10 +182,10 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
         break;
       }
       case 'price-desc':
-        result = result.sort((a, b) => b.numericPrice - a.numericPrice);
+        result.sort((a, b) => (Number(b.numericPrice) || 0) - (Number(a.numericPrice) || 0));
         break;
       case 'price-asc':
-        result = result.sort((a, b) => a.numericPrice - b.numericPrice);
+        result.sort((a, b) => (Number(a.numericPrice) || 0) - (Number(b.numericPrice) || 0));
         break;
       case 'sqm-desc':
         result = result.sort((a, b) => {
@@ -216,7 +216,8 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
         break;
     }
 
-    return result;
+    // Return a new array reference so React reliably detects the sort change when switching options
+    return [...result];
   }, [properties, sortOption]);
 
   const hoveredProperty = useMemo(() => {

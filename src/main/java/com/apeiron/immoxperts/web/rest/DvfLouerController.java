@@ -5,6 +5,9 @@ import com.apeiron.immoxperts.service.dto.DvfLouerDto;
 import com.apeiron.immoxperts.service.dto.SuggestionDto;
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,16 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/louer")
 public class DvfLouerController {
 
+    private static final int DEFAULT_PAGE_SIZE = 30;
+
     private final DvfLouerService service;
 
     public DvfLouerController(DvfLouerService service) {
         this.service = service;
-    }
-
-    @GetMapping("/by-location")
-    public ResponseEntity<List<DvfLouerDto>> getByLocation(@RequestParam("value") String value, @RequestParam("type") String type) {
-        List<DvfLouerDto> louers = service.getLouersByLocation(value, type);
-        return ResponseEntity.ok(louers);
     }
 
     @GetMapping("/suggestions")
@@ -37,13 +36,19 @@ public class DvfLouerController {
     }
 
     @GetMapping("/search-with-filters")
-    public ResponseEntity<List<DvfLouerDto>> searchWithFilters(
+    public ResponseEntity<Page<DvfLouerDto>> searchWithFilters(
         @RequestParam("value") String value,
         @RequestParam("type") String type,
         @RequestParam(value = "maxBudget", required = false) BigDecimal maxBudget,
-        @RequestParam(value = "propertyType", required = false) String propertyType
+        @RequestParam(value = "propertyType", required = false) String propertyType,
+        @RequestParam(value = "page", defaultValue = "0") int page,
+        @RequestParam(value = "size", defaultValue = "30") int size
     ) {
-        List<DvfLouerDto> louers = service.getLouersByLocationAndFilters(value, type, maxBudget, propertyType);
+        int pageSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize);
+        Page<DvfLouerDto> louers = service.getLouersByLocationAndFiltersPaginated(
+            value, type, maxBudget, propertyType, pageable
+        );
         return ResponseEntity.ok(louers);
     }
 }

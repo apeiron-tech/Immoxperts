@@ -2,17 +2,53 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 
 export const API_BASE_URL = isDevelopment ? 'http://localhost:8080' : 'https://propsight.fr';
 
-// External service URLs
+// External service URLs and logos for the 10 brands (logo = favicon, same as others)
 export const EXTERNAL_URLS = {
-  seloger: {
-    mms: 'https://mms.seloger.com/',
-    website: 'https://www.seloger.com/',
+  bienici: {
+    website: 'https://www.bienici.com/',
+    logo: 'https://www.bienici.com/favicon.ico',
   },
-  avendrealouer: {
-    website: 'https://www.avendrealouer.fr/',
+  century21: {
+    website: 'https://www.century21.fr/',
+    logo: 'https://www.century21.fr/favicon.ico',
   },
   figaroimmo: {
     website: 'https://www.figaroimmo.com/',
+    logo: 'https://icons.duckduckgo.com/ip3/figaroimmo.com.ico',
+  },
+  guyhoquet: {
+    website: 'https://www.guyhoquet.com/',
+    logo: 'https://www.guyhoquet.com/favicon.ico',
+  },
+  iad: {
+    website: 'https://www.iadfrance.fr/',
+    logo: 'https://www.iadfrance.fr/favicon.ico',
+  },
+  leboncoin: {
+    website: 'https://www.leboncoin.fr/',
+    logo: 'https://www.leboncoin.fr/favicon.ico',
+  },
+  orpi: {
+    website: 'https://www.orpi.com/',
+    logo: 'https://www.orpi.com/favicon.ico',
+  },
+  paruvendu: {
+    website: 'https://www.paruvendu.fr/',
+    logo: 'https://www.paruvendu.fr/favicon.ico',
+  },
+  safti: {
+    website: 'https://www.safti.fr/',
+    logo: 'https://www.safti.fr/favicon.ico',
+  },
+  seloger: {
+    mms: 'https://mms.seloger.com/',
+    website: 'https://www.seloger.com/',
+    logo: 'https://www.seloger.com/favicon.ico',
+  },
+  // Legacy / alternate names
+  avendrealouer: {
+    website: 'https://www.avendrealouer.fr/',
+    logo: 'https://www.avendrealouer.fr/favicon.ico',
   },
 };
 
