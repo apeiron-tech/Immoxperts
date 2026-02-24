@@ -1,6 +1,11 @@
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-export const API_BASE_URL = isDevelopment ? 'http://localhost:8080' : 'https://propsight.fr';
+/**
+ * In production use relative URL so API calls go to the same origin as the page.
+ * This fixes mobile: whether user opens https://propsight.fr or https://www.propsight.fr,
+ * requests stay same-origin and avoid CORS / mixed content issues.
+ */
+export const API_BASE_URL = isDevelopment ? 'http://localhost:8080' : '';
 
 // External service URLs and logos for the 10 brands (logo = favicon, same as others)
 export const EXTERNAL_URLS = {
