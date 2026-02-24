@@ -1,9 +1,9 @@
 package com.apeiron.immoxperts.service.impl;
 
-import com.apeiron.immoxperts.domain.DvfLouer;
-import com.apeiron.immoxperts.repository.DvfLouerRepository;
-import com.apeiron.immoxperts.service.DvfLouerService;
-import com.apeiron.immoxperts.service.dto.DvfLouerDto;
+import com.apeiron.immoxperts.domain.DvfAchat;
+import com.apeiron.immoxperts.repository.DvfAchatRepository;
+import com.apeiron.immoxperts.service.DvfAchatService;
+import com.apeiron.immoxperts.service.dto.DvfAchatDto;
 import com.apeiron.immoxperts.service.dto.SuggestionDto;
 import java.math.BigDecimal;
 import java.util.List;
@@ -13,16 +13,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
-public class DvfLouerServiceImpl implements DvfLouerService {
+public class DvfAchatServiceImpl implements DvfAchatService {
 
-    private final DvfLouerRepository repository;
+    private final DvfAchatRepository repository;
 
-    public DvfLouerServiceImpl(DvfLouerRepository repository) {
+    public DvfAchatServiceImpl(DvfAchatRepository repository) {
         this.repository = repository;
     }
 
     @Override
-    public Page<DvfLouerDto> getLouersByLocationAndFiltersPaginated(
+    public Page<DvfAchatDto> getAchatsByLocationAndFiltersPaginated(
         String value,
         String type,
         BigDecimal minBudget,
@@ -59,7 +59,7 @@ public class DvfLouerServiceImpl implements DvfLouerService {
         }
 
         boolean hasChambresFilter = chambre1 != null || chambre2 != null || chambre3 != null || chambre4 != null || chambresMin != null;
-        Page<DvfLouer> page = hasChambresFilter
+        Page<DvfAchat> page = hasChambresFilter
             ? repository.findByLocationAndFiltersPaginatedWithChambres(
                 value.trim(),
                 type.trim(),
@@ -84,8 +84,8 @@ public class DvfLouerServiceImpl implements DvfLouerService {
         return page.map(this::toDto);
     }
 
-    private DvfLouerDto toDto(DvfLouer entity) {
-        DvfLouerDto dto = new DvfLouerDto();
+    private DvfAchatDto toDto(DvfAchat entity) {
+        DvfAchatDto dto = new DvfAchatDto();
         dto.setId(entity.getId());
         dto.setSource(entity.getSource());
         dto.setSearchPostalCode(entity.getSearchPostalCode());
@@ -116,10 +116,10 @@ public class DvfLouerServiceImpl implements DvfLouerService {
             .stream()
             .map(result ->
                 new SuggestionDto(
-                    (String) result[0], // value (original value)
-                    (String) result[1], // adresse (formatted address)
-                    (String) result[2], // suggestion type
-                    ((Number) result[3]).longValue() // count
+                    (String) result[0],
+                    (String) result[1],
+                    (String) result[2],
+                    ((Number) result[3]).longValue()
                 )
             )
             .collect(Collectors.toList());

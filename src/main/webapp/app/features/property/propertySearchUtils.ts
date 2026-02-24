@@ -47,22 +47,51 @@ export const getLogoFromSource = (source: string): string => {
 };
 
 const extractSurfaceTotale = (details: string): string => {
-  const totalMatch = details.match(/Surface totale\s*:\s*(\d+(?:\s?\d{3})*(?:[,.]\d+)?)\s*m2/i);
+  const totalMatch = details.match(/Surface\s+totale\s*:\s*(\d+(?:\s?\d{3})*(?:[,.]\d+)?)\s*m[²2]/i);
   return totalMatch ? `${totalMatch[1].replace(/\s/g, '')} m²` : 'N/A';
 };
 
 const extractSurfaceHabitable = (details: string): string => {
-  const habitableMatch = details.match(/Surface habitable\s*:\s*(\d+(?:\s?\d{3})*(?:[,.]\d+)?)\s*m2/i);
+  const habitableMatch = details.match(/Surface\s+habitable\s*:\s*(\d+(?:\s?\d{3})*(?:[,.]\d+)?)\s*m[²2]/i);
   return habitableMatch ? `${habitableMatch[1].replace(/\s/g, '')} m²` : 'N/A';
 };
 
+const extractSurfaceGeneral = (details: string): string => {
+  // "Surface: 58 m²" or "Surface : 58 m²"
+  const labelMatch = details.match(/Surface\s*:\s*(\d+(?:[,.]\d+)?)\s*m[²2]/i);
+  if (labelMatch) return `${labelMatch[1].replace(',', '.')} m²`;
+  // Bare surface at start of string or after a separator: "141.22 m²"
+  const bareMatch = details.match(/(?:^|[\s|,;])(\d+(?:[,.]\d+)?)\s*m[²2]/);
+  if (bareMatch) return `${bareMatch[1].replace(',', '.')} m²`;
+  return 'N/A';
+};
+
+const extractChambres = (details: string): string => {
+  // "Chambres: 3 ch." or "Chambres : 2"
+  const labelMatch = details.match(/Chambres?\s*:\s*(\d+)/i);
+  if (labelMatch) return labelMatch[1];
+  // "3 chambre(s)", "3 chambres"
+  const inlineMatch = details.match(/(\d+)\s*chambre(?:s|\(s\))?/i);
+  if (inlineMatch) return inlineMatch[1];
+  // "3 ch." abbreviation
+  const abbrMatch = details.match(/(\d+)\s*ch\.?(\s|$|\|)/i);
+  if (abbrMatch) return abbrMatch[1];
+  return 'N/A';
+};
+
 const extractRooms = (details: string): string => {
-  const tMatch = details.match(/T(\d+)/i);
-  if (tMatch) return `${tMatch[1]} pièces`;
-  const fMatch = details.match(/F(\d+)/i);
-  if (fMatch) return `${fMatch[1]} pièces`;
+  // "Pièces: 6" or "Pièces : 6" (label: value format)
+  const labelMatch = details.match(/Pi[eè]ces?\s*:\s*(\d+)/i);
+  if (labelMatch) return `${labelMatch[1]} pièces`;
+  // "6 pièces" or "6 pièce"
   const piecesMatch = details.match(/(\d+)\s*pièces?/i);
-  return piecesMatch ? `${piecesMatch[1]} pièces` : 'N/A';
+  if (piecesMatch) return `${piecesMatch[1]} pièces`;
+  // T3, F4 apartment codes
+  const tMatch = details.match(/\bT(\d+)\b/i);
+  if (tMatch) return `${tMatch[1]} pièces`;
+  const fMatch = details.match(/\bF(\d+)\b/i);
+  if (fMatch) return `${fMatch[1]} pièces`;
+  return 'N/A';
 };
 
 const extractBathrooms = (details: string): string => {
@@ -135,11 +164,35 @@ const extractParking = (details: string): string => {
   return 'N/A';
 };
 
+const extractPiscine = (details: string): string => (/piscine/i.test(details) ? 'Oui' : 'N/A');
+const extractJardin = (details: string): string => (/jardin/i.test(details) ? 'Oui' : 'N/A');
+const extractCave = (details: string): string => (/cave/i.test(details) ? 'Oui' : 'N/A');
+const extractTerrasse = (details: string): string => (/terrasse/i.test(details) ? 'Oui' : 'N/A');
+const extractDernierEtage = (details: string): string =>
+  /dernier\s*étage|dernier etage|étage\s*élevé|dernier étage/i.test(details) ? 'Oui' : 'N/A';
+
+/** Extract DPE energy class (A–G) from details text. Tries multiple common formats. */
 const extractEnergyClass = (details: string): string => {
-  const match = details.match(/DPE\s*[:\s]*([A-G])/i);
-  if (match) return `DPE ${match[1]}`;
-  const classMatch = details.match(/Classe\s*énergétique\s*[:\s]*([A-G])/i);
-  if (classMatch) return `Classe ${classMatch[1]}`;
+  if (!details || !details.trim()) return 'N/A';
+  const d = details;
+  // DPE : E | DPE: E | DPE E
+  let m = d.match(/DPE\s*[:\s]*([A-Ga-g])\b/);
+  if (m) return `DPE ${m[1].toUpperCase()}`;
+  // Classe énergétique : E (with or without accent)
+  m = d.match(/Classe\s*[eé]nerg[eé]tique\s*[:\s]*([A-Ga-g])\b/);
+  if (m) return `DPE ${m[1].toUpperCase()}`;
+  // Performance énergétique : E
+  m = d.match(/Performance\s*[eé]nerg[eé]tique\s*[:\s]*([A-Ga-g])\b/);
+  if (m) return `DPE ${m[1].toUpperCase()}`;
+  // Énergie : E
+  m = d.match(/[EÉ]nergie\s*[:\s]*([A-Ga-g])\b/);
+  if (m) return `DPE ${m[1].toUpperCase()}`;
+  // " ... | DPE E | " or " ... DPE E " (letter right after DPE)
+  m = d.match(/DPE\s+([A-Ga-g])(?:\s|[|,]|$)/);
+  if (m) return `DPE ${m[1].toUpperCase()}`;
+  // Standalone class letter after common labels (last resort)
+  m = d.match(/(?:DPE|classe|énergétique|énergie)\s*[:\s]*([A-Ga-g])\b/);
+  if (m) return `DPE ${m[1].toUpperCase()}`;
   return 'N/A';
 };
 
@@ -152,6 +205,9 @@ export const extractAllAttributes = (allText: string): Record<string, string> =>
     attributes['Surface'] = surfaceTotale;
   } else if (surfaceHabitable !== 'N/A') {
     attributes['Surface'] = surfaceHabitable;
+  } else {
+    const surfaceGeneral = extractSurfaceGeneral(allText);
+    if (surfaceGeneral !== 'N/A') attributes['Surface'] = surfaceGeneral;
   }
 
   const apartmentType = extractApartmentType(allText);
@@ -165,6 +221,9 @@ export const extractAllAttributes = (allText: string): Record<string, string> =>
 
   const constructionYear = extractConstructionYear(allText);
   if (constructionYear !== 'N/A') attributes['Année construction'] = constructionYear;
+
+  const chambres = extractChambres(allText);
+  if (chambres !== 'N/A') attributes['Chambres'] = chambres;
 
   if (apartmentType === 'N/A') {
     const rooms = extractRooms(allText);
@@ -185,6 +244,21 @@ export const extractAllAttributes = (allText: string): Record<string, string> =>
 
   const parking = extractParking(allText);
   if (parking !== 'N/A') attributes['Parking'] = parking;
+
+  const piscine = extractPiscine(allText);
+  if (piscine !== 'N/A') attributes['Piscine'] = piscine;
+
+  const jardin = extractJardin(allText);
+  if (jardin !== 'N/A') attributes['Jardin'] = jardin;
+
+  const cave = extractCave(allText);
+  if (cave !== 'N/A') attributes['Cave'] = cave;
+
+  const terrasse = extractTerrasse(allText);
+  if (terrasse !== 'N/A') attributes['Terrasse'] = terrasse;
+
+  const dernierEtage = extractDernierEtage(allText);
+  if (dernierEtage !== 'N/A') attributes['Dernier étage'] = dernierEtage;
 
   const energyClass = extractEnergyClass(allText);
   if (energyClass !== 'N/A') attributes['Classe énergétique'] = energyClass;

@@ -1,8 +1,5 @@
 import React from 'react';
 
-// --- TYPE DEFINITIONS ---
-// It's best practice to have a single source of truth for this interface,
-// e.g., in a shared types file.
 interface Property {
   address: string;
   city: string;
@@ -12,119 +9,72 @@ interface Property {
   surface: string;
   rooms: string | number;
   soldDate: string;
-  terrain?: string; // Add terrain attribute
+  terrain?: string;
 }
 
-// 1. UPDATE THE PROPS INTERFACE
-// We need to accept the `isHovered` boolean from the parent.
-// The onMouseEnter/Leave props are now handled by the parent.
 interface PropertyCardProps {
   property: Property;
   onClick: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
-  isHovered: boolean; // This prop will control the hover style
-  isMapHovered?: boolean; // **NEW**: Highlight when hovered from map
+  isHovered: boolean;
+  isMapHovered?: boolean;
 }
 
-// --- HELPER FUNCTIONS ---
-// These helpers are great, no changes needed.
 const getShortTypeName = (typeBien: string) => {
-  const names = {
+  const names: Record<string, string> = {
     'Local Commercial': 'Local',
     'Bien Multiple': 'Bien Multiple',
     Maison: 'Maison',
     Appartement: 'Appartement',
     Terrain: 'Terrain',
-    // Legacy names for backward compatibility
-    'Local industriel. commercial ou assimilé': 'Local',
+    'Local industriel. commercial ou assimil�': 'Local',
   };
-  return names[typeBien as keyof typeof names] || typeBien;
+  return names[typeBien] || typeBien;
 };
 
-// Helper function to check if a value exists and is not empty
-const hasValue = (value: any): boolean => {
-  return value && value !== 'N/A' && value !== '' && value !== null && value !== undefined;
-};
-
-// Helper function to format property details
-const formatPropertyDetails = (rooms: any, surface: string, terrain?: string): string => {
-  const details: string[] = [];
-
-  if (hasValue(rooms)) {
-    details.push(`Piece: ${rooms}`);
-  }
-  if (hasValue(surface)) {
-    details.push(`Surface ${surface}`);
-  }
-  if (hasValue(terrain)) {
-    details.push(`Terrain ${terrain}`);
-  }
-
-  return details.length > 0 ? details.join(', ') : '';
-};
+const hasValue = (value: any): boolean =>
+  value && value !== 'N/A' && value !== '' && value !== null && value !== undefined;
 
 const getPropertyTypeColor = (propertyType: string) => {
-  // First normalize the type name
   const shortType = getShortTypeName(propertyType);
-
-  const colorMap: { [key: string]: string } = {
-    Appartement: '#504CC5', // #504CC5 - Violet
-    Maison: '#7A72D5', // #7A72D5 - Violet clair
-    Terrain: '#4F96D6', // #4F96D6 - Bleu
-    Local: '#205F9D', // #205F9D - Bleu foncé
-    'Bien Multiple': '#022060', // #022060 - Bleu très foncé
+  const colorMap: Record<string, string> = {
+    Appartement: '#504CC5',
+    Maison: '#7A72D5',
+    Terrain: '#4F96D6',
+    Local: '#205F9D',
+    'Bien Multiple': '#022060',
   };
-
   return colorMap[shortType] || '#9CA3AF';
 };
 
-// Helper function to format date to French format
 const formatFrenchDate = (dateString: string) => {
   if (!dateString) return 'N/A';
-
-  // Try to parse the date
   const date = new Date(dateString);
-
-  // Check if date is valid
-  if (isNaN(date.getTime())) {
-    return dateString; // Return original string if parsing fails
-  }
-
-  return date.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  if (isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-// --- REACT COMPONENT ---
 const PropertyCard: React.FC<PropertyCardProps> = ({
   property,
   onClick,
   onMouseEnter,
   onMouseLeave,
-  isHovered, // Use the prop from the parent
-  isMapHovered = false, // **NEW**: Default to false
+  isHovered,
+  isMapHovered = false,
 }) => {
   const { address, type, rooms, surface, soldDate, price, pricePerSqm, terrain } = property;
-
-  // Formatting values for display
-  const priceFormatted = Number(price?.replace(/[^0-9]/g, '')).toLocaleString('fr-FR') + ' €';
+  const priceFormatted = Number(price?.replace(/[^0-9]/g, '')).toLocaleString('fr-FR') + ' ?';
   const pricePerSqmFormatted = hasValue(pricePerSqm) ? pricePerSqm : '';
-
-  // Format property details
-  const propertyDetails = formatPropertyDetails(rooms, surface, terrain);
 
   return (
     <div
       style={{
-        background: isMapHovered ? '#f0f9ff' : '#fff', // Light blue background when map hovered
+        background: isMapHovered ? '#f0f9ff' : '#fff',
         padding: 24,
         fontFamily: `'Inter', sans-serif`,
         borderRadius: 16,
-        cursor: 'default', // Changé de 'pointer' à 'default'
-        // 2. STYLING IS NOW DRIVEN BY THE `isHovered` PROP OR `isMapHovered`
+        cursor: 'default',
         boxShadow: isHovered || isMapHovered ? '0 4px 20px rgba(36,28,131,0.18)' : '0 2px 12px rgba(36,28,131,0.08)',
         border: isHovered || isMapHovered ? '2px solid #4F46E5' : '1px solid #e5e7eb',
         display: 'flex',
@@ -133,15 +83,11 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         transition: 'box-shadow 0.2s, border 0.2s',
       }}
       onClick={onClick}
-      // 3. PASS THROUGH THE PARENT'S EVENT HANDLERS
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      {/* Container */}
       <div style={{ width: '100%' }}>
-        {/* Row: Left and Right columns */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-          {/* Left Column */}
           <div style={{ flex: 1, minWidth: 0, maxWidth: 'calc(100% - 140px)' }}>
             <div
               style={{
@@ -160,7 +106,6 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
             <div style={{ color: getPropertyTypeColor(type), fontWeight: 900, fontSize: 16 }}>{getShortTypeName(type)}</div>
           </div>
 
-          {/* Right Column: Price */}
           <div
             style={{
               border: '1px solid #e5e7eb',
@@ -178,10 +123,9 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
         </div>
 
-        {/* Description: Characteristics */}
         {(hasValue(rooms) || hasValue(terrain) || hasValue(surface)) && (
           <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>
-            {hasValue(rooms) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Pièce </span>}
+            {hasValue(rooms) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Pi�ce </span>}
             {hasValue(rooms) && (
               <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
                 {rooms}
@@ -204,7 +148,6 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
         )}
 
-        {/* Sold Date */}
         <div
           style={{
             border: '1px solid #e5e7eb',

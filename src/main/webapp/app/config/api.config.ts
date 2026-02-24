@@ -66,6 +66,10 @@ export const API_ENDPOINTS = {
     search: `${API_BASE_URL}/api/louer/search-with-filters`,
     suggestions: `${API_BASE_URL}/api/louer/suggestions`,
   },
+  achat: {
+    search: `${API_BASE_URL}/api/achat/search-with-filters`,
+    suggestions: `${API_BASE_URL}/api/achat/suggestions`,
+  },
   adresses: {
     suggestions: `${API_BASE_URL}/api/adresses/suggestions`,
     osmPlaces: `${API_BASE_URL}/api/adresses/osm-places`,

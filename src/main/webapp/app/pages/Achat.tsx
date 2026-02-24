@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiHome, FiCheckSquare, FiSquare, FiSearch, FiMapPin, FiDollarSign } from 'react-icons/fi';
+import { FiHome, FiCheckSquare, FiSearch, FiMapPin, FiDollarSign } from 'react-icons/fi';
 import { API_ENDPOINTS } from 'app/config/api.config';
 
 interface City {
@@ -46,7 +46,7 @@ interface PropertySearchResult {
   images: string[];
 }
 
-const Louer: React.FC = () => {
+const Achat: React.FC = () => {
   const navigate = useNavigate();
   const [propertyType, setPropertyType] = useState<'maison' | 'appartement'>('maison');
   const [location, setLocation] = useState<string>('');
@@ -79,7 +79,6 @@ const Louer: React.FC = () => {
     }
   };
 
-  // API function to fetch location suggestions
   const fetchLocationSuggestions = async (query: string): Promise<LocationSuggestion[]> => {
     if (!query || query.length < 1) {
       return [];
@@ -87,7 +86,7 @@ const Louer: React.FC = () => {
 
     // 1) Try DVF suggestions
     try {
-      const response = await fetch(`${API_ENDPOINTS.louer.suggestions}?q=${encodeURIComponent(query)}&limit=10`);
+      const response = await fetch(`${API_ENDPOINTS.achat.suggestions}?q=${encodeURIComponent(query)}&limit=10`);
       if (response.ok) {
         const data: LocationSuggestion[] = await response.json();
         if (data && data.length > 0) return data;
@@ -100,7 +99,6 @@ const Louer: React.FC = () => {
     return fetchOsmSuggestions(query);
   };
 
-  // API function to search properties with pagination (30 per page)
   const searchPropertiesWithFilters = async (
     value: string,
     type: string,
@@ -117,7 +115,7 @@ const Louer: React.FC = () => {
       params.append('page', String(page));
       params.append('size', '30');
 
-      const response = await fetch(`${API_ENDPOINTS.louer.search}?${params.toString()}`);
+      const response = await fetch(`${API_ENDPOINTS.achat.search}?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to search properties');
       }
@@ -133,7 +131,6 @@ const Louer: React.FC = () => {
     }
   };
 
-  // Debounced search effect (skip when value is from a just-selected suggestion so dropdown does not reopen)
   useEffect(() => {
     const timeoutId = setTimeout(async () => {
       if (!location.trim()) {
@@ -155,7 +152,6 @@ const Louer: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [location, selectedSuggestion]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -172,16 +168,13 @@ const Louer: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Handle input change
   const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocation(e.target.value);
-    // Clear selected suggestion when user types manually
     if (selectedSuggestion && e.target.value !== selectedSuggestion.adresse) {
       setSelectedSuggestion(null);
     }
   };
 
-  // Handle suggestion selection
   const handleSuggestionSelect = (suggestion: LocationSuggestion) => {
     setLocation(suggestion.adresse);
     setSelectedSuggestion(suggestion);
@@ -189,14 +182,12 @@ const Louer: React.FC = () => {
     setSuggestions([]);
   };
 
-  // Handle input focus
   const handleInputFocus = () => {
     if (suggestions.length > 0) {
       setShowSuggestions(true);
     }
   };
 
-  // Handle search button click
   const handleSearch = async () => {
     if (!selectedSuggestion) {
       alert('Veuillez sélectionner une localisation dans la liste de suggestions');
@@ -213,11 +204,9 @@ const Louer: React.FC = () => {
         0,
       );
 
-      // Normalize type for API (postal_code -> search_postal_code)
       const apiType = selectedSuggestion.type === 'postal_code' ? 'search_postal_code' : selectedSuggestion.type;
 
-      // Navigate to results page with search params and first page
-      navigate('/RecherchLouer', {
+      navigate('/RecherchAchat', {
         state: {
           searchResults: content,
           searchParams: {
@@ -275,7 +264,7 @@ const Louer: React.FC = () => {
       icon: <FiCheckSquare className="text-indigo-600 w-5 h-5 flex-shrink-0" />,
     },
     {
-      title: 'Estimation de loyer',
+      title: 'Estimation de prix',
       description: 'Accès direct aux contacts',
       icon: <FiCheckSquare className="text-indigo-600 w-5 h-5 flex-shrink-0" />,
     },
@@ -292,20 +281,19 @@ const Louer: React.FC = () => {
       id: 2,
       name: 'Chloé Dubois',
       avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
-      text: "Grâce à Propsight, j'ai trouvé mon appartement en un temps record. Le site est intuitif et très bien conçu. Une vraie aide pour la recherche de logement.",
+      text: "Grâce à Propsight, j'ai trouvé ma maison en un temps record. Le site est intuitif et très bien conçu. Une vraie aide pour la recherche immobilière.",
     },
     {
       id: 3,
       name: 'Camille Durand',
       avatar: 'https://randomuser.me/api/portraits/women/3.jpg',
-      text: "Une plateforme vraiment bien pensée pour chercher un logement. J'ai trouvé exactement ce que je voulais, et le service client est réactif.",
+      text: "Une plateforme vraiment bien pensée pour acheter un bien. J'ai trouvé exactement ce que je voulais, et le service client est réactif.",
     },
   ];
 
   return (
     <div className="bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Hero Section */}
         <div className="relative bg-cover bg-center rounded-2xl overflow-hidden shadow-xl mb-16">
           <div
             className="absolute inset-0"
@@ -321,9 +309,9 @@ const Louer: React.FC = () => {
           <div className="relative z-10 py-10 px-4 sm:px-6 lg:px-8">
             <div className="flex justify-start items-center">
               <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-lg border border-gray-100">
-                <h1 className="text-2xl font-bold mb-2 text-gray-800">Louer le bien qui correspond à mes attentes</h1>
+                <h1 className="text-2xl font-bold mb-2 text-gray-800">Acheter le bien qui correspond à mes attentes</h1>
                 <p className="text-gray-600 mb-6">
-                  Appartements ou maisons, découvrez une large sélection pour donner vie à votre projet de location.
+                  Appartements ou maisons, découvrez une large sélection pour donner vie à votre projet d&apos;achat.
                 </p>
 
                 <div className="space-y-4">
@@ -344,7 +332,6 @@ const Louer: React.FC = () => {
                         autoComplete="off"
                       />
 
-                      {/* Suggestions Dropdown */}
                       {showSuggestions && (
                         <div
                           ref={dropdownRef}
@@ -390,12 +377,12 @@ const Louer: React.FC = () => {
                       </div>
                       <input
                         type="number"
-                        placeholder="Ex: 1500"
+                        placeholder="Ex: 250000"
                         value={maxBudget}
                         onChange={e => setMaxBudget(e.target.value)}
                         className="w-full py-2.5 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
-                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">€/mois</span>
+                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">€</span>
                     </div>
                   </div>
 
@@ -440,9 +427,8 @@ const Louer: React.FC = () => {
           </div>
         </div>
 
-        {/* Cities Section */}
         <div className="bg-white rounded-xl shadow-sm p-8 mb-16">
-          <h2 className="text-xl font-bold text-center text-gray-800 mb-6">Louer en France | Top villes</h2>
+          <h2 className="text-xl font-bold text-center text-gray-800 mb-6">Acheter en France | Top villes</h2>
           <div className="max-w-3xl mx-auto">
             <div className="flex flex-wrap justify-center gap-2 text-gray-700 text-sm">
               {cities.map(city => (
@@ -458,11 +444,10 @@ const Louer: React.FC = () => {
           </div>
         </div>
 
-        {/* Benefits Section */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-16">
           <div className="flex flex-col md:flex-row">
             <div className="md:w-1/2 p-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-6">Facilitez la location d'un bien immobilier</h2>
+              <h2 className="text-xl font-bold text-gray-800 mb-6">Facilitez l&apos;achat d&apos;un bien immobilier</h2>
               <ul className="space-y-4">
                 {benefits.map((benefit, index) => (
                   <li key={index} className="flex items-start">
@@ -485,7 +470,6 @@ const Louer: React.FC = () => {
           </div>
         </div>
 
-        {/* CTA Section */}
         <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-xl shadow-lg overflow-hidden mb-16">
           <div className="px-8 py-12 text-white">
             <h2 className="text-2xl font-bold mb-4">Propsight vous offre une plateforme moderne</h2>
@@ -493,12 +477,11 @@ const Louer: React.FC = () => {
               Grâce à nos filtres de recherche intuitifs, vous trouverez rapidement la propriété qui correspond à vos besoins.
             </p>
             <button className="bg-white text-indigo-600 px-6 py-3 rounded-lg hover:bg-gray-100 transition duration-200 ease-in-out font-medium shadow-md">
-              S'inscrire maintenant
+              S&apos;inscrire maintenant
             </button>
           </div>
         </div>
 
-        {/* Testimonials Section */}
         <div className="bg-white rounded-xl shadow-sm p-8 mb-16">
           <h2 className="text-xl font-bold text-center text-gray-800 mb-10">Ce que disent nos clients satisfaits</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -512,16 +495,15 @@ const Louer: React.FC = () => {
                   />
                   <span className="font-medium text-gray-800">{testimonial.name}</span>
                 </div>
-                <p className="text-gray-600 text-sm italic">"{testimonial.text}"</p>
+                <p className="text-gray-600 text-sm italic">&quot;{testimonial.text}&quot;</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Bottom Banner */}
         <div className="text-center pt-8 border-t border-gray-200">
           <p className="text-gray-500 text-sm max-w-3xl mx-auto">
-            Propsight est votre plateforme de référence pour la location et l'achat de maisons et d'appartements en France - Découvrez une
+            Propsight est votre plateforme de référence pour la location et l&apos;achat de maisons et d&apos;appartements en France - Découvrez une
             large sélection de biens immobiliers adaptés à vos besoins
           </p>
         </div>
@@ -530,4 +512,4 @@ const Louer: React.FC = () => {
   );
 };
 
-export default Louer;
+export default Achat;

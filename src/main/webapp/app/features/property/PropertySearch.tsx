@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search, Heart, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_ENDPOINTS } from 'app/config/api.config';
@@ -10,8 +10,10 @@ import {
   getAssociationFromSource,
   getAssociationUrlFromSource,
 } from './propertySearchUtils';
+
 import { RecherchLouerFilterBar } from './RecherchLouerFilterBar';
 import { RecherchLouerFiltersModal } from './RecherchLouerFiltersModal';
+import { PropertySearchCard } from './PropertySearchCard';
 
 interface Property {
   id: number;
@@ -20,6 +22,7 @@ interface Property {
   description: string;
   surface: string;
   rooms: string;
+  chambres: string;
   bathrooms: string;
   kitchen: string;
   balcony: string;
@@ -28,7 +31,7 @@ interface Property {
   Association: string[];
   Association_url: string[];
   images: string[];
-  dynamicAttributes?: { [key: string]: string }; // New property for dynamic attributes
+  dynamicAttributes?: { [key: string]: string };
 }
 
 interface ApiProperty {
@@ -64,6 +67,13 @@ interface LocationState {
   totalElements?: number;
 }
 
+interface LocationSuggestion {
+  value: string;
+  adresse: string;
+  type: 'commune' | 'postal_code' | 'search_postal_code' | 'department' | 'adresse';
+  count: number;
+}
+
 interface ImageGalleryProps {
   images: string[];
   tags: string[];
@@ -71,7 +81,14 @@ interface ImageGalleryProps {
 
 const PAGE_SIZE = 30;
 
-const RecherchLouer: React.FC = () => {
+type SearchMode = 'louer' | 'achat';
+
+interface PropertySearchProps {
+  mode?: SearchMode;
+}
+
+const PropertySearch: React.FC<PropertySearchProps> = ({ mode = 'louer' }) => {
+  const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as LocationState;
   const searchParams = locationState?.searchParams;
@@ -95,12 +112,14 @@ const RecherchLouer: React.FC = () => {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState<boolean>(false);
+  const MAX_PRICE = mode === 'achat' ? 2000000 : 5000;
+
   const [filters, setFilters] = useState({
     chambres: [] as number[],
     exterieur: [] as string[],
     typeVente: 'tous' as string,
     prixMin: 0,
-    prixMax: 5000,
+    prixMax: MAX_PRICE,
     surfaceMin: 0,
     surfaceMax: 500,
     etage: [] as string[],
@@ -112,6 +131,13 @@ const RecherchLouer: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Address input in bar (like Achat): suggestions dropdown, no redirect
+  const [showLocationDropdown, setShowLocationDropdown] = useState<boolean>(false);
+  const [locationEditQuery, setLocationEditQuery] = useState<string>('');
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
+  const [locationSuggestionsLoading, setLocationSuggestionsLoading] = useState<boolean>(false);
+  const locationInputContainerRef = useRef<HTMLDivElement>(null);
+
   const toggleMobileMenu = (): void => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
@@ -119,10 +145,10 @@ const RecherchLouer: React.FC = () => {
   const convertApiPropertyToProperty = (apiProp: ApiProperty): Property => {
     const details = apiProp.details || '';
     const description = apiProp.description || '';
-    const allText = `${details} ${description}`.trim();
 
-    // Extract all attributes dynamically
-    const attributes = extractAllAttributes(allText);
+    // Extract structured attributes from details only (not description prose)
+    // to avoid false positives (e.g. "cuisine" mentioned in description text)
+    const attributes = extractAllAttributes(details);
 
     return {
       id: apiProp.id,
@@ -131,13 +157,14 @@ const RecherchLouer: React.FC = () => {
       description: '', // Remove description to avoid duplication with attributes
       surface: attributes['Surface'] || 'N/A',
       rooms: attributes['Pièces'] || 'N/A',
+      chambres: attributes['Chambres'] || 'N/A',
       bathrooms: attributes['Salles de bain'] || 'N/A',
       kitchen: attributes['Cuisine'] || 'N/A',
-      balcony: attributes['Balcon'] || 'N/A',
+      balcony: attributes['Balcon/Terrasse'] || 'N/A',
       // Add dynamic attributes as a new property
       dynamicAttributes: attributes,
       address: apiProp.address || `${apiProp.commune}, ${apiProp.department}`,
-      tags: [extractFurnishing(allText), 'À louer'].filter(tag => tag !== 'N/A'), // Add furnishing info and rental tag
+      tags: [extractFurnishing(`${details} ${description}`), mode === 'achat' ? 'À vendre' : 'À louer'].filter(tag => tag !== 'N/A'),
       Association: [getAssociationFromSource(apiProp.source)],
       Association_url: [apiProp.propertyUrl?.trim() || getAssociationUrlFromSource(apiProp.source)], // Link to property listing (property_url)
       images: apiProp.images && apiProp.images.length > 0 ? apiProp.images : ['/content/assets/logo.png'], // Images are now array
@@ -154,27 +181,136 @@ const RecherchLouer: React.FC = () => {
     }
   }, [preloadedResults, initialTotalPages, initialTotalElements]);
 
-  // Fetch a specific page from API (for pagination)
-  const fetchPage = async (page: number) => {
-    if (!searchParams) return;
+  // Parse budget string from form or display (e.g. "200 000 €" or "200000") to number
+  const parseBudgetFromParam = (s: string | undefined): number | null => {
+    if (!s || !s.trim()) return null;
+    const digits = s.replace(/\s/g, '').replace(/[€\s]/g, '').replace(',', '.').match(/\d+/g);
+    if (!digits || digits.length === 0) return null;
+    const n = parseInt(digits.join(''), 10);
+    return Number.isNaN(n) ? null : n;
+  };
+
+  // Sync initial budget from search form into filters (so API uses it on first pagination)
+  useEffect(() => {
+    if (!searchParams?.maxBudget) return;
+    const budget = parseBudgetFromParam(searchParams.maxBudget);
+    if (budget != null && budget > 0)
+      setFilters(f => (f.prixMax === MAX_PRICE ? { ...f, prixMax: Math.min(budget, MAX_PRICE) } : f));
+  }, [searchParams?.maxBudget, MAX_PRICE]);
+
+  // Fetch location suggestions (DVF + OSM fallback) for inline editor
+  const fetchLocationSuggestions = async (query: string): Promise<LocationSuggestion[]> => {
+    if (!query || query.length < 1) return [];
+    try {
+      const endpoint = mode === 'achat' ? API_ENDPOINTS.achat.suggestions : API_ENDPOINTS.louer.suggestions;
+      const response = await fetch(`${endpoint}?q=${encodeURIComponent(query)}&limit=10`);
+      if (response.ok) {
+        const data: LocationSuggestion[] = await response.json();
+        if (data?.length > 0) return data;
+      }
+    } catch {
+      // fallback to OSM
+    }
+    try {
+      const osmResponse = await fetch(`${API_ENDPOINTS.adresses.osmPlaces}?q=${encodeURIComponent(query)}`);
+      if (!osmResponse.ok) return [];
+      const osmList: Array<{ display_name: string; address?: { postcode?: string; city?: string; town?: string; village?: string } }> =
+        await osmResponse.json();
+      if (!Array.isArray(osmList) || osmList.length === 0) return [];
+      return osmList.slice(0, 10).map(place => {
+        const addr = place.address || {};
+        const postcode = addr.postcode || '';
+        const city = addr.city || addr.town || addr.village || place.display_name;
+        const value = postcode || city;
+        const adresse = place.display_name;
+        const type: LocationSuggestion['type'] = postcode ? 'search_postal_code' : 'commune';
+        return { value, adresse, type, count: 0 };
+      });
+    } catch {
+      return [];
+    }
+  };
+
+  // Debounced fetch suggestions when address input is open and user types
+  useEffect(() => {
+    if (!showLocationDropdown) return;
+    if (!locationEditQuery.trim()) {
+      setLocationSuggestions([]);
+      return;
+    }
+    setLocationSuggestionsLoading(true);
+    const t = setTimeout(async () => {
+      const list = await fetchLocationSuggestions(locationEditQuery.trim());
+      setLocationSuggestions(list);
+      setLocationSuggestionsLoading(false);
+    }, 300);
+    return () => {
+      clearTimeout(t);
+      setLocationSuggestionsLoading(false);
+    };
+  }, [showLocationDropdown, locationEditQuery]);
+
+  // Click outside to close address dropdown
+  useEffect(() => {
+    if (!showLocationDropdown) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (locationInputContainerRef.current && !locationInputContainerRef.current.contains(e.target as Node)) {
+        setShowLocationDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showLocationDropdown]);
+
+  // Fetch a specific page from API (new search on DB with current location + filters)
+  // filtersOverride: use when applying modal filters so the latest values are used immediately
+  // searchParamsOverride: when changing location inline, pass new params and we update URL state after
+  const fetchPage = async (
+    page: number,
+    filtersOverride?: typeof filters,
+    searchParamsOverride?: SearchParams,
+  ) => {
+    const params = searchParamsOverride ?? searchParams;
+    if (!params) return;
+    const f = filtersOverride ?? filters;
     setIsLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      params.append('value', searchParams.value);
-      params.append('type', searchParams.type);
-      if (searchParams.maxBudget && searchParams.maxBudget.trim()) params.append('maxBudget', searchParams.maxBudget);
-      params.append('propertyType', searchParams.propertyType || '');
-      params.append('page', String(page));
-      params.append('size', String(PAGE_SIZE));
+      const queryParams = new URLSearchParams();
+      queryParams.append('value', params.value);
+      queryParams.append('type', params.type);
+      if (f.prixMin > 0) queryParams.append('minBudget', String(f.prixMin));
+      if (f.prixMax < MAX_PRICE) queryParams.append('maxBudget', String(f.prixMax));
+      queryParams.append('propertyType', params.propertyType || '');
+      if (f.chambres.length > 0) {
+        const chambresVal =
+          f.chambres.length === 1 && f.chambres[0] === 5 ? '5+' : f.chambres.sort((a, b) => a - b).join(',');
+        queryParams.append('chambres', chambresVal);
+      }
+      queryParams.append('page', String(page));
+      queryParams.append('size', String(PAGE_SIZE));
 
-      const response = await fetch(`${API_ENDPOINTS.louer.search}?${params.toString()}`);
+      const response = await fetch(`${API_ENDPOINTS[mode].search}?${queryParams.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
       setApiProperties(data.content || []);
       setTotalPages(data.totalPages ?? 0);
       setTotalElements(data.totalElements ?? 0);
       setCurrentPage(page);
+
+      // When location was changed inline, update URL state so the bar shows new address
+      if (searchParamsOverride) {
+        const path = mode === 'achat' ? '/RecherchAchat' : '/RecherchLouer';
+        navigate(path, {
+          replace: true,
+          state: {
+            searchParams: searchParamsOverride,
+            searchResults: data.content || [],
+            totalPages: data.totalPages ?? 0,
+            totalElements: data.totalElements ?? 0,
+          },
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de chargement');
     } finally {
@@ -196,9 +332,49 @@ const RecherchLouer: React.FC = () => {
   // Convert API properties to display properties
   const properties: Property[] = apiProperties.map(convertApiPropertyToProperty);
 
+  // --- Filter helpers ---
+  const parsePropertyPrice = (priceText: string): number => {
+    const digits = priceText.replace(/\s/g, '').match(/\d+/g);
+    return digits ? parseInt(digits.join(''), 10) : 0;
+  };
+
+  const parseSurfaceM2 = (surfaceText: string): number => {
+    if (!surfaceText || surfaceText === 'N/A') return 0;
+    const m = surfaceText.match(/(\d+(?:[,.]\d+)?)/);
+    return m ? parseFloat(m[1].replace(',', '.')) : 0;
+  };
+
+  // Chambres (pièces) are filtered by the API; only price, surface and exterieur applied client-side
+  const filteredProperties = properties.filter(property => {
+    const price = parsePropertyPrice(property.price);
+    if (filters.prixMin > 0 && price < filters.prixMin) return false;
+    if (filters.prixMax < MAX_PRICE && price > filters.prixMax) return false;
+
+    const surface = parseSurfaceM2(property.surface);
+    if (filters.surfaceMin > 0 && surface > 0 && surface < filters.surfaceMin) return false;
+    if (filters.surfaceMax < 500 && surface > 0 && surface > filters.surfaceMax) return false;
+
+    const attrs = property.dynamicAttributes;
+    for (const opt of filters.exterieur) {
+      if (opt === 'Balcon') {
+        const v = attrs?.['Balcon/Terrasse'];
+        if (!v || v === 'N/A' || v === 'Terrasse') return false;
+      }
+      if (opt === 'Jardin' && !(attrs?.['Jardin'] && attrs['Jardin'] !== 'N/A')) return false;
+      if (opt === 'Terrasse') {
+        const hasTer = (attrs?.['Terrasse'] && attrs['Terrasse'] !== 'N/A') || attrs?.['Balcon/Terrasse'] === 'Terrasse';
+        if (!hasTer) return false;
+      }
+      if (opt === 'Piscine' && !(attrs?.['Piscine'] && attrs['Piscine'] !== 'N/A')) return false;
+    }
+
+    return true;
+  });
+
   // Function to render tags
   const renderTags = (tags: string[]): JSX.Element[] => {
     const tagColorMap: Record<string, string> = {
+      'À vendre': 'bg-green-500',
       'En vente': 'bg-green-500',
       Géolocalisé: 'bg-orange-400',
       SeLoger: 'bg-indigo-500',
@@ -372,47 +548,106 @@ const RecherchLouer: React.FC = () => {
     );
   };
 
+  const handleSelectLocationSuggestion = (suggestion: LocationSuggestion) => {
+    if (!searchParams) return;
+    const newParams: SearchParams = {
+      ...searchParams,
+      location: suggestion.adresse,
+      value: suggestion.value,
+      type: suggestion.type,
+    };
+    setShowLocationDropdown(false);
+    setLocationSuggestions([]);
+    setLocationEditQuery(suggestion.adresse);
+    fetchPage(0, undefined, newParams);
+  };
+
+  const handlePropertyTypeChange = (propertyType: 'Maison' | 'Appartement') => {
+    if (!searchParams) return;
+    const newParams: SearchParams = { ...searchParams, propertyType };
+    fetchPage(0, undefined, newParams);
+  };
+
+  // Input value: current location when dropdown closed, typed query when open
+  const locationInputValue =
+    showLocationDropdown ? locationEditQuery : (searchParams?.location ?? '');
+
   return (
     <div className="min-h-screen bg-gray-100">
       <RecherchLouerFilterBar
-        searchParams={searchParams}
+        maxPrice={MAX_PRICE}
+        mode={mode}
+        searchParams={
+          searchParams
+            ? {
+                ...searchParams,
+                maxBudget: searchParams.maxBudget
+                  ? `${searchParams.maxBudget}${mode === 'achat' ? ' €' : ' €/mois'}`
+                  : undefined,
+              }
+            : null
+        }
         filters={filters}
+        setFilters={setFilters}
+        onFiltersChange={newFilters => fetchPage(0, newFilters)}
         onFiltersClick={() => setIsFiltersOpen(true)}
+        locationInputValue={locationInputValue}
+        onLocationInputChange={v => {
+          setLocationEditQuery(v);
+          setShowLocationDropdown(true);
+        }}
+        onLocationFocus={() => {
+          setShowLocationDropdown(true);
+          setLocationEditQuery(searchParams?.location ?? '');
+        }}
+        showLocationDropdown={showLocationDropdown}
+        locationSuggestions={locationSuggestions}
+        locationSuggestionsLoading={locationSuggestionsLoading}
+        onSelectLocationSuggestion={handleSelectLocationSuggestion}
+        locationInputContainerRef={locationInputContainerRef}
+        onPropertyTypeChange={searchParams ? handlePropertyTypeChange : undefined}
       />
 
       {isFiltersOpen && (
-        <RecherchLouerFiltersModal filters={filters} setFilters={setFilters} onClose={() => setIsFiltersOpen(false)} />
+        <RecherchLouerFiltersModal
+          filters={filters}
+          setFilters={setFilters}
+          onClose={() => setIsFiltersOpen(false)}
+          onApply={appliedFilters => fetchPage(0, appliedFilters)}
+          mode={mode}
+          maxPrice={MAX_PRICE}
+        />
       )}
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Search parameters display */}
+        {/* Search results header: adresse recherchée + count (updates after each search/filter) */}
         {searchParams && (
           <motion.div
-            className="mb-6 p-4 bg-white rounded-lg shadow-sm border"
-            initial={{ opacity: 0, y: -20 }}
+            className="mb-6"
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.3 }}
           >
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">Résultats de recherche</h2>
-            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-              <span>
-                <strong>Localisation:</strong> {searchParams.location}
-              </span>
-              {searchParams.maxBudget && (
-                <span>
-                  <strong>Budget max:</strong> {searchParams.maxBudget} €/mois
+            <h1 className="text-xl font-bold text-gray-900">
+              Annonces {mode === 'achat' ? 'Ventes immobilières' : 'Locations'} {searchParams.propertyType || ''} {searchParams.location}
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              {isLoading ? (
+                <span className="inline-flex items-center gap-1">
+                  <span className="animate-pulse">…</span> annonces
                 </span>
+              ) : (
+                <>
+                  {totalElements} annonce{totalElements !== 1 ? 's' : ''}
+                  {totalPages > 1 && (
+                    <span className="text-gray-500 font-normal">
+                      {' '}(max 30 par page)
+                    </span>
+                  )}
+                </>
               )}
-              <span>
-                <strong>Type:</strong> {searchParams.propertyType}
-              </span>
-              {totalElements > 0 && (
-                <span>
-                  <strong>{totalElements}</strong> annonce{totalElements > 1 ? 's' : ''} trouvée{totalElements > 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
+            </p>
           </motion.div>
         )}
 
@@ -457,305 +692,18 @@ const RecherchLouer: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            {properties.length > 0 ? (
-              properties.map((property, index) => (
-                <motion.div
+            {filteredProperties.length > 0 ? (
+              filteredProperties.map((property, index) => (
+                <PropertySearchCard
                   key={property.id}
-                  className="bg-white rounded-3xl p-3 shadow-md overflow-hidden"
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}
-                >
-                  <ImageGallery images={property.images} tags={property.tags} />
-
-                  <div className="p-4">
-                    <motion.div
-                      className="flex justify-between items-start"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3, delay: 0.3 }}
-                    >
-                      <div className="flex-1">
-                        {/* Prix et prix par m² sur la même ligne */}
-                        <div className="flex items-center gap-3">
-                          <motion.h2 className="text-xl font-bold text-gray-900" whileHover={{ scale: 1.05 }}>
-                            <span className="text-lg  font-normal text-gray-600">Loyer</span> {property.price}/mois
-                          </motion.h2>
-                          <span className="text-sm text-gray-600">
-                            {(() => {
-                              const price = parseFloat(property.price.replace(/[^\d]/g, ''));
-                              const surface = property.surface
-                                ? parseFloat(property.surface.replace(/[^\d,]/g, '').replace(',', '.'))
-                                : null;
-                              if (surface && surface > 0) {
-                                const pricePerSqm = Math.round(price / surface);
-                                return `${pricePerSqm}€/m²`;
-                              }
-                              return '';
-                            })()}
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
-                    <motion.div
-                      className="mt-2 flex items-center gap-3"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3, delay: 0.4 }}
-                    >
-                      <span
-                        className={`inline-block text-white text-sm font-semibold px-3 py-1 rounded-full ${
-                          property.type === 'Appartement'
-                            ? 'bg-[#504CC5]'
-                            : property.type === 'Maison'
-                              ? 'bg-[#7A72D5]'
-                              : property.type === 'Terrain'
-                                ? 'bg-[#4F96D6]'
-                                : property.type === 'Local Commercial'
-                                  ? 'bg-[#205F9D]'
-                                  : property.type === 'Bien Multiple'
-                                    ? 'bg-[#022060]'
-                                    : property.type === 'Local'
-                                      ? 'bg-[#205F9D]'
-                                      : 'bg-gray-500'
-                        }`}
-                      >
-                        {property.type}
-                      </span>
-                      <div className="text-sm text-gray-600">
-                        {property.rooms && property.rooms !== 'N/A' && <span>{property.rooms} pièces</span>}
-                        {property.surface && property.surface !== 'N/A' && <span className="ml-2">{property.surface}</span>}
-                      </div>
-                    </motion.div>
-                    {property.description && property.description.trim() && (
-                      <motion.p
-                        className="text-gray-600 text-sm mt-1 line-clamp-2"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.3, delay: 0.5 }}
-                      >
-                        {property.description}
-                      </motion.p>
-                    )}
-
-                    {/* Détails supplémentaires simplifiés */}
-                    {(property.bathrooms && property.bathrooms !== 'N/A') ||
-                    (property.kitchen && property.kitchen !== 'N/A') ||
-                    (property.balcony && property.balcony !== 'N/A') ? (
-                      <motion.div
-                        className="mt-3 flex flex-wrap gap-2 text-xs"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.3, delay: 0.6 }}
-                      >
-                        {property.bathrooms && property.bathrooms !== 'N/A' && (
-                          <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded">{property.bathrooms} SDB</span>
-                        )}
-                        {property.kitchen && property.kitchen !== 'N/A' && (
-                          <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded">{property.kitchen}</span>
-                        )}
-                        {property.balcony && property.balcony !== 'N/A' && (
-                          <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded">{property.balcony}</span>
-                        )}
-                      </motion.div>
-                    ) : null}
-
-                    {/* SVG Icons Section with Text Labels */}
-                    <motion.div
-                      className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3, delay: 0.65 }}
-                    >
-                      {/* Terrain */}
-                      {property.dynamicAttributes?.['Terrain'] && property.dynamicAttributes['Terrain'] !== 'N/A' && (
-                        <div className="flex items-center gap-1">
-                          <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <g opacity="0.5" clipPath="url(#clip0_696_762)">
-                              <path
-                                d="M6.93498 15.9998C5.14607 15.0069 3.35322 14.014 1.56431 13.0211C1.11905 12.7748 0.677737 12.5246 0.23248 12.2823C0.070926 12.1963 0 12.0829 0 11.8992C0.00394033 9.29569 0.00394033 6.68831 0 4.08093C0 3.90502 0.0669856 3.79166 0.224599 3.70566C2.41148 2.49383 4.59443 1.28201 6.77343 0.0662746C6.9271 -0.0197259 7.06108 -0.023635 7.21475 0.0623655C9.40951 1.28201 11.6003 2.50165 13.7951 3.71739C13.9409 3.79948 13.9961 3.90893 13.9961 4.07312C13.9921 6.6844 13.9921 9.29569 13.9961 11.907C13.9961 12.0946 13.9133 12.2002 13.7557 12.2862C11.6516 13.4511 9.55137 14.6199 7.45117 15.7848C7.32902 15.8513 7.21081 15.9255 7.08866 15.9998C7.04137 15.9998 6.99015 15.9998 6.93498 15.9998Z"
-                                fill="black"
-                              />
-                            </g>
-                            <defs>
-                              <clipPath id="clip0_696_762">
-                                <rect width="14" height="16" fill="white" />
-                              </clipPath>
-                            </defs>
-                          </svg>
-                          <span>Terrain : {property.dynamicAttributes['Terrain']}</span>
-                        </div>
-                      )}
-
-                      {/* Piscine */}
-                      <div className="flex items-center gap-1">
-                        <svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <g opacity="0.5" clipPath="url(#clip0_696_773)">
-                            <path
-                              d="M12.681 0C12.7802 0.0333333 12.8877 0.0625 12.9828 0.108333C13.4128 0.308333 13.6733 0.65 13.7312 1.125C13.9048 2.575 14.0702 4.02917 14.2356 5.48333C14.31 6.1125 14.3844 6.74583 14.4547 7.375C14.4754 7.55417 14.3968 7.67083 14.2521 7.68333C14.1157 7.69583 14.0165 7.60833 13.9958 7.43333C13.9048 6.67917 13.8221 5.925 13.7312 5.17083C13.603 4.05417 13.4707 2.9375 13.3425 1.82083C13.3177 1.6125 13.2929 1.40833 13.2681 1.2C13.2185 0.766667 12.896 0.475 12.4619 0.470833C12.0443 0.466667 11.6267 0.470833 11.205 0.470833C8.34804 0.470833 5.49109 0.470833 2.63001 0.470833C2.07599 0.470833 1.78657 0.716667 1.72042 1.275C1.58398 2.4 1.45581 3.52917 1.32764 4.65417C1.19947 5.77083 1.06717 6.8875 0.938999 8.00417C0.810829 9.11667 0.682659 10.2292 0.554489 11.3375C0.529682 11.5667 0.50074 11.7917 0.471799 12.0208C0.409781 12.5125 0.761215 12.9417 1.25322 12.9417C2.98558 12.9458 4.71381 12.9458 6.44617 12.9417C6.46684 12.9417 6.48751 12.9375 6.52059 12.9333C6.52059 12.7458 6.52059 12.5542 6.52059 12.3458C6.45443 12.3458 6.39655 12.3458 6.33453 12.3458C4.77996 12.3458 3.22538 12.3458 1.66667 12.3458C1.24082 12.3458 1.05063 12.1167 1.10024 11.6917C1.26149 10.3208 1.4186 8.95 1.57985 7.58333C1.72869 6.3 1.88167 5.02083 2.03051 3.7375C2.11733 3.00833 2.20002 2.27917 2.28685 1.55C2.32406 1.2375 2.51011 1.0625 2.82434 1.0625C4.18459 1.0625 5.54071 1.0625 6.90096 1.0625C7.07875 1.0625 7.18624 1.15417 7.18624 1.3C7.18624 1.44167 7.07875 1.53333 6.89683 1.53333C5.58619 1.53333 4.27141 1.53333 2.96077 1.53333C2.89876 1.53333 2.83674 1.53333 2.75405 1.53333C2.35714 4.97917 1.95195 8.42083 1.55091 11.8708C2.29098 11.8708 3.01866 11.8708 3.767 11.8708C3.767 11.6417 3.767 11.4125 3.767 11.1875C3.77527 10.4458 4.06469 9.84167 4.65592 9.4C5.68128 8.63333 7.13249 8.92083 7.80642 10.0208C7.83536 10.0667 7.86017 10.1083 7.89324 10.1667C7.92218 10.1208 7.94699 10.0792 7.9718 10.0417C8.48448 9.1875 9.48503 8.78333 10.4194 9.04583C11.3662 9.3125 12.0154 10.1625 12.0278 11.1583C12.0319 11.3917 12.0278 11.625 12.0278 11.8708C12.5074 11.8708 12.9746 11.8708 13.4542 11.8708C13.0531 8.425 12.6479 4.9875 12.2469 1.53333C12.1766 1.53333 12.1187 1.53333 12.0567 1.53333C10.7585 1.53333 9.46436 1.53333 8.16612 1.53333C8.11651 1.53333 8.06276 1.5375 8.01314 1.52917C7.89324 1.50417 7.81882 1.425 7.81882 1.3C7.81882 1.18333 7.88497 1.10417 7.99661 1.075C8.04622 1.0625 8.09997 1.06667 8.14958 1.06667C9.47263 1.06667 10.7957 1.06667 12.1187 1.06667C12.5115 1.06667 12.6769 1.20833 12.7224 1.6C12.8877 3 13.049 4.4 13.2144 5.8C13.3756 7.17083 13.5368 8.5375 13.6981 9.90833C13.7725 10.5333 13.8469 11.1583 13.9172 11.7833C13.9503 12.0917 13.7312 12.3417 13.4169 12.3458C13.02 12.35 12.6231 12.3458 12.2221 12.3458C12.1642 12.3458 12.1104 12.3458 12.0443 12.3458C12.0443 12.5458 12.0443 12.7375 12.0443 12.9333C12.0898 12.9375 12.127 12.9417 12.1683 12.9417C12.6851 12.9417 13.202 12.9458 13.7188 12.9417C14.248 12.9375 14.5953 12.5167 14.5333 11.9917C14.401 10.8917 14.2769 9.79167 14.1488 8.6875C14.1446 8.65833 14.1446 8.625 14.1405 8.59583C14.1322 8.43333 14.2108 8.32917 14.3431 8.31667C14.4754 8.30417 14.5787 8.39167 14.5994 8.55C14.6366 8.82917 14.6656 9.10833 14.6986 9.3875C14.7979 10.2458 14.8888 11.1042 14.9963 11.9625C15.0914 12.7167 14.5333 13.3917 13.7808 13.4125C13.2598 13.425 12.7389 13.4167 12.2138 13.4167C12.1601 13.4167 12.1022 13.4167 12.0278 13.4167C12.0278 13.4875 12.0278 13.5417 12.0278 13.6C12.0278 14.2333 12.0278 14.8708 12.0278 15.5042C12.0278 15.8458 11.8748 16.0042 11.5399 16.0042C11.3332 16.0042 11.1264 16.0042 10.9197 16.0042C10.622 16.0042 10.498 15.9042 10.4318 15.6125C10.4277 15.5917 10.4194 15.575 10.4112 15.55C9.65454 15.55 8.90206 15.55 8.14958 15.55C8.04209 15.9375 7.9594 16 7.56248 16C7.3723 16 7.17797 16 6.98779 16C6.69424 15.9958 6.53712 15.8417 6.53712 15.5458C6.53299 14.9 6.53712 14.2542 6.53712 13.6083C6.53712 13.55 6.53712 13.4958 6.53712 13.4125C6.4627 13.4125 6.39655 13.4125 6.33453 13.4125C4.66006 13.4125 2.98558 13.4125 1.3111 13.4125C0.525548 13.4125 -0.0656873 12.7833 0.0128684 12.0292C0.0790205 11.3875 0.161711 10.7458 0.236132 10.1042C0.356033 9.075 0.475933 8.04583 0.595834 7.01667C0.728139 5.89583 0.856308 4.775 0.988613 3.65C1.08371 2.82917 1.1788 2.00833 1.27389 1.18333C1.33591 0.579167 1.68321 0.175 2.27031 0.0291667C2.28685 0.025 2.30339 0.0125 2.32406 0C5.77637 0 9.22869 0 12.681 0Z"
-                              fill="black"
-                            />
-                          </g>
-                          <defs>
-                            <clipPath id="clip0_696_773">
-                              <rect width="15" height="16" fill="white" />
-                            </clipPath>
-                          </defs>
-                        </svg>
-                        <span>Piscine</span>
-                      </div>
-
-                      {/* Meublé */}
-                      {property.tags.includes('Meublé') && (
-                        <div className="flex items-center gap-1">
-                          <svg width="21" height="16" viewBox="0 0 21 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <g opacity="0.5" clipPath="url(#clip0_697_782)">
-                              <path
-                                d="M21.0007 7.30979C20.9295 7.55435 20.8748 7.80979 20.7763 8.04348C20.5081 8.67935 20.0538 9.15761 19.4244 9.45652C19.2821 9.52174 19.2438 9.60326 19.2438 9.75C19.2493 10.712 19.2164 11.6794 19.2548 12.6413C19.2985 13.7065 18.6254 14.538 17.5034 14.625C17.5034 14.7174 17.5034 14.8098 17.5034 14.9022C17.4924 15.5652 17.0601 15.9946 16.3924 16C15.7411 16.0054 15.0953 16 14.444 16C13.7215 16 13.2946 15.5761 13.2946 14.8641C13.2946 14.788 13.2946 14.7174 13.2946 14.625C11.4338 14.625 9.58393 14.625 7.69573 14.625C7.69573 14.7174 7.69573 14.8152 7.69573 14.9185C7.68479 15.5652 7.24694 16 6.59018 16C5.93342 16.0054 5.27666 16 4.61989 16C3.91387 16 3.48698 15.5707 3.4815 14.8696C3.4815 14.788 3.4815 14.712 3.4815 14.6522C3.22974 14.587 2.9944 14.5543 2.7919 14.462C2.14061 14.163 1.76297 13.6522 1.75203 12.9348C1.73013 11.875 1.74108 10.8152 1.74655 9.75544C1.74655 9.59783 1.6973 9.52174 1.555 9.45109C0.389244 8.88044 -0.218262 7.58696 0.0718082 6.32609C0.361879 5.09239 1.49479 4.19022 2.78096 4.17935C3.00535 4.17935 3.22974 4.21739 3.48698 4.23913C3.48698 4.14674 3.4815 4.04892 3.48698 3.95109C3.51981 3.41305 3.48698 2.85326 3.60738 2.33152C3.91935 0.978264 5.16719 0.0163074 6.56282 0.00543787C9.16798 -0.00543169 11.7731 -0.0108665 14.3783 0.00543787C16.1187 0.0163074 17.4706 1.38587 17.4979 3.13044C17.5034 3.49457 17.4979 3.86413 17.4979 4.20109C17.8701 4.20109 18.2204 4.16848 18.5706 4.20652C19.7747 4.34239 20.7653 5.29348 20.9569 6.47826C20.9623 6.52174 20.9842 6.56522 20.9952 6.6087C21.0007 6.84783 21.0007 7.07609 21.0007 7.30979Z"
-                                fill="black"
-                              />
-                            </g>
-                            <defs>
-                              <clipPath id="clip0_697_782">
-                                <rect width="21" height="16" fill="white" />
-                              </clipPath>
-                            </defs>
-                          </svg>
-                          <span>Meublé</span>
-                        </div>
-                      )}
-
-                      {/* Balcon */}
-                      {property.dynamicAttributes?.['Balcon/Terrasse'] && property.dynamicAttributes['Balcon/Terrasse'] !== 'N/A' && (
-                        <div className="flex items-center gap-1">
-                          <svg width="20" height="16" viewBox="0 0 20 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <g opacity="0.5" clipPath="url(#clip0_697_793)">
-                              <path
-                                d="M0 15.5385C0 13.7962 0 12.05 0 10.3077C0.15625 9.96539 0.425781 9.83077 0.800781 9.86539C0.945312 9.88077 1.09375 9.86923 1.19141 9.86923C1.25781 9.65769 1.26172 9.43462 1.37891 9.33462C1.5 9.23077 1.72656 9.25 1.92188 9.21154C1.82422 8.86923 1.88672 8.55 2.15234 8.28462C2.42188 8.01538 2.75781 7.97692 3.12891 8.06538C3.12891 7.96923 3.12891 7.89231 3.12891 7.81538C3.12891 5.45 3.12891 3.08462 3.12891 0.723077C3.12891 0.226923 3.35938 0 3.85547 0C7.94922 0 12.043 0 16.1367 0C16.6445 0 16.8711 0.223077 16.8711 0.726923C16.8711 2.75 16.8711 4.77692 16.8711 6.8C16.8711 6.86539 16.8789 6.93077 16.8789 6.95C17.1172 6.89231 17.3438 6.79231 17.5742 6.79231C18.0039 6.79615 18.3281 7.1 18.418 7.51538C18.5 7.89615 18.3086 8.28462 17.9492 8.48846C17.8984 8.51538 17.8242 8.56538 17.8203 8.60769C17.8086 8.81538 17.8125 9.02692 17.8125 9.25C18.0195 9.25 18.1992 9.24615 18.3828 9.25C18.6484 9.25385 18.7461 9.35385 18.75 9.61154C18.75 9.69231 18.75 9.77308 18.75 9.86923C18.918 9.86923 19.0625 9.88077 19.2031 9.86539C19.5781 9.83077 19.8477 9.96539 20 10.3077C20 12.05 20 13.7962 20 15.5385C19.8555 15.8846 19.5859 16 19.2109 16C13.0703 15.9923 6.92969 15.9923 0.785156 16C0.414062 16 0.148438 15.8846 0 15.5385Z"
-                                fill="black"
-                              />
-                            </g>
-                            <defs>
-                              <clipPath id="clip0_697_793">
-                                <rect width="20" height="16" fill="white" />
-                              </clipPath>
-                            </defs>
-                          </svg>
-                          <span>Balcon</span>
-                        </div>
-                      )}
-
-                      {/* Jardin */}
-                      <div className="flex items-center gap-1">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <g opacity="0.5">
-                            <path d="M8 0C8 0 4 3 4 6C4 7.656 5.344 9 7 9V16H9V9C10.656 9 12 7.656 12 6C12 3 8 0 8 0Z" fill="black" />
-                          </g>
-                        </svg>
-                        <span>Jardin</span>
-                      </div>
-
-                      {/* Parking */}
-                      <div className="flex items-center gap-1">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <g opacity="0.5">
-                            <circle cx="8" cy="8" r="7.5" stroke="black" />
-                            <path
-                              d="M5 4H8.5C10.433 4 12 5.567 12 7.5C12 9.433 10.433 11 8.5 11H7V13H5V4ZM7 6V9H8.5C9.328 9 10 8.328 10 7.5C10 6.672 9.328 6 8.5 6H7Z"
-                              fill="black"
-                            />
-                          </g>
-                        </svg>
-                        <span>Parking</span>
-                      </div>
-
-                      {/* Terrasse */}
-                      <div className="flex items-center gap-1">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <g opacity="0.5">
-                            <rect x="2" y="6" width="12" height="8" stroke="black" fill="none" />
-                            <path d="M1 6L8 2L15 6" stroke="black" fill="none" />
-                          </g>
-                        </svg>
-                        <span>Terrasse</span>
-                      </div>
-
-                      {/* Cave */}
-                      <div className="flex items-center gap-1">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <g opacity="0.5">
-                            <rect x="3" y="5" width="10" height="9" stroke="black" fill="none" />
-                            <rect x="5" y="7" width="2" height="5" fill="black" />
-                            <rect x="9" y="7" width="2" height="5" fill="black" />
-                          </g>
-                        </svg>
-                        <span>Cave</span>
-                      </div>
-
-                      {/* Dernier étage */}
-                      <div className="flex items-center gap-1">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <g opacity="0.5">
-                            <rect x="3" y="10" width="10" height="2" fill="black" />
-                            <rect x="3" y="7" width="10" height="2" fill="black" />
-                            <rect x="3" y="4" width="10" height="2" fill="black" />
-                            <path d="M8 0L11 3H5L8 0Z" fill="black" />
-                          </g>
-                        </svg>
-                        <span>Dernier étage</span>
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      className="mt-3 flex items-center text-xs text-gray-500"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3, delay: 0.7 }}
-                    >
-                      <svg
-                        className="h-4 w-4 mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        ></path>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                      </svg>
-                      {property.address}
-                    </motion.div>
-
-                    <motion.div
-                      className="mt-4"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3, delay: 0.8 }}
-                    >
-                      <div className="flex items-center space-x-2">
-                        {property.Association.map((assoc, assocIndex) => (
-                          <motion.a
-                            key={assocIndex}
-                            href={property.Association_url[assocIndex]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-900"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <img src={ASSOCIATION_LOGOS[assoc] || ASSOCIATION_LOGOS.seloger} alt={assoc} className="h-4 w-4 object-contain" />
-                            <span>{associationDisplayNames[assoc] || assoc}</span>
-                          </motion.a>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </div>
-                </motion.div>
+                  property={property}
+                  index={index}
+                  mode={mode}
+                  associationDisplayNames={associationDisplayNames}
+                  ImageGallery={ImageGallery}
+                  priceLabel={mode === 'achat' ? 'Prix' : 'Loyer'}
+                  priceSuffix={mode === 'achat' ? ' €' : '/mois'}
+                />
               ))
             ) : (
               <motion.div
@@ -805,4 +753,4 @@ const RecherchLouer: React.FC = () => {
   );
 };
 
-export default RecherchLouer;
+export default PropertySearch;

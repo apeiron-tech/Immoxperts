@@ -1,7 +1,7 @@
 package com.apeiron.immoxperts.web.rest;
 
-import com.apeiron.immoxperts.service.DvfLouerService;
-import com.apeiron.immoxperts.service.dto.DvfLouerDto;
+import com.apeiron.immoxperts.service.DvfAchatService;
+import com.apeiron.immoxperts.service.dto.DvfAchatDto;
 import com.apeiron.immoxperts.service.dto.SuggestionDto;
 import java.math.BigDecimal;
 import java.util.List;
@@ -15,14 +15,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/louer")
-public class DvfLouerController {
+@RequestMapping("/api/achat")
+public class DvfAchatController {
 
     private static final int DEFAULT_PAGE_SIZE = 30;
 
-    private final DvfLouerService service;
+    private final DvfAchatService service;
 
-    public DvfLouerController(DvfLouerService service) {
+    public DvfAchatController(DvfAchatService service) {
         this.service = service;
     }
 
@@ -36,7 +36,7 @@ public class DvfLouerController {
     }
 
     @GetMapping("/search-with-filters")
-    public ResponseEntity<Page<DvfLouerDto>> searchWithFilters(
+    public ResponseEntity<Page<DvfAchatDto>> searchWithFilters(
         @RequestParam("value") String value,
         @RequestParam("type") String type,
         @RequestParam(value = "minBudget", required = false) BigDecimal minBudget,
@@ -48,9 +48,9 @@ public class DvfLouerController {
     ) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize);
-        Page<DvfLouerDto> louers = service.getLouersByLocationAndFiltersPaginated(
+        Page<DvfAchatDto> achats = service.getAchatsByLocationAndFiltersPaginated(
             value, type, minBudget, maxBudget, propertyType, chambres, pageable
         );
-        return ResponseEntity.ok(louers);
+        return ResponseEntity.ok(achats);
     }
 }

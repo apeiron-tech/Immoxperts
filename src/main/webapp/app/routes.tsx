@@ -34,7 +34,8 @@ import PropertyList from 'app/pages/PropertyList';
 import GeatMapPage from 'app/pages/GeatMapPage';
 import SearchBar from 'app/layouts/SearchBar';
 import { FilterState } from './types/filters';
-import RecherchLouer from './features/property/PropertySearch';
+import PropertySearch from './features/property/PropertySearch';
+import Achat from './pages/Achat';
 
 const loading = <div>loading ...</div>;
 
@@ -126,7 +127,9 @@ const AppRoutes = () => {
         <Route path="/politique-de-confidentialite" element={<PolitiqueConfidentialite />} />
         <Route path="/cookies" element={<Cookies />} />
         <Route path="/louer" element={<Louer />} />
-        <Route path="/RecherchLouer" element={<RecherchLouer />} />
+        <Route path="/RecherchLouer" element={<PropertySearch mode="louer" />} />
+        <Route path="/achat" element={<Achat />} />
+        <Route path="/RecherchAchat" element={<PropertySearch mode="achat" />} />
         <Route path="/estimation" element={<Estimation />} />
         <Route path="/streetStats" element={<StreetStats />} />
         <Route path="/geatmap" element={<GeatMapPage />} />
