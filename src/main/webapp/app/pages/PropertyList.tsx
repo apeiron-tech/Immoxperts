@@ -61,7 +61,7 @@ const calculatePricePerSqm = (price: number, builtSurface: number, landSurface: 
       return '';
     }
     const pricePerSqm = Math.round(price / landSurface);
-    return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+    return `${pricePerSqm.toLocaleString('fr-FR')} \u20AC/m²`;
   }
 
   if (!builtSurface || builtSurface <= 0) {
@@ -69,7 +69,7 @@ const calculatePricePerSqm = (price: number, builtSurface: number, landSurface: 
   }
 
   const pricePerSqm = Math.round(price / builtSurface);
-  return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+  return `${pricePerSqm.toLocaleString('fr-FR')} \u20AC/m²`;
 };
 
 // ===================================================================
@@ -324,7 +324,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
                 city: address.commune || '',
                 numericPrice: mutation.valeur || 0,
                 numericSurface: builtSurface,
-                price: `${Math.round(mutation.valeur || 0).toLocaleString('fr-FR')} €`,
+                price: `${Math.round(mutation.valeur || 0).toLocaleString('fr-FR')} \u20AC`,
                 surface: builtSurface > 0 ? `${builtSurface.toLocaleString('fr-FR')} m²` : '',
                 type: propertyType,
                 soldDate: mutation.date || '',
@@ -552,7 +552,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 pb-16 h-full">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 space-y-2 pb-16">
               {sortedProperties.length > 0 ? (
                 sortedProperties.map((property, index) => (
                   <PropertyCard

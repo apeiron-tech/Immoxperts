@@ -28,8 +28,14 @@ interface PropertyCardClickProps {
   compact?: boolean;
 }
 
+// Strip trailing euro (U+20AC) or replacement char so we can render € via HTML entity
+const priceNumberOnly = (s: string) => (s || '').replace(/\s*[\u20AC\uFFFD?€]\s*$/g, '').trim();
+const pricePerSqmWithEntity = (s: string) => (s || '').replace(/\s*[\u20AC€]/g, ' &#8364;').replace(/\uFFFD|^\s*\?/g, ' &#8364;').trim() || '';
+
 const PropertyCardClick: React.FC<PropertyCardClickProps> = ({ property, onClick, compact }) => {
   const { address, city, price, pricePerSqm, type, surface, rooms, soldDate, terrain } = property;
+  const priceLabel = priceNumberOnly(price);
+  const pricePerSqmLabel = pricePerSqmWithEntity(pricePerSqm) || pricePerSqm;
 
   // Helper functions (same as in hover popup)
   const getPropertyTypeColor = (propertyType: string) => {

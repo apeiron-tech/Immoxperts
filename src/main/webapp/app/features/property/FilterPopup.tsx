@@ -54,7 +54,6 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     if (isPriceSlider) {
       rangeMin = priceMinValue;
       rangeMax = priceMaxValue;
-      currentStep = priceStep;
     } else if (isSurfaceSlider) {
       rangeMin = surfaceMinValue;
       rangeMax = surfaceMaxValue;
@@ -77,23 +76,25 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
       currentStep = step;
     }
 
-    // Convert percentage to actual value using the full range
-    const valueRange = rangeMax - rangeMin;
-    const newValue = rangeMin + (percentage / 100) * valueRange;
-
-    // Round to nearest step
-    const steppedValue = Math.round(newValue / currentStep) * currentStep;
+    let steppedValue: number;
+    if (isPriceSlider) {
+      steppedValue = pricePercentToValue(percentage);
+    } else {
+      const valueRange = rangeMax - rangeMin;
+      const newValue = rangeMin + (percentage / 100) * valueRange;
+      steppedValue = Math.round(newValue / currentStep) * currentStep;
+    }
 
     if (thumb === 'min') {
-      // Ensure min doesn't go above max and stays within bounds
-      const newMin = Math.max(rangeMin, Math.min(steppedValue, max - currentStep));
+      const minStep = isPriceSlider ? 25000 : currentStep;
+      const newMin = Math.max(rangeMin, Math.min(steppedValue, max - minStep));
       if (newMin !== min) {
         setMin(newMin);
         onChange?.(newMin, max);
       }
     } else if (thumb === 'max') {
-      // Ensure max doesn't go below min and stays within bounds
-      const newMax = Math.min(rangeMax, Math.max(steppedValue, min + currentStep));
+      const minStep = isPriceSlider ? 25000 : currentStep;
+      const newMax = Math.min(rangeMax, Math.max(steppedValue, min + minStep));
       if (newMax !== max) {
         setMax(newMax);
         onChange?.(min, newMax);
@@ -133,7 +134,6 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     if (isPriceSlider) {
       rangeMin = priceMinValue;
       rangeMax = priceMaxValue;
-      currentStep = priceStep;
     } else if (isSurfaceSlider) {
       rangeMin = surfaceMinValue;
       rangeMax = surfaceMaxValue;
@@ -156,18 +156,25 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
       currentStep = step;
     }
 
-    const valueRange = rangeMax - rangeMin;
-    const newValue = rangeMin + (percentage / 100) * valueRange;
-    const steppedValue = Math.round(newValue / currentStep) * currentStep;
+    let steppedValue: number;
+    if (isPriceSlider) {
+      steppedValue = pricePercentToValue(percentage);
+    } else {
+      const valueRange = rangeMax - rangeMin;
+      const newValue = rangeMin + (percentage / 100) * valueRange;
+      steppedValue = Math.round(newValue / currentStep) * currentStep;
+    }
 
     if (thumb === 'min') {
-      const newMin = Math.max(rangeMin, Math.min(steppedValue, max - currentStep));
+      const minStep = isPriceSlider ? 25000 : currentStep;
+      const newMin = Math.max(rangeMin, Math.min(steppedValue, max - minStep));
       if (newMin !== min) {
         setMin(newMin);
         onChange?.(newMin, max);
       }
     } else if (thumb === 'max') {
-      const newMax = Math.min(rangeMax, Math.max(steppedValue, min + currentStep));
+      const minStep = isPriceSlider ? 25000 : currentStep;
+      const newMax = Math.min(rangeMax, Math.max(steppedValue, min + minStep));
       if (newMax !== max) {
         setMax(newMax);
         onChange?.(min, newMax);
@@ -182,10 +189,32 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
   const isPricePerSqmSlider = type === 'pricePerSqm';
   const isDateSlider = type === 'date';
 
-  // Price-specific values
+  // Price-specific values: precomputed ticks for even bar spacing (same distance between each value)
   const priceMinValue = 0;
-  const priceMaxValue = 20000000; // 20M €
-  const priceStep = 25000; // 25k € steps
+  const priceMaxValue = 25000000; // 25M €
+  const priceTicks = (() => {
+    const ticks: number[] = [];
+    for (let v = 0; v <= 200000; v += 25000) ticks.push(v);
+    for (let v = 250000; v <= 600000; v += 50000) ticks.push(v);
+    for (let v = 700000; v <= 2000000; v += 100000) ticks.push(v);
+    for (let v = 3000000; v <= 5000000; v += 1000000) ticks.push(v);
+    for (let v = 10000000; v <= 25000000; v += 5000000) ticks.push(v);
+    return ticks;
+  })();
+  const pricePercentToValue = (pct: number): number => {
+    const idx = Math.round((pct / 100) * (priceTicks.length - 1));
+    return priceTicks[Math.max(0, Math.min(idx, priceTicks.length - 1))];
+  };
+  const priceValueToPercent = (val: number): number => {
+    const idx = priceTicks.findIndex(t => t >= val);
+    if (idx < 0) return 100;
+    if (idx === 0) return 0;
+    if (idx >= priceTicks.length || val >= priceTicks[priceTicks.length - 1]) return 100;
+    const lo = priceTicks[idx - 1];
+    const hi = priceTicks[idx];
+    const frac = (hi - lo) > 0 ? (val - lo) / (hi - lo) : 0;
+    return ((idx - 1 + frac) / (priceTicks.length - 1)) * 100;
+  };
 
   // Surface-specific values
   const surfaceMinValue = 0;
@@ -210,7 +239,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
   // Calculate positions as percentages
   const getMinPosition = () => {
     if (isPriceSlider) {
-      return ((min - priceMinValue) / (priceMaxValue - priceMinValue)) * 100;
+      return priceValueToPercent(min);
     } else if (isSurfaceSlider) {
       return ((min - surfaceMinValue) / (surfaceMaxValue - surfaceMinValue)) * 100;
     } else if (isTerrainSlider) {
@@ -225,7 +254,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
 
   const getMaxPosition = () => {
     if (isPriceSlider) {
-      return ((max - priceMinValue) / (priceMaxValue - priceMinValue)) * 100;
+      return priceValueToPercent(max);
     } else if (isSurfaceSlider) {
       return ((max - surfaceMinValue) / (surfaceMaxValue - surfaceMinValue)) * 100;
     } else if (isTerrainSlider) {
@@ -453,19 +482,42 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
       quatrePieces: false,
       cinqPiecesPlus: false,
     },
-    priceRange: [0, 20000000], // 0 to 20M €
+    priceRange: [0, 25000000], // 0 to 25M €
     surfaceRange: [0, 400], // 0 to 400m²
     terrainRange: [0, 50000], // 0 to 50,000m²
     pricePerSqmRange: [0, 40000], // 0 to 40k €/m²
     dateRange: [0, 139], // January 2014 to August 2025 (months)
   };
 
-  const [filters, setFilters] = useState<FilterState>(currentFilters || defaultFilters);
+  // Snap price to nearest valid tick (keeps bar spacing consistent)
+  const snapPriceToTick = (val: number): number => {
+    const ticks = [0, 25000, 50000, 75000, 100000, 125000, 150000, 175000, 200000];
+    for (let v = 250000; v <= 600000; v += 50000) ticks.push(v);
+    for (let v = 700000; v <= 2000000; v += 100000) ticks.push(v);
+    for (let v = 3000000; v <= 5000000; v += 1000000) ticks.push(v);
+    for (let v = 10000000; v <= 25000000; v += 5000000) ticks.push(v);
+    let best = ticks[0];
+    for (const t of ticks) {
+      if (Math.abs(t - val) < Math.abs(best - val)) best = t;
+    }
+    return best;
+  };
+
+  const [filters, setFilters] = useState<FilterState>(() => {
+    const init = currentFilters || defaultFilters;
+    return {
+      ...init,
+      priceRange: [snapPriceToTick(init.priceRange[0]), snapPriceToTick(init.priceRange[1])] as [number, number],
+    };
+  });
 
   // Update local state when currentFilters prop changes
   useEffect(() => {
     if (currentFilters) {
-      setFilters(currentFilters);
+      setFilters(prev => ({
+        ...currentFilters,
+        priceRange: [snapPriceToTick(currentFilters.priceRange[0]), snapPriceToTick(currentFilters.priceRange[1])] as [number, number],
+      }));
     }
   }, [currentFilters]);
 
@@ -539,7 +591,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     const minPrice = Math.round(filters.priceRange[0]);
     const maxPrice = Math.round(filters.priceRange[1]);
     const priceMinValue = 0;
-    const priceMaxValue = 20000000;
+    const priceMaxValue = 25000000;
 
     if (minPrice === priceMinValue && maxPrice === priceMaxValue) {
       return 'Toutes les valeurs';
@@ -990,7 +1042,6 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
                       type="price"
                       minValue={filters.priceRange[0]}
                       maxValue={filters.priceRange[1]}
-                      step={25000}
                       onChange={(min, max) => handleRangeChange('priceRange', min, max)}
                     />
                   </div>

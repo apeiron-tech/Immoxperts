@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import './styles/mapbox-popup.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-mapboxgl.accessToken = 'pk.eyJ1IjoiaW1tb3hwZXJ0IiwiYSI6ImNtZXV3bGtyNzBiYmQybXNoMnE5NmUzYWsifQ.mGxg2EbZxRAQJ4sOapI63w';
+mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
 
 interface MapRef {
   current: mapboxgl.Map | null;

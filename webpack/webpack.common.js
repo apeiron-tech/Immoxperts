@@ -94,6 +94,7 @@ module.exports = async options => {
           DEVELOPMENT: JSON.stringify(development),
           VERSION: JSON.stringify(environment.VERSION),
           SERVER_API_URL: JSON.stringify(environment.SERVER_API_URL),
+          MAPBOX_ACCESS_TOKEN: JSON.stringify(environment.MAPBOX_ACCESS_TOKEN),
         }),
 
         new ESLintPlugin({

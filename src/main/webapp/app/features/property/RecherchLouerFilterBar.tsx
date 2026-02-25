@@ -169,11 +169,11 @@ export function RecherchLouerFilterBar({
     searchParams != null;
 
   return (
-    <header className="mt-10 rounded-2xl">
+    <header className="relative z-20 mt-10 rounded-2xl">
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-2">
         {/* Top row: search bar + primary filters */}
         <motion.div
-          className="flex flex-wrap gap-2 sm:gap-3 items-center bg-white rounded-xl border border-gray-200 shadow-sm p-2 sm:p-3"
+          className="relative flex flex-wrap gap-2 sm:gap-3 items-center bg-white rounded-xl border border-gray-200 shadow-sm p-2 sm:p-3"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
@@ -201,7 +201,7 @@ export function RecherchLouerFilterBar({
                 <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
               </div>
               {showLocationDropdown && (
-                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-[100] left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                   {locationSuggestionsLoading ? (
                     <div className="px-4 py-3 text-gray-500 text-sm">Recherche…</div>
                   ) : locationSuggestions.length > 0 ? (

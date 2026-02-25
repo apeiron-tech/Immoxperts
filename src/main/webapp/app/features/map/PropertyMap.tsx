@@ -194,7 +194,7 @@ const formatPricePerSqm = (price?: number | null, surface?: number | null, terra
       return '';
     }
     const pricePerSqm = Math.round(price / terrain);
-    return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+    return `${pricePerSqm.toLocaleString('fr-FR')} \u20AC/m²`;
   }
 
   if (typeof surface !== 'number' || Number.isNaN(surface) || surface <= 0) {
@@ -202,11 +202,11 @@ const formatPricePerSqm = (price?: number | null, surface?: number | null, terra
   }
 
   const pricePerSqm = Math.round(price / surface);
-  return `${pricePerSqm.toLocaleString('fr-FR')} €/m²`;
+  return `${pricePerSqm.toLocaleString('fr-FR')} \u20AC/m²`;
 };
 
-// Set access token
-mapboxgl.accessToken = 'pk.eyJ1IjoiaW1tb3hwZXJ0IiwiYSI6ImNtZXV3bGtyNzBiYmQybXNoMnE5NmUzYWsifQ.mGxg2EbZxRAQJ4sOapI63w';
+// Set access token from environment (set MAPBOX_ACCESS_TOKEN in .env or environment)
+mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
 
 // Debounce utility
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -1241,7 +1241,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         propertyType: '0,1,2,4,5', // All property types
         roomCount: '1,2,3,4,5,6,7,8,9,10', // All room counts at startup
         minSellPrice: '0',
-        maxSellPrice: '20000000',
+        maxSellPrice: '25000000',
         minSquareMeterPrice: '0',
         maxSquareMeterPrice: '40000',
         minDate: '2013-12-31',
@@ -2177,7 +2177,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                     };
 
                     const formatPrice = price => {
-                      return `${Math.round(price).toLocaleString('fr-FR')} €`;
+                      return `${Math.round(price).toLocaleString('fr-FR')} \u20AC`;
                     };
 
                     // Get the first mutation for display
@@ -2221,11 +2221,12 @@ const PropertyMap: React.FC<MapPageProps> = ({
                         const priceFormatted = formatPrice(price);
                         const pricePerSqm = formatPricePerSqm(price, surface, terrain, propertyTypeLabel);
 
-                        // Build the details string, only showing non-zero values
+                        const eAcute = '&#' + String.fromCharCode(50, 51, 50) + ';';
+                        const pieceLabel = 'Pi' + eAcute + 'ce';
                         const details = [];
                         if (rooms > 0)
                           details.push(
-                            `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
+                            `<span style="color: rgba(12, 12, 12, 0.75);">${pieceLabel} </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${rooms}</span>`,
                           );
                         if (surface > 0)
                           details.push(

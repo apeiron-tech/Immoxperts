@@ -458,7 +458,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
   const defaultFilters = {
     propertyTypes: { maison: false, terrain: false, appartement: false, biensMultiples: false, localCommercial: false },
     roomCounts: { studio: false, deuxPieces: false, troisPieces: false, quatrePieces: false, cinqPiecesPlus: false },
-    priceRange: [0, 20000000] as [number, number],
+    priceRange: [0, 25000000] as [number, number],
     surfaceRange: [0, 400] as [number, number],
     terrainRange: [0, 50000] as [number, number],
     pricePerSqmRange: [0, 40000] as [number, number],
@@ -564,7 +564,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
     });
 
     const [priceMin, priceMax] = currentFilters.priceRange;
-    if (priceMin > 0 || priceMax < 20000000) {
+    if (priceMin > 0 || priceMax < 25000000) {
       chips.push({
         id: 'price',
         label: `Prix ${fmtPrice(priceMin)}-${fmtPrice(priceMax)}`,

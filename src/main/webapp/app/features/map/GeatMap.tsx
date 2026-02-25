@@ -6,7 +6,7 @@ import { API_ENDPOINTS } from 'app/config/api.config';
 const TILE_BASE = API_ENDPOINTS.geatmapTiles;
 
 // Use same token as PropertyMap
-mapboxgl.accessToken = 'pk.eyJ1IjoiaW1tb3hwZXJ0IiwiYSI6ImNtZXV3bGtyNzBiYmQybXNoMnE5NmUzYWsifQ.mGxg2EbZxRAQJ4sOapI63w';
+mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
 
 // Backend tiles: put regions.mbtiles, departements.mbtiles, communes.mbtiles in ./tiles folder
 const GEATMAP_REGIONS_SOURCE = 'geatmap-regions';

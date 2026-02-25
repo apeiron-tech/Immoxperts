@@ -101,10 +101,12 @@ const MobilePropertyBottomSheet: React.FC<MobilePropertyBottomSheetProps> = ({
             {/* Characteristics: pieces, terrain, surface */}
             {!property.noMutation &&
               (() => {
+                const eAcute = '&#' + String.fromCharCode(50, 51, 50) + ';';
+                const pieceLabel = 'Pi' + eAcute + 'ce ';
                 const details = [];
                 if (property.rooms && property.rooms !== '' && property.rooms !== '0') {
                   details.push(
-                    `<span style="color: rgba(12, 12, 12, 0.75);">Pièce </span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.rooms}</span>`,
+                    `<span style="color: rgba(12, 12, 12, 0.75);">${pieceLabel}</span><span style="font-family: Inter; font-weight: 600; font-size: 14px; line-height: 100%; letter-spacing: 0%;">${property.rooms}</span>`,
                   );
                 }
                 if (property.surface && property.surface !== '' && property.surface !== '0 m²') {
