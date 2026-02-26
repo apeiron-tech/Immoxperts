@@ -61,11 +61,11 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     } else if (isTerrainSlider) {
       rangeMin = terrainMinValue;
       rangeMax = terrainMaxValue;
-      currentStep = terrainStep;
+      currentStep = 50; // unused - terrain uses tick-based logic
     } else if (isPricePerSqmSlider) {
       rangeMin = pricePerSqmMinValue;
       rangeMax = pricePerSqmMaxValue;
-      currentStep = pricePerSqmStep;
+      currentStep = 100; // unused - pricePerSqm uses tick-based logic
     } else if (isDateSlider) {
       rangeMin = dateMinValue;
       rangeMax = dateMaxValue;
@@ -79,6 +79,10 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     let steppedValue: number;
     if (isPriceSlider) {
       steppedValue = pricePercentToValue(percentage);
+    } else if (isTerrainSlider) {
+      steppedValue = terrainPercentToValue(percentage);
+    } else if (isPricePerSqmSlider) {
+      steppedValue = pricePerSqmPercentToValue(percentage);
     } else {
       const valueRange = rangeMax - rangeMin;
       const newValue = rangeMin + (percentage / 100) * valueRange;
@@ -86,14 +90,14 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     }
 
     if (thumb === 'min') {
-      const minStep = isPriceSlider ? 25000 : currentStep;
+      const minStep = isPriceSlider ? 25000 : isTerrainSlider ? 50 : isPricePerSqmSlider ? 100 : currentStep;
       const newMin = Math.max(rangeMin, Math.min(steppedValue, max - minStep));
       if (newMin !== min) {
         setMin(newMin);
         onChange?.(newMin, max);
       }
     } else if (thumb === 'max') {
-      const minStep = isPriceSlider ? 25000 : currentStep;
+      const minStep = isPriceSlider ? 25000 : isTerrainSlider ? 50 : isPricePerSqmSlider ? 100 : currentStep;
       const newMax = Math.min(rangeMax, Math.max(steppedValue, min + minStep));
       if (newMax !== max) {
         setMax(newMax);
@@ -141,11 +145,11 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     } else if (isTerrainSlider) {
       rangeMin = terrainMinValue;
       rangeMax = terrainMaxValue;
-      currentStep = terrainStep;
+      currentStep = 50; // unused - terrain uses tick-based logic
     } else if (isPricePerSqmSlider) {
       rangeMin = pricePerSqmMinValue;
       rangeMax = pricePerSqmMaxValue;
-      currentStep = pricePerSqmStep;
+      currentStep = 100; // unused - pricePerSqm uses tick-based logic
     } else if (isDateSlider) {
       rangeMin = dateMinValue;
       rangeMax = dateMaxValue;
@@ -159,6 +163,10 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     let steppedValue: number;
     if (isPriceSlider) {
       steppedValue = pricePercentToValue(percentage);
+    } else if (isTerrainSlider) {
+      steppedValue = terrainPercentToValue(percentage);
+    } else if (isPricePerSqmSlider) {
+      steppedValue = pricePerSqmPercentToValue(percentage);
     } else {
       const valueRange = rangeMax - rangeMin;
       const newValue = rangeMin + (percentage / 100) * valueRange;
@@ -166,14 +174,14 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     }
 
     if (thumb === 'min') {
-      const minStep = isPriceSlider ? 25000 : currentStep;
+      const minStep = isPriceSlider ? 25000 : isTerrainSlider ? 50 : isPricePerSqmSlider ? 100 : currentStep;
       const newMin = Math.max(rangeMin, Math.min(steppedValue, max - minStep));
       if (newMin !== min) {
         setMin(newMin);
         onChange?.(newMin, max);
       }
     } else if (thumb === 'max') {
-      const minStep = isPriceSlider ? 25000 : currentStep;
+      const minStep = isPriceSlider ? 25000 : isTerrainSlider ? 50 : isPricePerSqmSlider ? 100 : currentStep;
       const newMax = Math.min(rangeMax, Math.max(steppedValue, min + minStep));
       if (newMax !== max) {
         setMax(newMax);
@@ -221,15 +229,54 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
   const surfaceMaxValue = 400; // 400m²
   const surfaceStep = 10; // 10m² steps
 
-  // Terrain-specific values
+  // Terrain-specific values: precomputed ticks for even bar spacing
   const terrainMinValue = 0;
   const terrainMaxValue = 50000; // 50,000m²
-  const terrainStep = 50; // 50m² steps (changes to 1000m² after 1000m²)
+  const terrainTicks = (() => {
+    const ticks: number[] = [];
+    for (let v = 0; v <= 500; v += 50) ticks.push(v);
+    for (let v = 600; v <= 1000; v += 100) ticks.push(v);
+    for (let v = 1500; v <= 5000; v += 500) ticks.push(v);
+    for (let v = 6000; v <= 50000; v += 1000) ticks.push(v);
+    return ticks;
+  })();
+  const terrainPercentToValue = (pct: number): number => {
+    const idx = Math.round((pct / 100) * (terrainTicks.length - 1));
+    return terrainTicks[Math.max(0, Math.min(idx, terrainTicks.length - 1))];
+  };
+  const terrainValueToPercent = (val: number): number => {
+    const idx = terrainTicks.findIndex(t => t >= val);
+    if (idx < 0) return 100;
+    if (idx === 0) return 0;
+    if (idx >= terrainTicks.length || val >= terrainTicks[terrainTicks.length - 1]) return 100;
+    const lo = terrainTicks[idx - 1];
+    const hi = terrainTicks[idx];
+    const frac = (hi - lo) > 0 ? (val - lo) / (hi - lo) : 0;
+    return ((idx - 1 + frac) / (terrainTicks.length - 1)) * 100;
+  };
 
-  // Price per m² specific values
+  // Price per m² specific values: precomputed ticks for even bar spacing (0 to 40000, step 100)
   const pricePerSqmMinValue = 0;
   const pricePerSqmMaxValue = 40000; // 40k €/m²
-  const pricePerSqmStep = 100; // 100€/m² steps
+  const pricePerSqmTicks = (() => {
+    const ticks: number[] = [];
+    for (let v = 0; v <= 40000; v += 100) ticks.push(v);
+    return ticks;
+  })();
+  const pricePerSqmPercentToValue = (pct: number): number => {
+    const idx = Math.round((pct / 100) * (pricePerSqmTicks.length - 1));
+    return pricePerSqmTicks[Math.max(0, Math.min(idx, pricePerSqmTicks.length - 1))];
+  };
+  const pricePerSqmValueToPercent = (val: number): number => {
+    const idx = pricePerSqmTicks.findIndex(t => t >= val);
+    if (idx < 0) return 100;
+    if (idx === 0) return 0;
+    if (idx >= pricePerSqmTicks.length || val >= pricePerSqmTicks[pricePerSqmTicks.length - 1]) return 100;
+    const lo = pricePerSqmTicks[idx - 1];
+    const hi = pricePerSqmTicks[idx];
+    const frac = (hi - lo) > 0 ? (val - lo) / (hi - lo) : 0;
+    return ((idx - 1 + frac) / (pricePerSqmTicks.length - 1)) * 100;
+  };
 
   // Date-specific values (months since 2014)
   const dateMinValue = 0; // January 2014
@@ -243,9 +290,9 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     } else if (isSurfaceSlider) {
       return ((min - surfaceMinValue) / (surfaceMaxValue - surfaceMinValue)) * 100;
     } else if (isTerrainSlider) {
-      return ((min - terrainMinValue) / (terrainMaxValue - terrainMinValue)) * 100;
+      return terrainValueToPercent(min);
     } else if (isPricePerSqmSlider) {
-      return ((min - pricePerSqmMinValue) / (pricePerSqmMaxValue - pricePerSqmMinValue)) * 100;
+      return pricePerSqmValueToPercent(min);
     } else if (isDateSlider) {
       return ((min - dateMinValue) / (dateMaxValue - dateMinValue)) * 100;
     }
@@ -258,9 +305,9 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     } else if (isSurfaceSlider) {
       return ((max - surfaceMinValue) / (surfaceMaxValue - surfaceMinValue)) * 100;
     } else if (isTerrainSlider) {
-      return ((max - terrainMinValue) / (terrainMaxValue - terrainMinValue)) * 100;
+      return terrainValueToPercent(max);
     } else if (isPricePerSqmSlider) {
-      return ((max - pricePerSqmMinValue) / (pricePerSqmMaxValue - pricePerSqmMinValue)) * 100;
+      return pricePerSqmValueToPercent(max);
     } else if (isDateSlider) {
       return ((max - dateMinValue) / (dateMaxValue - dateMinValue)) * 100;
     }
@@ -489,7 +536,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     dateRange: [0, 139], // January 2014 to August 2025 (months)
   };
 
-  // Snap price to nearest valid tick (keeps bar spacing consistent)
+  // Snap to nearest valid tick (keeps bar spacing consistent)
   const snapPriceToTick = (val: number): number => {
     const ticks = [0, 25000, 50000, 75000, 100000, 125000, 150000, 175000, 200000];
     for (let v = 250000; v <= 600000; v += 50000) ticks.push(v);
@@ -502,12 +549,30 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     }
     return best;
   };
+  const snapTerrainToTick = (val: number): number => {
+    const ticks: number[] = [];
+    for (let v = 0; v <= 500; v += 50) ticks.push(v);
+    for (let v = 600; v <= 1000; v += 100) ticks.push(v);
+    for (let v = 1500; v <= 5000; v += 500) ticks.push(v);
+    for (let v = 6000; v <= 50000; v += 1000) ticks.push(v);
+    let best = ticks[0];
+    for (const t of ticks) {
+      if (Math.abs(t - val) < Math.abs(best - val)) best = t;
+    }
+    return best;
+  };
+  const snapPricePerSqmToTick = (val: number): number => {
+    const stepped = Math.round(val / 100) * 100;
+    return Math.max(0, Math.min(40000, stepped));
+  };
 
   const [filters, setFilters] = useState<FilterState>(() => {
     const init = currentFilters || defaultFilters;
     return {
       ...init,
       priceRange: [snapPriceToTick(init.priceRange[0]), snapPriceToTick(init.priceRange[1])] as [number, number],
+      terrainRange: [snapTerrainToTick(init.terrainRange[0]), snapTerrainToTick(init.terrainRange[1])] as [number, number],
+      pricePerSqmRange: [snapPricePerSqmToTick(init.pricePerSqmRange[0]), snapPricePerSqmToTick(init.pricePerSqmRange[1])] as [number, number],
     };
   });
 
@@ -517,6 +582,8 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
       setFilters(prev => ({
         ...currentFilters,
         priceRange: [snapPriceToTick(currentFilters.priceRange[0]), snapPriceToTick(currentFilters.priceRange[1])] as [number, number],
+        terrainRange: [snapTerrainToTick(currentFilters.terrainRange[0]), snapTerrainToTick(currentFilters.terrainRange[1])] as [number, number],
+        pricePerSqmRange: [snapPricePerSqmToTick(currentFilters.pricePerSqmRange[0]), snapPricePerSqmToTick(currentFilters.pricePerSqmRange[1])] as [number, number],
       }));
     }
   }, [currentFilters]);
