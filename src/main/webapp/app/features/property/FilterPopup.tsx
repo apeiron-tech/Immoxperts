@@ -255,12 +255,13 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ minValue = 0, maxValue = 100,
     return ((idx - 1 + frac) / (terrainTicks.length - 1)) * 100;
   };
 
-  // Price per m² specific values: precomputed ticks for even bar spacing (0 to 40000, step 100)
+  // Price per m² specific values: precomputed ticks for even bar spacing (variable steps)
   const pricePerSqmMinValue = 0;
   const pricePerSqmMaxValue = 40000; // 40k €/m²
   const pricePerSqmTicks = (() => {
     const ticks: number[] = [];
-    for (let v = 0; v <= 40000; v += 100) ticks.push(v);
+    for (let v = 0; v <= 5000; v += 100) ticks.push(v);
+    for (let v = 6000; v <= 40000; v += 1000) ticks.push(v);
     return ticks;
   })();
   const pricePerSqmPercentToValue = (pct: number): number => {
@@ -562,8 +563,14 @@ const FilterPopup: React.FC<FilterPopupProps> = ({ isOpen, onClose, onApply, cur
     return best;
   };
   const snapPricePerSqmToTick = (val: number): number => {
-    const stepped = Math.round(val / 100) * 100;
-    return Math.max(0, Math.min(40000, stepped));
+    const ticks: number[] = [];
+    for (let v = 0; v <= 5000; v += 100) ticks.push(v);
+    for (let v = 6000; v <= 40000; v += 1000) ticks.push(v);
+    let best = ticks[0];
+    for (const t of ticks) {
+      if (Math.abs(t - val) < Math.abs(best - val)) best = t;
+    }
+    return best;
   };
 
   const [filters, setFilters] = useState<FilterState>(() => {
