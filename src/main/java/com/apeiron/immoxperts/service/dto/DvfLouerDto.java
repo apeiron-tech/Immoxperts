@@ -22,6 +22,22 @@ public class DvfLouerDto {
     private String propertyUrl;
     private List<String> images;
 
+    /** From detail MV: surface (m²), chambre, pieces, DPE, terrain_sqm - for display and search */
+    private BigDecimal surface;
+    private Integer chambre;
+    private Integer pieces;
+    private String dpe;
+    private BigDecimal terrainSqm;
+    private String piscine;
+    private String meuble;
+    private String terrasse;
+    private String balcon;
+    private String cave;
+    private String jardin;
+    private String parking;
+    private String etage;
+
+
     // Default constructor
     public DvfLouerDto() {}
 
@@ -144,5 +160,109 @@ public class DvfLouerDto {
 
     public void setImages(List<String> images) {
         this.images = images;
+    }
+
+    public BigDecimal getSurface() {
+        return surface;
+    }
+
+    public void setSurface(BigDecimal surface) {
+        this.surface = surface;
+    }
+
+    public Integer getChambre() {
+        return chambre;
+    }
+
+    public void setChambre(Integer chambre) {
+        this.chambre = chambre;
+    }
+
+    public Integer getPieces() {
+        return pieces;
+    }
+
+    public void setPieces(Integer pieces) {
+        this.pieces = pieces;
+    }
+
+    public String getDpe() {
+        return dpe;
+    }
+
+    public void setDpe(String dpe) {
+        this.dpe = dpe;
+    }
+
+    public BigDecimal getTerrainSqm() {
+        return terrainSqm;
+    }
+
+    public void setTerrainSqm(BigDecimal terrainSqm) {
+        this.terrainSqm = terrainSqm;
+    }
+
+    public String getPiscine() {
+        return piscine;
+    }
+
+    public void setPiscine(String piscine) {
+        this.piscine = piscine;
+    }
+
+    public String getMeuble() {
+        return meuble;
+    }
+
+    public void setMeuble(String meuble) {
+        this.meuble = meuble;
+    }
+
+    public String getTerrasse() {
+        return terrasse;
+    }
+
+    public void setTerrasse(String terrasse) {
+        this.terrasse = terrasse;
+    }
+
+    public String getBalcon() {
+        return balcon;
+    }
+
+    public void setBalcon(String balcon) {
+        this.balcon = balcon;
+    }
+
+    public String getCave() {
+        return cave;
+    }
+
+    public void setCave(String cave) {
+        this.cave = cave;
+    }
+
+    public String getJardin() {
+        return jardin;
+    }
+
+    public void setJardin(String jardin) {
+        this.jardin = jardin;
+    }
+
+    public String getParking() {
+        return parking;
+    }
+
+    public void setParking(String parking) {
+        this.parking = parking;
+    }
+
+    public String getEtage() {
+        return etage;
+    }
+
+    public void setEtage(String etage) {
+        this.etage = etage;
     }
 }

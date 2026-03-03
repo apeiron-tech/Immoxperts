@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 
 export interface FiltersState {
@@ -102,9 +103,9 @@ export const RecherchLouerFiltersModal: React.FC<RecherchLouerFiltersModalProps>
   const toggle = <T,>(arr: T[], val: T): T[] =>
     arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110]"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[210]"
       onClick={onClose}
       role="presentation"
     >
@@ -246,4 +247,5 @@ export const RecherchLouerFiltersModal: React.FC<RecherchLouerFiltersModalProps>
       </motion.div>
     </div>
   );
+  return createPortal(modalContent, document.body);
 };

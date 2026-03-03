@@ -119,6 +119,116 @@ function buildSkillTags(
   return tags;
 }
 
+function getSuggestionTypeLabel(type: LocationSuggestion['type']): string {
+  const labels: Record<LocationSuggestion['type'], string> = {
+    commune: 'Commune',
+    postal_code: 'Code postal',
+    search_postal_code: 'Code postal',
+    department: 'Département',
+    adresse: 'Adresse',
+  };
+  return labels[type] ?? type;
+}
+
+const LocationSuggestionsDropdown: React.FC<{
+  loading: boolean;
+  suggestions: LocationSuggestion[];
+  onSelect: (s: LocationSuggestion) => void;
+}> = ({ loading, suggestions, onSelect }) => {
+  if (loading) return <div className="px-4 py-3 text-gray-500 text-sm">Recherche…</div>;
+  if (suggestions.length === 0) return <div className="px-4 py-3 text-gray-500 text-sm">Aucune suggestion</div>;
+  return (
+    <>
+      {suggestions.map((suggestion, index) => (
+        <button
+          key={`${suggestion.value}-${suggestion.type}-${index}`}
+          type="button"
+          onClick={() => onSelect(suggestion)}
+          className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 last:border-b-0"
+        >
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <div>
+              <div className="text-sm font-medium text-gray-900">{suggestion.adresse}</div>
+              <div className="text-xs text-gray-500 capitalize">{getSuggestionTypeLabel(suggestion.type)}</div>
+            </div>
+          </div>
+          {suggestion.count > 0 && (
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{suggestion.count}</span>
+          )}
+        </button>
+      ))}
+    </>
+  );
+};
+
+const PropertyTypeSelect: React.FC<{
+  displayType: 'Maison' | 'Appartement' | null;
+  isOpen: boolean;
+  onToggle: () => void;
+  onSelect: (type: 'Maison' | 'Appartement') => void;
+  dropdownRef: React.RefObject<HTMLDivElement | null>;
+  canChange: boolean;
+}> = ({ displayType, isOpen, onToggle, onSelect, dropdownRef, canChange }) => {
+  const typeButtonClass =
+    canChange ?
+      'bg-gray-50 border-gray-200 hover:bg-indigo-50 hover:border-indigo-200 cursor-pointer'
+    : 'bg-gray-50 border-gray-200';
+  const typeLabelStyle =
+    displayType === 'Maison'
+      ? { color: 'rgba(139, 92, 246, 1)' }
+      : displayType === 'Appartement'
+        ? { color: 'rgba(79, 70, 229, 1)' }
+        : undefined;
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => canChange && onToggle()}
+        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors min-w-[120px] justify-between ${typeButtonClass}`}
+      >
+        <span className={`text-sm font-medium ${!displayType ? 'text-gray-800' : ''}`} style={typeLabelStyle}>
+          {displayType || 'Type'}
+        </span>
+        {canChange && (
+          <ChevronDown className={`h-4 w-4 text-gray-400 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        )}
+      </button>
+      {canChange && isOpen && (
+        <div className="absolute z-50 left-0 mt-1 w-full min-w-[160px] bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+          <button
+            type="button"
+            onClick={() => { onSelect('Maison'); onToggle(); }}
+            className={`w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 flex items-center justify-between ${displayType === 'Maison' ? '' : 'text-gray-800'}`}
+            style={
+              displayType === 'Maison'
+                ? { backgroundColor: 'rgba(139, 92, 246, 0.1)', color: 'rgba(139, 92, 246, 1)' }
+                : undefined
+            }
+          >
+            Maison
+            {displayType === 'Maison' && <span style={{ color: 'rgba(139, 92, 246, 1)' }}>✓</span>}
+          </button>
+          <button
+            type="button"
+            onClick={() => { onSelect('Appartement'); onToggle(); }}
+            className={`w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 flex items-center justify-between ${displayType === 'Appartement' ? '' : 'text-gray-800'}`}
+            style={
+              displayType === 'Appartement'
+                ? { backgroundColor: 'rgba(79, 70, 229, 0.1)', color: 'rgba(79, 70, 229, 1)' }
+                : undefined
+            }
+          >
+            Appartement
+            {displayType === 'Appartement' && <span style={{ color: 'rgba(79, 70, 229, 1)' }}>✓</span>}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export function RecherchLouerFilterBar({
   searchParams,
   filters,
@@ -169,11 +279,11 @@ export function RecherchLouerFilterBar({
     searchParams != null;
 
   return (
-    <header className="relative z-20 mt-10 rounded-2xl">
+    <header className="relative z-30 mt-10 rounded-2xl">
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-2">
         {/* Top row: search bar + primary filters */}
         <motion.div
-          className="relative flex flex-wrap gap-2 sm:gap-3 items-center bg-white rounded-xl border border-gray-200 shadow-sm p-2 sm:p-3"
+          className="flex flex-wrap gap-2 sm:gap-3 items-center bg-white rounded-xl border border-gray-200 shadow-sm p-2 sm:p-3"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
@@ -202,36 +312,11 @@ export function RecherchLouerFilterBar({
               </div>
               {showLocationDropdown && (
                 <div className="absolute z-[100] left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {locationSuggestionsLoading ? (
-                    <div className="px-4 py-3 text-gray-500 text-sm">Recherche…</div>
-                  ) : locationSuggestions.length > 0 ? (
-                    locationSuggestions.map((suggestion, index) => (
-                      <button
-                        key={`${suggestion.value}-${suggestion.type}-${index}`}
-                        type="button"
-                        onClick={() => onSelectLocationSuggestion(suggestion)}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 last:border-b-0"
-                      >
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{suggestion.adresse}</div>
-                            <div className="text-xs text-gray-500 capitalize">
-                              {suggestion.type === 'commune' && 'Commune'}
-                              {(suggestion.type === 'postal_code' || suggestion.type === 'search_postal_code') && 'Code postal'}
-                              {suggestion.type === 'department' && 'Département'}
-                              {suggestion.type === 'adresse' && 'Adresse'}
-                            </div>
-                          </div>
-                        </div>
-                        {suggestion.count > 0 && (
-                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{suggestion.count}</span>
-                        )}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-4 py-3 text-gray-500 text-sm">Aucune suggestion</div>
-                  )}
+                  <LocationSuggestionsDropdown
+                    loading={locationSuggestionsLoading}
+                    suggestions={locationSuggestions}
+                    onSelect={onSelectLocationSuggestion}
+                  />
                 </div>
               )}
             </div>
@@ -243,54 +328,14 @@ export function RecherchLouerFilterBar({
           )}
 
           {/* Property type: Maison / Appartement - selectable */}
-          <div className="relative" ref={propertyTypeDropdownRef}>
-            <button
-              type="button"
-              onClick={() => onPropertyTypeChange && setPropertyTypeDropdownOpen(o => !o)}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors min-w-[120px] justify-between ${
-                onPropertyTypeChange
-                  ? 'bg-gray-50 border-gray-200 hover:bg-indigo-50 hover:border-indigo-200 cursor-pointer'
-                  : 'bg-gray-50 border-gray-200'
-              }`}
-            >
-              <span className="text-sm font-medium text-gray-800">{displayType || 'Type'}</span>
-              {onPropertyTypeChange && (
-                <ChevronDown
-                  className={`h-4 w-4 text-gray-400 flex-shrink-0 transition-transform ${propertyTypeDropdownOpen ? 'rotate-180' : ''}`}
-                />
-              )}
-            </button>
-            {onPropertyTypeChange && propertyTypeDropdownOpen && (
-              <div className="absolute z-50 left-0 mt-1 w-full min-w-[160px] bg-white border border-gray-200 rounded-lg shadow-lg py-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onPropertyTypeChange('Maison');
-                    setPropertyTypeDropdownOpen(false);
-                  }}
-                  className={`w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 flex items-center justify-between ${
-                    displayType === 'Maison' ? 'bg-indigo-50 text-indigo-800' : 'text-gray-800'
-                  }`}
-                >
-                  Maison
-                  {displayType === 'Maison' && <span className="text-indigo-600">✓</span>}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onPropertyTypeChange('Appartement');
-                    setPropertyTypeDropdownOpen(false);
-                  }}
-                  className={`w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-gray-50 flex items-center justify-between ${
-                    displayType === 'Appartement' ? 'bg-indigo-50 text-indigo-800' : 'text-gray-800'
-                  }`}
-                >
-                  Appartement
-                  {displayType === 'Appartement' && <span className="text-indigo-600">✓</span>}
-                </button>
-              </div>
-            )}
-          </div>
+          <PropertyTypeSelect
+            displayType={displayType}
+            isOpen={propertyTypeDropdownOpen}
+            onToggle={() => setPropertyTypeDropdownOpen(o => !o)}
+            onSelect={type => onPropertyTypeChange?.(type)}
+            dropdownRef={propertyTypeDropdownRef}
+            canChange={!!onPropertyTypeChange}
+          />
 
           <button
             type="button"

@@ -80,7 +80,7 @@ const Header: React.FC = () => {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 bg-white border-b border-gray-200 ${
+        className={`fixed top-0 left-0 right-0 z-[200] transition-all duration-300 bg-white border-b border-gray-200 ${
           isScrolled ? 'shadow-md' : ''
         }`}
       >
@@ -222,7 +222,7 @@ const Header: React.FC = () => {
         </div>
       </header>
       <div
-        className="fixed top-0 left-0 right-0 z-[100] w-full h-[3px] bg-gradient-to-r from-blue-500 via-purple-500 to-yellow-300"
+        className="fixed top-0 left-0 right-0 z-[200] w-full h-[3px] bg-gradient-to-r from-blue-500 via-purple-500 to-yellow-300"
         style={{ marginTop: '73px' }}
       />
 

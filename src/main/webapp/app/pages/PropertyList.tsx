@@ -552,7 +552,7 @@ const PropertyList: React.FC<PropertyListProps> = ({ searchParams, filterState, 
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 space-y-2 pb-16">
+            <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 pb-16 h-full">
               {sortedProperties.length > 0 ? (
                 sortedProperties.map((property, index) => (
                   <PropertyCard

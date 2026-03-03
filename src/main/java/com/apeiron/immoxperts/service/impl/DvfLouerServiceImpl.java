@@ -1,14 +1,18 @@
 package com.apeiron.immoxperts.service.impl;
 
 import com.apeiron.immoxperts.domain.DvfLouer;
+import com.apeiron.immoxperts.domain.DvfLouerDetailView;
+import com.apeiron.immoxperts.repository.DvfLouerDetailViewRepository;
 import com.apeiron.immoxperts.repository.DvfLouerRepository;
 import com.apeiron.immoxperts.service.DvfLouerService;
 import com.apeiron.immoxperts.service.dto.DvfLouerDto;
 import com.apeiron.immoxperts.service.dto.SuggestionDto;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +20,11 @@ import org.springframework.stereotype.Service;
 public class DvfLouerServiceImpl implements DvfLouerService {
 
     private final DvfLouerRepository repository;
+    private final DvfLouerDetailViewRepository detailViewRepository;
 
-    public DvfLouerServiceImpl(DvfLouerRepository repository) {
+    public DvfLouerServiceImpl(DvfLouerRepository repository, DvfLouerDetailViewRepository detailViewRepository) {
         this.repository = repository;
+        this.detailViewRepository = detailViewRepository;
     }
 
     @Override
@@ -81,7 +87,31 @@ public class DvfLouerServiceImpl implements DvfLouerService {
                 propertyType != null ? propertyType.trim() : null,
                 pageable
             );
-        return page.map(this::toDto);
+        List<DvfLouerDto> content = page.getContent().stream().map(this::toDto).toList();
+        List<Long> ids = content.stream().map(DvfLouerDto::getId).toList();
+        if (!ids.isEmpty()) {
+            List<DvfLouerDetailView> detailList = detailViewRepository.findByPublicationIdIn(ids);
+            Map<Long, DvfLouerDetailView> detailMap = detailList.stream().collect(Collectors.toMap(DvfLouerDetailView::getPublicationId, d -> d));
+            for (DvfLouerDto dto : content) {
+                DvfLouerDetailView d = detailMap.get(dto.getId());
+                if (d != null) {
+                    dto.setSurface(d.getSurface());
+                    dto.setChambre(d.getChambre());
+                    dto.setPieces(d.getPieces());
+                    dto.setDpe(d.getDpe());
+                    dto.setTerrainSqm(d.getTerrainSqm());
+                    dto.setPiscine(d.getPiscine());
+                    dto.setMeuble(d.getMeuble());
+                    dto.setTerrasse(d.getTerrasse());
+                    dto.setBalcon(d.getBalcon());
+                    dto.setCave(d.getCave());
+                    dto.setJardin(d.getJardin());
+                    dto.setParking(d.getParking());
+                    dto.setEtage(d.getEtage());
+                }
+            }
+        }
+        return new PageImpl<>(content, page.getPageable(), page.getTotalElements());
     }
 
     private DvfLouerDto toDto(DvfLouer entity) {

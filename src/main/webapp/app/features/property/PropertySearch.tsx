@@ -50,6 +50,20 @@ interface ApiProperty {
   description: string | null;
   propertyUrl: string | null;
   images: string[];
+  /** From detail MV: surface, chambre, pieces, dpe, terrainSqm, piscine, meuble, terrasse, balcon, cave, jardin, parking, etage for display */
+  surface?: number | null;
+  chambre?: number | null;
+  pieces?: number | null;
+  dpe?: string | null;
+  terrainSqm?: number | null;
+  piscine?: string | null;
+  meuble?: string | null;
+  terrasse?: string | null;
+  balcon?: string | null;
+  cave?: string | null;
+  jardin?: string | null;
+  parking?: string | null;
+  etage?: string | null;
 }
 
 interface SearchParams {
@@ -146,28 +160,56 @@ const PropertySearch: React.FC<PropertySearchProps> = ({ mode = 'louer' }) => {
     const details = apiProp.details || '';
     const description = apiProp.description || '';
 
-    // Extract structured attributes from details only (not description prose)
-    // to avoid false positives (e.g. "cuisine" mentioned in description text)
+    // Prefer detail MV columns (surface, chambre, pieces, dpe) when present; else parse details
     const attributes = extractAllAttributes(details);
+    const surfaceDisplay =
+      apiProp.surface != null ? `${Number(apiProp.surface)} m²` : (attributes['Surface'] || 'N/A');
+    const roomsDisplay =
+      apiProp.pieces != null ? `${apiProp.pieces} pièces` : (attributes['Pièces'] || 'N/A');
+    const chambresDisplay =
+      apiProp.chambre != null ? String(apiProp.chambre) : (attributes['Chambres'] || 'N/A');
+    const dpeDisplay =
+      apiProp.dpe ? `DPE ${apiProp.dpe.toUpperCase()}` : (attributes['Classe énergétique'] || 'N/A');
+
+    // Terrain only from detail MV (terrain_sqm). Do not use parsed "Terrain" from details text
+    // (extractGardenTerrain returns "Jardin" when text contains "jardin", which is wrong for Terrain).
+    const terrainDisplay =
+      apiProp.terrainSqm != null && Number(apiProp.terrainSqm) > 0
+        ? `${Number(apiProp.terrainSqm)} m²`
+        : '';
+    const displayAttributes: Record<string, string> = {
+      Surface: surfaceDisplay,
+      Chambres: chambresDisplay,
+      Pièces: roomsDisplay,
+      'Classe énergétique': dpeDisplay,
+      ...(terrainDisplay ? { Terrain: terrainDisplay } : {}),
+      ...(apiProp.piscine === 'Oui' ? { Piscine: 'Oui' } : {}),
+      ...(apiProp.meuble === 'Oui' ? { Meublé: 'Oui' } : {}),
+      ...(apiProp.terrasse === 'Oui' ? { Terrasse: 'Oui' } : {}),
+      ...(apiProp.balcon === 'Oui' ? { Balcon: 'Oui' } : {}),
+      ...(apiProp.cave === 'Oui' ? { Cave: 'Oui' } : {}),
+      ...(apiProp.jardin === 'Oui' ? { Jardin: 'Oui' } : {}),
+      ...(apiProp.parking === 'Oui' ? { Parking: 'Oui' } : {}),
+      ...(apiProp.etage ? { Étage: apiProp.etage } : {}),
+    };
 
     return {
       id: apiProp.id,
       price: apiProp.priceText,
       type: apiProp.propertyType,
-      description: '', // Remove description to avoid duplication with attributes
-      surface: attributes['Surface'] || 'N/A',
-      rooms: attributes['Pièces'] || 'N/A',
-      chambres: attributes['Chambres'] || 'N/A',
+      description: (description || details || '').trim(),
+      surface: surfaceDisplay,
+      rooms: roomsDisplay,
+      chambres: chambresDisplay,
       bathrooms: attributes['Salles de bain'] || 'N/A',
       kitchen: attributes['Cuisine'] || 'N/A',
       balcony: attributes['Balcon/Terrasse'] || 'N/A',
-      // Add dynamic attributes as a new property
-      dynamicAttributes: attributes,
+      dynamicAttributes: displayAttributes,
       address: apiProp.address || `${apiProp.commune}, ${apiProp.department}`,
-      tags: [extractFurnishing(`${details} ${description}`), mode === 'achat' ? 'À vendre' : 'À louer'].filter(tag => tag !== 'N/A'),
+      tags: [extractFurnishing(`${details} ${description}`), mode === 'achat' ? 'En vente' : 'À louer'].filter(tag => tag !== 'N/A'),
       Association: [getAssociationFromSource(apiProp.source)],
-      Association_url: [apiProp.propertyUrl?.trim() || getAssociationUrlFromSource(apiProp.source)], // Link to property listing (property_url)
-      images: apiProp.images && apiProp.images.length > 0 ? apiProp.images : ['/content/assets/logo.png'], // Images are now array
+      Association_url: [apiProp.propertyUrl?.trim() || getAssociationUrlFromSource(apiProp.source)],
+      images: apiProp.images && apiProp.images.length > 0 ? apiProp.images : ['/content/assets/logo.png'],
     };
   };
 
@@ -387,7 +429,7 @@ const PropertySearch: React.FC<PropertySearchProps> = ({ mode = 'louer' }) => {
     return tags.map((tag, index) => (
       <motion.span
         key={index}
-        className={`${tagColorMap[tag] || tagColorMap['default']} text-white text px-2 py-1 rounded-lg mr-1`}
+        className={`${tagColorMap[tag] || tagColorMap['default']} text-white text-xs font-medium px-2 py-1 rounded-lg mr-1`}
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -433,7 +475,6 @@ const PropertySearch: React.FC<PropertySearchProps> = ({ mode = 'louer' }) => {
         className="relative h-60 overflow-hidden rounded-2xl group"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        whileHover={{ scale: 1.02 }}
         transition={{ duration: 0.3 }}
       >
         <AnimatePresence initial={false} mode="wait">

@@ -1,14 +1,18 @@
 package com.apeiron.immoxperts.service.impl;
 
 import com.apeiron.immoxperts.domain.DvfAchat;
+import com.apeiron.immoxperts.domain.DvfAchatDetailView;
+import com.apeiron.immoxperts.repository.DvfAchatDetailViewRepository;
 import com.apeiron.immoxperts.repository.DvfAchatRepository;
 import com.apeiron.immoxperts.service.DvfAchatService;
 import com.apeiron.immoxperts.service.dto.DvfAchatDto;
 import com.apeiron.immoxperts.service.dto.SuggestionDto;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +20,11 @@ import org.springframework.stereotype.Service;
 public class DvfAchatServiceImpl implements DvfAchatService {
 
     private final DvfAchatRepository repository;
+    private final DvfAchatDetailViewRepository detailViewRepository;
 
-    public DvfAchatServiceImpl(DvfAchatRepository repository) {
+    public DvfAchatServiceImpl(DvfAchatRepository repository, DvfAchatDetailViewRepository detailViewRepository) {
         this.repository = repository;
+        this.detailViewRepository = detailViewRepository;
     }
 
     @Override
@@ -81,7 +87,31 @@ public class DvfAchatServiceImpl implements DvfAchatService {
                 propertyType != null ? propertyType.trim() : null,
                 pageable
             );
-        return page.map(this::toDto);
+        List<DvfAchatDto> content = page.getContent().stream().map(this::toDto).toList();
+        List<Long> ids = content.stream().map(DvfAchatDto::getId).toList();
+        if (!ids.isEmpty()) {
+            List<DvfAchatDetailView> detailList = detailViewRepository.findByPublicationIdIn(ids);
+            Map<Long, DvfAchatDetailView> detailMap = detailList.stream().collect(Collectors.toMap(DvfAchatDetailView::getPublicationId, d -> d));
+            for (DvfAchatDto dto : content) {
+                DvfAchatDetailView d = detailMap.get(dto.getId());
+                if (d != null) {
+                    dto.setSurface(d.getSurface());
+                    dto.setChambre(d.getChambre());
+                    dto.setPieces(d.getPieces());
+                    dto.setDpe(d.getDpe());
+                    dto.setTerrainSqm(d.getTerrainSqm());
+                    dto.setPiscine(d.getPiscine());
+                    dto.setMeuble(d.getMeuble());
+                    dto.setTerrasse(d.getTerrasse());
+                    dto.setBalcon(d.getBalcon());
+                    dto.setCave(d.getCave());
+                    dto.setJardin(d.getJardin());
+                    dto.setParking(d.getParking());
+                    dto.setEtage(d.getEtage());
+                }
+            }
+        }
+        return new PageImpl<>(content, page.getPageable(), page.getTotalElements());
     }
 
     private DvfAchatDto toDto(DvfAchat entity) {

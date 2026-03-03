@@ -205,8 +205,8 @@ const formatPricePerSqm = (price?: number | null, surface?: number | null, terra
   return `${pricePerSqm.toLocaleString('fr-FR')} \u20AC/m²`;
 };
 
-// Set access token from environment (set MAPBOX_ACCESS_TOKEN in .env or environment)
-mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
+// Set access token
+mapboxgl.accessToken = 'pk.eyJ1IjoiaW1tb3hwZXJ0IiwiYSI6ImNtZXV3bGtyNzBiYmQybXNoMnE5NmUzYWsifQ.mGxg2EbZxRAQJ4sOapI63w';
 
 // Debounce utility
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -719,13 +719,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
     if (isFilterOpen) {
       setShowStatsPanel(false);
       setShowMobileBottomSheet(false);
-      // Clear shadow when filter opens (guard: source may not exist if map not loaded yet)
+      // Clear shadow when filter opens
       if (mapRef.current) {
-        const source = mapRef.current.getSource('hovered-circle');
-        if (source && 'setData' in source) {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- GeoJSONSource has setData, Source union does not
-          (source as mapboxgl.GeoJSONSource).setData({ type: 'FeatureCollection', features: [] });
-        }
+        const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+          type: 'FeatureCollection',
+          features: [],
+        };
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
       }
     }
   }, [isFilterOpen]);
@@ -827,13 +828,14 @@ const PropertyMap: React.FC<MapPageProps> = ({
     setMobileSheetMutations([]);
     setMobileSheetIndex(0);
 
-    // Clear the shadow when bottom sheet closes (guard: source may not exist if map not loaded yet)
+    // Clear the shadow when bottom sheet closes
     if (mapRef.current) {
-      const source = mapRef.current.getSource('hovered-circle');
-      if (source && 'setData' in source) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- GeoJSONSource has setData, Source union does not
-        (source as mapboxgl.GeoJSONSource).setData({ type: 'FeatureCollection', features: [] });
-      }
+      const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: [],
+      };
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
     }
 
     if (onMapHover) {
@@ -1239,7 +1241,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         propertyType: '0,1,2,4,5', // All property types
         roomCount: '1,2,3,4,5,6,7,8,9,10', // All room counts at startup
         minSellPrice: '0',
-        maxSellPrice: '25000000',
+        maxSellPrice: '20000000',
         minSquareMeterPrice: '0',
         maxSquareMeterPrice: '40000',
         minDate: '2013-12-31',
@@ -3581,13 +3583,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
   useEffect(() => {
     if (!mapRef.current || !mapRef.current.getSource('mutations-live')) return;
 
-    const hoveredSource = mapRef.current.getSource('hovered-circle');
-    if (!hoveredSource || !('setData' in hoveredSource)) return;
-
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- GeoJSONSource has setData, Source union does not
-    const geoSource = hoveredSource as mapboxgl.GeoJSONSource;
     // Clear existing hover effect first
-    geoSource.setData({ type: 'FeatureCollection', features: [] });
+    const emptyFeatureCollection: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [],
+    };
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
 
     if (hoveredProperty) {
       // Find the corresponding feature on the map by matching coordinates
@@ -3603,10 +3605,13 @@ const PropertyMap: React.FC<MapPageProps> = ({
 
           if (coordsMatch) {
             // Show blue box shadow for this feature
-            geoSource.setData({
+            const hoveredFeatureData: GeoJSON.FeatureCollection = {
               type: 'FeatureCollection',
               features: [feature as GeoJSON.Feature],
-            });
+            };
+
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+            (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
             // Applied blue shadow to map point
             break; // Exit early once found
           }

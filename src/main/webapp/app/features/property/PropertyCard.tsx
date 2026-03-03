@@ -64,7 +64,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   isMapHovered = false,
 }) => {
   const { address, type, rooms, surface, soldDate, price, pricePerSqm, terrain } = property;
-  const priceFormatted = Number(price?.replace(/[^0-9]/g, '')).toLocaleString('fr-FR') + ' \u20AC';
+  const priceFormatted = Number(price?.replace(/[^0-9]/g, '')).toLocaleString('fr-FR') + ' ?';
   const pricePerSqmFormatted = hasValue(pricePerSqm) ? pricePerSqm : '';
 
   return (
@@ -81,8 +81,6 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
         flexDirection: 'row',
         gap: 16,
         transition: 'box-shadow 0.2s, border 0.2s',
-        minWidth: 0,
-        boxSizing: 'border-box',
       }}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
@@ -127,20 +125,20 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {(hasValue(rooms) || hasValue(terrain) || hasValue(surface)) && (
           <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>
-            {hasValue(rooms) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Pièce </span>}
+            {hasValue(rooms) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Pi�ce </span>}
             {hasValue(rooms) && (
               <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
                 {rooms}
               </span>
             )}
-            {hasValue(rooms) && (hasValue(surface) || hasValue(terrain)) && ' '}
+            {hasValue(rooms) && (hasValue(surface) || hasValue(terrain)) && <span style={{ marginLeft: '12px' }}></span>}
             {hasValue(surface) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Surface </span>}
             {hasValue(surface) && (
               <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
                 {surface}
               </span>
             )}
-            {hasValue(surface) && hasValue(terrain) && ' '}
+            {hasValue(surface) && hasValue(terrain) && <span style={{ marginLeft: '12px' }}></span>}
             {hasValue(terrain) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Terrain </span>}
             {hasValue(terrain) && (
               <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>

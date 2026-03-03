@@ -28,12 +28,12 @@ const MainContent = () => {
 
   return (
     <div className="flex flex-col min-h-screen" style={{ background: '#F9FAFB' }}>
-      {/* Header wrapper: z-[100] to match Header component and ensure it stays above SearchBar (z-[50]) */}
-      <div className="fixed top-0 left-0 right-0 z-[100]">
+      {/* Header wrapper: z-[200] so it always stays on top of page content (filter bar z-30, dropdowns, etc.) */}
+      <div className="fixed top-0 left-0 right-0 z-[200]">
         <Header />
       </div>
 
-      <div className={`flex-grow pt-[76px] ${hideFooter ? 'h-screen overflow-hidden' : ''}`}>
+      <div className={`relative z-0 flex-grow pt-[76px] ${hideFooter ? 'h-screen overflow-hidden' : ''}`}>
         <ErrorBoundary>
           <AppRoutes />
         </ErrorBoundary>
