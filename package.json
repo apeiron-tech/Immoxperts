@@ -135,6 +135,7 @@
     "cross-env": "7.0.3",
     "css-loader": "7.1.2",
     "css-minimizer-webpack-plugin": "7.0.2",
+    "dotenv": "^17.3.1",
     "eslint": "9.26.0",
     "eslint-config-prettier": "10.1.2",
     "eslint-plugin-prettier": "5.4.0",
