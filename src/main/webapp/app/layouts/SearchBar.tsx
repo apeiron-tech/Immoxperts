@@ -1653,7 +1653,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onFilterApply, currentF
                   fill="white"
                 />
               </svg>
-              <span>Filtres{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}</span>
+              <span>Filtres</span>
 
               {/* Active Filter Counter Badge - click to reset all */}
               {activeFilterCount > 0 && (
