@@ -28,7 +28,7 @@ const getShortTypeName = (typeBien: string) => {
     Maison: 'Maison',
     Appartement: 'Appartement',
     Terrain: 'Terrain',
-    'Local industriel. commercial ou assimil�': 'Local',
+    'Local industriel. commercial ou assimilé': 'Local',
   };
   return names[typeBien] || typeBien;
 };
@@ -64,7 +64,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   isMapHovered = false,
 }) => {
   const { address, type, rooms, surface, soldDate, price, pricePerSqm, terrain } = property;
-  const priceFormatted = Number(price?.replace(/[^0-9]/g, '')).toLocaleString('fr-FR') + ' ?';
+  const priceFormatted = Number(price?.replace(/[^0-9]/g, '')).toLocaleString('fr-FR') + ' €';
   const pricePerSqmFormatted = hasValue(pricePerSqm) ? pricePerSqm : '';
 
   return (
@@ -125,7 +125,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {(hasValue(rooms) || hasValue(terrain) || hasValue(surface)) && (
           <div style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>
-            {hasValue(rooms) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Pi�ce </span>}
+            {hasValue(rooms) && <span style={{ color: 'rgba(12, 12, 12, 0.75)' }}>Pièce </span>}
             {hasValue(rooms) && (
               <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: '14px', lineHeight: '100%', letterSpacing: '0%' }}>
                 {rooms}
