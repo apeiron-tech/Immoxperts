@@ -725,8 +725,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
           type: 'FeatureCollection',
           features: [],
         };
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-        (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+        { const _hcs = mapRef.current.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(emptyFeatureCollection); }
       }
     }
   }, [isFilterOpen]);
@@ -834,8 +833,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
         type: 'FeatureCollection',
         features: [],
       };
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+      { const _hcs = mapRef.current.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(emptyFeatureCollection); }
     }
 
     if (onMapHover) {
@@ -2002,8 +2000,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
               };
 
               // Update the hovered-circle source with just this feature
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-              (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+              { const _hcs = map.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(hoveredFeatureData); }
 
               map.getCanvas().style.cursor = 'pointer';
 
@@ -2025,8 +2022,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 type: 'FeatureCollection',
                 features: [],
               };
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-              (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+              { const _hcs = map.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(emptyFeatureCollection); }
 
               if (onMapHover) {
                 onMapHover(null);
@@ -2622,8 +2618,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 type: 'FeatureCollection',
                 features: [feature as GeoJSON.Feature],
               };
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-              (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+              { const _hcs = map.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(hoveredFeatureData); }
             }
 
             // Merge addresses from all mutation-point features under the click so the searched address
@@ -2927,8 +2922,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 };
 
                 // Update the hovered-circle source to show shadow
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+                { const _hcs = map.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(hoveredFeatureData); }
 
                 // Notify PropertyList about hover
                 if (onMapHover && feature.properties?.idparcelle) {
@@ -2948,8 +2942,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                 type: 'FeatureCollection',
                 features: [],
               };
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-              (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+              { const _hcs = map.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(emptyFeatureCollection); }
 
               if (onMapHover) {
                 onMapHover(null);
@@ -3021,8 +3014,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   type: 'FeatureCollection',
                   features: [],
                 };
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+                { const _hcs = map.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(emptyFeatureCollection); }
 
                 if (onMapHover) {
                   onMapHover(null);
@@ -3034,8 +3026,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
                   type: 'FeatureCollection',
                   features: [feature as GeoJSON.Feature],
                 };
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-                (map.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+                { const _hcs = map.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(hoveredFeatureData); }
 
                 if (onMapHover && feature.properties?.idparcelle) {
                   onMapHover(parseInt(feature.properties.idparcelle, 10));
@@ -3588,8 +3579,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
       type: 'FeatureCollection',
       features: [],
     };
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(emptyFeatureCollection);
+    { const _hcs = mapRef.current.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(emptyFeatureCollection); }
 
     if (hoveredProperty) {
       // Find the corresponding feature on the map by matching coordinates
@@ -3610,8 +3600,7 @@ const PropertyMap: React.FC<MapPageProps> = ({
               features: [feature as GeoJSON.Feature],
             };
 
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-            (mapRef.current.getSource('hovered-circle') as mapboxgl.GeoJSONSource).setData(hoveredFeatureData);
+            { const _hcs = mapRef.current.getSource('hovered-circle'); if (_hcs && 'setData' in _hcs) _hcs.setData(hoveredFeatureData); }
             // Applied blue shadow to map point
             break; // Exit early once found
           }
