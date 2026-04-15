@@ -17,8 +17,8 @@ const Header: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const navItems: NavItem[] = [
-    { name: 'Acheter', path: '/achat' },
-    { name: 'Louer', path: '/louer' },
+    // { name: 'Acheter', path: '/acheter' },
+    // { name: 'Louer', path: '/louer' },
     // { name: 'Estimation', path: '/estimation' },
     // { name: 'Investisseurs', path: '/investisseurs' },
     { name: 'Prix immobiliers', path: '/PrixImmobliers' },
