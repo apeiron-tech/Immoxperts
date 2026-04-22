@@ -5,7 +5,7 @@ import { MapPin } from 'lucide-react';
 const Footer: React.FC = () => {
   const footerLinks = {
     produit: [
-      { label: 'Carte des prix', href: '/PrixImmobliers' },
+      { label: 'Carte des prix', href: '/priximmobiliers' },
       // { label: 'Estimation gratuite', href: '/estimation' },
       // { label: 'Simulateur locatif', href: '/investisseurs' },
       // { label: 'Recherche multi-sites', href: '/louer' },

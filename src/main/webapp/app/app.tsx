@@ -19,7 +19,7 @@ const baseHref = document.querySelector('base').getAttribute('href').replace(/\/
 
 const MainContent = () => {
   const location = useLocation();
-  const hideFooter = location.pathname === '/PrixImmobliers';
+  const hideFooter = location.pathname === '/priximmobiliers';
 
   // Scroll to top on route change
   useEffect(() => {

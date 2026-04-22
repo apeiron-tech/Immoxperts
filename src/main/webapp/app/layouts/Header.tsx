@@ -21,7 +21,7 @@ const Header: React.FC = () => {
     // { name: 'Louer', path: '/louer' },
     // { name: 'Estimation', path: '/estimation' },
     // { name: 'Investisseurs', path: '/investisseurs' },
-    { name: 'Prix immobiliers', path: '/PrixImmobliers' },
+    { name: 'Prix immobiliers', path: '/priximmobiliers' },
     {
       name: 'Ressources',
       path: '#',

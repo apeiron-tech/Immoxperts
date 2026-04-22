@@ -78,7 +78,7 @@ const AppRoutes = () => {
         <Route index element={<Home />} />
 
         <Route
-          path="/PrixImmobliers"
+          path="/priximmobiliers"
           element={
             <div className="flex flex-col h-[calc(100vh-80px)]">
               {/* Mobile-first Search Bar */}
