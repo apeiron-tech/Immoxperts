@@ -397,7 +397,7 @@ const Blog: React.FC = () => {
               </div>
               <div className="flex flex-col sm:flex-row gap-3 justify-end flex-shrink-0">
                 <button
-                  onClick={() => navigate('/priximmobiliers')}
+                  onClick={() => navigate('/priximmobilier')}
                   className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-3 text-white font-medium rounded-lg transition-all duration-200 hover:opacity-90 group whitespace-nowrap text-sm sm:text-base"
                   style={{ backgroundColor: 'hsl(245 58% 62%)' }}
                 >

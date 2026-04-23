@@ -140,7 +140,7 @@ const HomePage: React.FC = () => {
 
           {/* Call-to-Action Button */}
           <button
-            onClick={() => navigate('/priximmobiliers')}
+            onClick={() => navigate('/priximmobilier')}
             className="inline-flex items-center gap-2 px-8 py-4 text-white text-base font-medium rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl"
             style={{ backgroundColor: 'hsl(245 58% 62%)' }}
           >
@@ -282,7 +282,7 @@ const HomePage: React.FC = () => {
 
               {/* Call-to-Action Button */}
               <button
-                onClick={() => navigate('/priximmobiliers')}
+                onClick={() => navigate('/priximmobilier')}
                 className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-all duration-200 hover:opacity-90"
                 style={{ backgroundColor: 'hsl(245 58% 62%)' }}
               >

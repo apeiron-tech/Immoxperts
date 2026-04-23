@@ -493,7 +493,7 @@ const NegotiationArticlePage: React.FC = () => {
             <div className="bg-gray-100 rounded-xl px-4 py-6 text-center">
               <h2 className="text-xl font-bold mb-2">Explorer les ventes réelles</h2>
               <Link
-                to="/priximmobiliers"
+                to="/priximmobilier"
                 className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-lg text-white"
                 style={{ backgroundColor: 'hsl(245 58% 62%)' }}
               >
