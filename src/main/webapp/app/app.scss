@@ -318,23 +318,412 @@
 @tailwind utilities;
 @import 'leaflet/dist/leaflet.css';
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* =========================================================
+   Propsight — design tokens (CSS custom properties)
+   Mirrors tailwind.config.js so tokens are usable from
+   .scss/.css, inline styles and chart libs.
+   ========================================================= */
 
 :root {
-  --gradient-primary: linear-gradient(135deg, hsl(245 58% 62%) 0%, hsl(245 58% 52%) 100%);
-  --gradient-hero: linear-gradient(135deg, hsl(240 33% 15%) 0%, hsl(245 40% 25%) 100%);
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05);
-  --accent: 245 58% 62%;
-  --muted: 0 0% 96.1%;
-  --border: 0 0% 89.8%;
+  /* ── Surfaces & ink (light) ───────────────────────── */
+  --ps-bg-app:         #F8F7F4;  /* warm cream */
+  --ps-bg-surface:     #FFFFFF;
+  --ps-bg-elevated:    #FFFFFF;
+  --ps-bg-muted:       #EFEEEA;
+
+  --ps-fg-1:           #14130F;  /* primary text */
+  --ps-fg-2:           #3A3833;  /* secondary  */
+  --ps-fg-3:           #6F6C64;  /* tertiary / captions */
+  --ps-fg-disabled:    #9D998E;
+  --ps-fg-on-violet:   #FFFFFF;
+
+  /* ── Borders ──────────────────────────────────────── */
+  --ps-border-subtle:  #E2E0DA;
+  --ps-border-strong:  #C9C6BD;
+  --ps-border-focus:   #7A6AF5;
+
+  /* ── Primary (violet) ─────────────────────────────── */
+  --ps-violet-50:  #F4F1FE;
+  --ps-violet-100: #E7E1FD;
+  --ps-violet-200: #CFC4FB;
+  --ps-violet-300: #A99AF7;
+  --ps-violet-400: #8E7CF2;
+  --ps-violet-500: #7A6AF5;   /* ← brand primary */
+  --ps-violet-600: #6553E8;
+  --ps-violet-700: #5340C9;
+  --ps-violet-800: #3F309D;
+  --ps-violet-900: #2A2070;
+
+  /* ── Semantic ─────────────────────────────────────── */
+  --ps-success-50:  #E6F6EB;  --ps-success-500: #0E8B4A;  --ps-success-700: #0A6537;
+  --ps-warning-50:  #FFF4D6;  --ps-warning-500: #B66E12;  --ps-warning-700: #8A5108;
+  --ps-danger-50:   #FDE6EC;  --ps-danger-500:  #A3263A;  --ps-danger-700:  #7A1A2C;
+  --ps-info-50:     #E6F0FA;  --ps-info-500:    #1F6FB8;  --ps-info-700:    #175489;
+
+  /* ── Signature gradient (marketing hairline only) ── */
+  --ps-signature-gradient: linear-gradient(
+    90deg,
+    #8C7BF9   0%,
+    #B19BE8  22%,
+    #C895CF  42%,
+    #E59A9C  60%,
+    #F0B57B  78%,
+    #F4D77A 100%
+  );
+
+  /* ── Type ─────────────────────────────────────────── */
+  --ps-font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system,
+                  'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --ps-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular,
+                  Menlo, Consolas, monospace;
+
+  /* ── Radii ────────────────────────────────────────── */
+  --ps-radius-xs:  3px;
+  --ps-radius-sm:  4px;
+  --ps-radius-md:  6px;
+  --ps-radius-lg:  8px;
+  --ps-radius-xl: 12px;
+
+  /* ── Elevation ────────────────────────────────────── */
+  --ps-shadow-xs:      0 1px 2px rgba(20,22,42,0.04);
+  --ps-shadow-sm:      0 1px 3px rgba(20,22,42,0.06), 0 1px 2px rgba(20,22,42,0.04);
+  --ps-shadow-md:      0 4px 12px -2px rgba(20,22,42,0.08), 0 2px 4px rgba(20,22,42,0.04);
+  --ps-shadow-lg:      0 12px 28px -8px rgba(20,22,42,0.12), 0 4px 8px -4px rgba(20,22,42,0.06);
+  --ps-shadow-popover: 0 12px 28px -8px rgba(35,27,110,0.18), 0 2px 4px rgba(20,22,42,0.06);
+  --ps-shadow-focus:   0 0 0 3px rgba(122,106,245,0.25);
+
+  /* ── Motion ───────────────────────────────────────── */
+  --ps-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ps-ease-enter:    cubic-bezier(0, 0, 0.2, 1);
+  --ps-ease-exit:     cubic-bezier(0.4, 0, 1, 1);
+  --ps-ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
+  --ps-dur-instant: 120ms;
+  --ps-dur-fast:    180ms;
+  --ps-dur-base:    240ms;
+  --ps-dur-slow:    320ms;
+
+  /* ── Legacy aliases (delete after full migration sweep) ── */
+  --gradient-primary: linear-gradient(135deg, #7A6AF5 0%, #5340C9 100%);
+  --gradient-hero:    linear-gradient(135deg, #14130F 0%, #2A2070 100%);
+  --shadow-card:      var(--ps-shadow-sm);
+  --accent:           245 58% 62%;
+  --muted:            44 12% 94%;
+  --border:           44 14% 86%;
+}
+
+/* App-wide defaults */
+html, body {
+  background: var(--ps-bg-app);
+  color:      var(--ps-fg-1);
+  font-family: var(--ps-font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+}
+
+/* Tabular numerals everywhere numbers appear in data UI */
+.tabular, .tabular-nums, [class*='tabular-nums'] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selection */
+::selection {
+  background: var(--ps-violet-200);
+  color:      var(--ps-violet-900);
+}
+
+/* =========================================================
+   DARK MODE
+   Activated via `class="dark"` (or `data-theme="dark"`)
+   on <html>. Public landing stays light by default.
+   ========================================================= */
+.dark,
+[data-theme='dark'] {
+  --ps-bg-app:        #0E0D0B;
+  --ps-bg-surface:    #1A1816;
+  --ps-bg-elevated:   #232120;
+  --ps-bg-muted:      #2A2826;
+
+  --ps-fg-1:          #F4F2EC;
+  --ps-fg-2:          #C9C6BD;
+  --ps-fg-3:          #9D998E;
+  --ps-fg-disabled:   #6F6C64;
+  --ps-fg-on-violet:  #FFFFFF;
+
+  --ps-border-subtle: #2E2C29;
+  --ps-border-strong: #3A3833;
+
+  /* Violet ramp shifts up one step so 500 reads brighter on dark */
+  --ps-violet-50:  #1B1530;
+  --ps-violet-100: #261D4A;
+  --ps-violet-200: #3A2D6E;
+  --ps-violet-300: #5340C9;
+  --ps-violet-400: #6553E8;
+  --ps-violet-500: #8E7CF2;  /* ← brighter primary on dark */
+  --ps-violet-600: #A99AF7;
+  --ps-violet-700: #CFC4FB;
+
+  --ps-success-50:  #102B1C;  --ps-success-500: #34C77E;
+  --ps-warning-50:  #2A1F0A;  --ps-warning-500: #E0A03A;
+  --ps-danger-50:   #2B1119;  --ps-danger-500:  #E45D77;
+  --ps-info-50:     #0E1F2E;  --ps-info-500:    #5BA3DE;
+
+  --ps-shadow-xs:   0 1px 2px rgba(0,0,0,0.30);
+  --ps-shadow-sm:   0 1px 3px rgba(0,0,0,0.40), 0 1px 2px rgba(0,0,0,0.20);
+  --ps-shadow-md:   0 4px 12px -2px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.25);
+  --ps-shadow-lg:   0 12px 28px -8px rgba(0,0,0,0.55), 0 4px 8px -4px rgba(0,0,0,0.30);
+  --ps-shadow-popover: 0 12px 28px -8px rgba(0,0,0,0.60), 0 2px 4px rgba(0,0,0,0.30);
+  --ps-shadow-focus:   0 0 0 3px rgba(142,124,242,0.40);
+}
+
+.dark body,
+[data-theme='dark'] body {
+  background: var(--ps-bg-app);
+  color:      var(--ps-fg-1);
+}
+
+.dark ::selection,
+[data-theme='dark'] ::selection {
+  background: var(--ps-violet-300);
+  color:      var(--ps-violet-50);
+}
+
+/* =========================================================
+   DARK MODE — Tailwind utility overrides
+   ─────────────────────────────────────────────────────────
+   Most components use static Tailwind classes (`bg-white`,
+   `bg-neutral-50`, `text-neutral-900`…) without `dark:`
+   variants. This block remaps the most common surface,
+   text and border utilities to the dark token ramp so the
+   whole app flips on `<html class="dark">` without having
+   to add `dark:` prefixes to every component.
+   Specificity (.dark .x = 0,2,0) beats Tailwind's (0,1,0).
+   ========================================================= */
+.dark {
+  /* Surfaces ─────────────────────────────────────────── */
+  .bg-white                                            { background-color: var(--ps-bg-surface); }
+  .bg-neutral-50,  .bg-slate-50,  .bg-gray-50          { background-color: var(--ps-bg-app); }
+  .bg-neutral-100, .bg-slate-100, .bg-gray-100         { background-color: var(--ps-bg-muted); }
+  .bg-neutral-200, .bg-slate-200, .bg-gray-200         { background-color: var(--ps-border-subtle); }
+
+  /* Hover surface variants — keep them feeling pressed/lifted */
+  .hover\:bg-white:hover                               { background-color: var(--ps-bg-elevated); }
+  .hover\:bg-neutral-50:hover,
+  .hover\:bg-slate-50:hover,
+  .hover\:bg-gray-50:hover                             { background-color: var(--ps-bg-muted); }
+  .hover\:bg-neutral-100:hover,
+  .hover\:bg-slate-100:hover,
+  .hover\:bg-gray-100:hover                            { background-color: var(--ps-bg-elevated); }
+
+  /* Text ─────────────────────────────────────────────── */
+  .text-neutral-900, .text-slate-900, .text-gray-900,
+  .text-neutral-800, .text-slate-800, .text-gray-800   { color: var(--ps-fg-1); }
+  .text-neutral-700, .text-slate-700, .text-gray-700,
+  .text-neutral-600, .text-slate-600, .text-gray-600   { color: var(--ps-fg-2); }
+  .text-neutral-500, .text-slate-500, .text-gray-500,
+  .text-neutral-400, .text-slate-400, .text-gray-400   { color: var(--ps-fg-3); }
+  .text-neutral-300, .text-slate-300, .text-gray-300   { color: var(--ps-fg-disabled); }
+
+  /* Hover text variants */
+  .hover\:text-neutral-900:hover,
+  .hover\:text-slate-900:hover,
+  .hover\:text-gray-900:hover                          { color: var(--ps-fg-1); }
+  .hover\:text-neutral-700:hover,
+  .hover\:text-slate-700:hover,
+  .hover\:text-gray-700:hover                          { color: var(--ps-fg-2); }
+
+  /* Borders ──────────────────────────────────────────── */
+  .border-neutral-100, .border-slate-100, .border-gray-100,
+  .border-neutral-200, .border-slate-200, .border-gray-200,
+  .border-neutral-300, .border-slate-300, .border-gray-300,
+  .border-white                                        { border-color: var(--ps-border-subtle); }
+
+  .divide-neutral-100 > :not([hidden]) ~ :not([hidden]),
+  .divide-slate-100   > :not([hidden]) ~ :not([hidden]),
+  .divide-gray-100    > :not([hidden]) ~ :not([hidden]),
+  .divide-neutral-200 > :not([hidden]) ~ :not([hidden]),
+  .divide-slate-200   > :not([hidden]) ~ :not([hidden]),
+  .divide-gray-200    > :not([hidden]) ~ :not([hidden])  { border-color: var(--ps-border-subtle); }
+
+  /* Placeholder text */
+  .placeholder\:text-neutral-400::placeholder,
+  .placeholder\:text-slate-400::placeholder,
+  .placeholder\:text-gray-400::placeholder             { color: var(--ps-fg-3); }
+
+  /* Inputs / form controls */
+  input, textarea, select {
+    background-color: var(--ps-bg-elevated);
+    color:            var(--ps-fg-1);
+    border-color:     var(--ps-border-subtle);
+  }
+  input::placeholder, textarea::placeholder            { color: var(--ps-fg-3); }
+
+  /* Tailwind ring offsets default to white — flip to surface */
+  .ring-offset-white                                   { --tw-ring-offset-color: var(--ps-bg-surface); }
+
+  /* ── Opacity variants used in landing pages ──────── */
+  /* `bg-white/85` etc. compile to `rgb(255 255 255 / 0.85)` — flip the rgb. */
+  .bg-white\/50  { background-color: rgb(26 24 22 / 0.50); }
+  .bg-white\/60  { background-color: rgb(26 24 22 / 0.60); }
+  .bg-white\/70  { background-color: rgb(26 24 22 / 0.70); }
+  .bg-white\/80  { background-color: rgb(26 24 22 / 0.80); }
+  .bg-white\/85  { background-color: rgb(26 24 22 / 0.85); }
+  .bg-white\/90  { background-color: rgb(26 24 22 / 0.90); }
+  .bg-white\/95  { background-color: rgb(26 24 22 / 0.95); }
+
+  /* Borders with opacity */
+  .border-slate-200\/40,
+  .border-neutral-200\/40,
+  .border-gray-200\/40    { border-color: rgb(46 44 41 / 0.40); }
+  .border-slate-200\/60,
+  .border-neutral-200\/60,
+  .border-gray-200\/60    { border-color: rgb(46 44 41 / 0.60); }
+
+  /* Gradients — `from-white`, `to-white`, `via-white` */
+  .from-white   { --tw-gradient-from: var(--ps-bg-surface) var(--tw-gradient-from-position);
+                  --tw-gradient-to: rgb(26 24 22 / 0) var(--tw-gradient-to-position);
+                  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+  .to-white     { --tw-gradient-to: var(--ps-bg-surface) var(--tw-gradient-to-position); }
+  .via-white    { --tw-gradient-to: rgb(26 24 22 / 0) var(--tw-gradient-to-position);
+                  --tw-gradient-stops: var(--tw-gradient-from), var(--ps-bg-surface) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+
+  .from-slate-50, .from-neutral-50, .from-gray-50 {
+    --tw-gradient-from: var(--ps-bg-app) var(--tw-gradient-from-position);
+    --tw-gradient-to: rgb(14 13 11 / 0) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+  .to-slate-50, .to-neutral-50, .to-gray-50 { --tw-gradient-to: var(--ps-bg-app) var(--tw-gradient-to-position); }
+  .from-slate-100, .from-neutral-100, .from-gray-100 {
+    --tw-gradient-from: var(--ps-bg-muted) var(--tw-gradient-from-position);
+    --tw-gradient-to: rgb(42 40 38 / 0) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+  .to-slate-100, .to-neutral-100, .to-gray-100 { --tw-gradient-to: var(--ps-bg-muted) var(--tw-gradient-to-position); }
+
+  /* Backdrop blur on translucent surfaces — keep readable on dark */
+  .backdrop-blur-md, .backdrop-blur-lg, .backdrop-blur-xl { backdrop-filter: blur(12px) saturate(1.4); }
 }
 
 .text-accent {
   color: hsl(var(--accent));
 }
 
-body {
-  font-family: 'Inter', sans-serif;
+/* =========================================================
+   Premium real-estate utilities — used across landing pages
+   (HomeHero, ProHero, DataSources, etc.). Unified typography
+   on Inter, no monospace, natural French copy.
+   ========================================================= */
+
+/* Hairline dotted grid — subtle hero/section background */
+.bg-grid-dots {
+  background-image: radial-gradient(circle at 1px 1px, var(--ps-border-subtle) 1px, transparent 0);
+  background-size: 32px 32px;
+  opacity: 0.45;
+}
+.dark .bg-grid-dots { opacity: 0.3; }
+
+/* Hairline rule grid */
+.bg-grid-lines {
+  background-image: linear-gradient(to right, var(--ps-border-subtle) 1px, transparent 1px),
+                    linear-gradient(to bottom, var(--ps-border-subtle) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.35;
+}
+.dark .bg-grid-lines { opacity: 0.22; }
+
+/* Display headline — large, tight letterspacing, Inter semibold */
+.display-headline {
+  font-family: var(--ps-font-sans);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  color: var(--ps-fg-1);
+}
+
+/* Stat tile — big number Inter tabular, soft border */
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--ps-border-subtle);
+  background: var(--ps-bg-surface);
+  border-radius: 10px;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.stat-tile:hover { border-color: var(--ps-violet-300); box-shadow: var(--ps-shadow-sm); }
+.stat-tile__num {
+  font-family: var(--ps-font-sans);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--ps-fg-1);
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+.stat-tile__label {
+  font-size: 13px;
+  color: var(--ps-fg-2);
+  font-weight: 500;
+  line-height: 1.3;
+}
+.stat-tile__sub {
+  font-size: 12px;
+  color: var(--ps-fg-3);
+  line-height: 1.3;
+}
+
+/* Hairline horizontal violet accent */
+.hairline-accent {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ps-violet-500), transparent);
+  opacity: 0.6;
+}
+
+/* Section eyebrow — small uppercase label in Inter (no mono) */
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ps-font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ps-violet-700);
+  text-transform: uppercase;
+}
+.section-eyebrow::before {
+  content: ''; width: 18px; height: 2px; border-radius: 2px; background: var(--ps-violet-500);
+}
+
+/* Soft real-estate badge — sentence case, gentle background */
+.estate-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid transparent;
+}
+.estate-badge::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+}
+.estate-badge--positive { color: var(--ps-success-700); background: var(--ps-success-50); border-color: var(--ps-success-100); }
+.estate-badge--neutral  { color: var(--ps-warning-700); background: var(--ps-warning-50); border-color: var(--ps-warning-100); }
+.estate-badge--negative { color: var(--ps-danger-700);  background: var(--ps-danger-50);  border-color: var(--ps-danger-100); }
+.estate-badge--brand    { color: var(--ps-violet-700);  background: var(--ps-violet-50);  border-color: var(--ps-violet-100); }
+
+/* Floating card shell — used for hero floating illustrations */
+.float-card {
+  background: var(--ps-bg-surface);
+  border: 1px solid var(--ps-border-subtle);
+  border-radius: 14px;
+  box-shadow: var(--ps-shadow-lg);
 }
 
 /* Lower SearchBar z-index when mobile menu is open so menu appears above */
@@ -352,14 +741,9 @@ body.mobile-menu-open .mobile-search-bar {
   will-change: transform;
 }
 
-/* Ensure Header always stays on top on iOS Safari */
-header {
-  z-index: 100 !important;
-  /* Create proper stacking context for iOS Safari */
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  /* Header already has position: fixed from className, don't override */
-}
+/* (Legacy global `header { z-index:100 !important }` removed — it was scoped
+   to the deleted public Header component and was hijacking HeaderPro,
+   pushing it above modals like AnalyseModal.) */
 /* Custom Mapbox Popup Styles */
 .mapboxgl-popup {
   font-family: 'Courier New', Courier, monospace;
@@ -402,7 +786,7 @@ header {
 .popup-header .price {
   font-weight: 700;
   font-size: 16px;
-  color: #5252e8;
+  color: var(--ps-violet-600);
   white-space: nowrap;
   margin-left: auto;
 }
@@ -456,7 +840,7 @@ header {
 
 .popup-button {
   width: 100%;
-  background: #5252e8;
+  background: var(--ps-violet-500);
   color: white;
   border: none;
   border-radius: 4px;
@@ -470,7 +854,7 @@ header {
 }
 
 .popup-button:hover {
-  background: #4040cc;
+  background: var(--ps-violet-600);
 }
 
 .popup-button svg {

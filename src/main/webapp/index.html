@@ -2067,6 +2067,20 @@
     </script>
 
     <!-- jhipster-needle-add-resources-to-root - JHipster will add new resources here -->
+
+    <script>
+      // Apply persisted theme before React mounts (avoids flash-of-light on dark reload).
+      (function () {
+        try {
+          var raw = localStorage.getItem('propsight.theme');
+          if (!raw) return;
+          var t = JSON.parse(raw);
+          if (t && t.state && t.state.theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (_) {}
+      })();
+    </script>
   </head>
   <body>
     <!--[if lt IE 9]>
