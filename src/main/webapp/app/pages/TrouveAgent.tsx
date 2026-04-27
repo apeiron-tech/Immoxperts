@@ -426,7 +426,7 @@ const TrouveAgent: React.FC = () => {
               Commencez dès maintenant avec notre carte des ventes DVF, 100% gratuite.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-              <Link to="/PrixImmobliers">
+              <Link to="/priximmobilier">
                 <button
                   className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-lg font-medium bg-white transition-all duration-200 hover:opacity-90 text-sm sm:text-base w-full sm:w-auto"
                   style={{ color: 'hsl(245 58% 62%)' }}

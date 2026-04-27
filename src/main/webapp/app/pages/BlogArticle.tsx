@@ -129,7 +129,7 @@ const BlogArticle: React.FC = () => {
                 Entrez une adresse, une rue ou zoomez sur un quartier pour consulter les ventes réelles disponibles.
               </p>
               <Link
-                to="/PrixImmobliers"
+                to="/priximmobilier"
                 className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 font-semibold rounded-lg transition-all duration-200 text-sm sm:text-base w-full sm:w-auto text-white"
                 style={{ backgroundColor: 'hsl(245 58% 62%)' }}
               >
@@ -399,7 +399,7 @@ const BlogArticle: React.FC = () => {
             <div className="bg-gray-100 rounded-xl px-2 sm:px-3 py-2 sm:py-3 text-center mb-0">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-0 text-black">Explorer la carte</h2>
               <Link
-                to="/PrixImmobliers"
+                to="/priximmobilier"
                 className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 font-semibold rounded-lg transition-all duration-200 text-sm sm:text-base w-full sm:w-auto text-white"
                 style={{ backgroundColor: 'hsl(245 58% 62%)' }}
               >

@@ -144,7 +144,7 @@ const Testimonials: React.FC = () => {
   const getCTAByCategory = (category: TestimonialCategory) => {
     switch (category) {
       case 'achat':
-        return { label: "Voir les prix réels avant d'acheter", href: '/PrixImmobliers' };
+        return { label: "Voir les prix réels avant d'acheter", href: '/priximmobilier' };
       case 'vente':
         return { label: 'Estimer votre bien au juste prix', href: '/estimation' };
       case 'investissement':
@@ -152,7 +152,7 @@ const Testimonials: React.FC = () => {
       case 'agent':
         return { label: 'Découvrir les outils professionnels', href: '/pack-pro' };
       default:
-        return { label: 'Explorer la carte des prix', href: '/PrixImmobliers' };
+        return { label: 'Explorer la carte des prix', href: '/priximmobilier' };
     }
   };
 
@@ -315,7 +315,7 @@ const Testimonials: React.FC = () => {
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <button
-                onClick={() => navigate('/PrixImmobliers')}
+                onClick={() => navigate('/priximmobilier')}
                 className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium rounded-lg transition-all duration-200 hover:opacity-90"
                 style={{ backgroundColor: 'hsl(245 58% 62%)' }}
               >
